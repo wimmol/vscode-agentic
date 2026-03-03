@@ -36,7 +36,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 Plans:
 - [x] 01-01-PLAN.md -- Project scaffold, build pipeline, type definitions, and Vitest test infrastructure
 - [x] 01-02-PLAN.md -- GitService async wrapper, worktree parser, WorktreeService with limits and reconciliation
-- [ ] 01-03-PLAN.md -- RepoConfigService, command handlers, gitignore utility, extension wiring
+- [x] 01-03-PLAN.md -- RepoConfigService, command handlers, gitignore utility, extension wiring
 
 ### Phase 2: Agent Lifecycle and Terminal Management
 **Goal**: User can create named agents that run Claude Code CLI in isolated worktrees, run multiple agents concurrently, and delete agents cleanly
@@ -48,11 +48,11 @@ Plans:
   3. User can see each agent's current status (running, idle, finished, error) at a glance
   4. User can run 2-5 agents simultaneously across the same repo without conflicts or performance degradation
   5. Terminals are created only when an agent is focused (lazy creation), not on agent creation
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 02-01: TBD
-- [ ] 02-02: TBD
+- [ ] 02-01-PLAN.md -- Agent model, branch validation utility, TerminalService with terminal lifecycle management
+- [ ] 02-02-PLAN.md -- AgentService lifecycle orchestration, agent commands, extension wiring
 
 ### Phase 3: Sidebar UI and Agent Switching
 **Goal**: User can see all agents in a sidebar and instantly switch between them -- within the same repo or across different repos -- with the IDE context updating accordingly
@@ -133,8 +133,8 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Extension Foundation and Git Infrastructure | 0/3 | Planning complete | - |
-| 2. Agent Lifecycle and Terminal Management | 0/? | Not started | - |
+| 1. Extension Foundation and Git Infrastructure | 3/3 | Complete | 2026-03-04 |
+| 2. Agent Lifecycle and Terminal Management | 0/2 | Planning complete | - |
 | 3. Sidebar UI and Agent Switching | 0/? | Not started | - |
 | 4. Git Workflow and Merge Protection | 0/? | Not started | - |
 | 5. Session Persistence and Agent Reuse | 0/? | Not started | - |
