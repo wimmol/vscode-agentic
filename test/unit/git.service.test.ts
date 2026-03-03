@@ -1,6 +1,6 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Use vi.hoisted so the mock fn is available when vi.mock factory runs (hoisted)
 const { mockExecFile } = vi.hoisted(() => ({
@@ -11,7 +11,7 @@ vi.mock("node:child_process", () => ({
 	execFile: mockExecFile,
 }));
 
-import { GitService, GitError } from "../../src/services/git.service.js";
+import { GitError, GitService } from "../../src/services/git.service.js";
 
 describe("GitService", () => {
 	let git: GitService;
@@ -72,19 +72,12 @@ describe("GitService", () => {
 				code: 128,
 			});
 			mockExecFile.mockImplementation(
-				(
-					_cmd: string,
-					_args: string[],
-					_opts: unknown,
-					cb: (err: Error) => void,
-				) => {
+				(_cmd: string, _args: string[], _opts: unknown, cb: (err: Error) => void) => {
 					cb(error);
 				},
 			);
 
-			await expect(git.exec("/bad-repo", ["status"])).rejects.toThrow(
-				GitError,
-			);
+			await expect(git.exec("/bad-repo", ["status"])).rejects.toThrow(GitError);
 			await expect(git.exec("/bad-repo", ["status"])).rejects.toThrow(
 				"fatal: not a git repository",
 			);
@@ -125,12 +118,7 @@ describe("GitService", () => {
 
 		it("returns false when rev-parse fails", async () => {
 			mockExecFile.mockImplementation(
-				(
-					_cmd: string,
-					_args: string[],
-					_opts: unknown,
-					cb: (err: Error) => void,
-				) => {
+				(_cmd: string, _args: string[], _opts: unknown, cb: (err: Error) => void) => {
 					cb(
 						Object.assign(new Error("failed"), {
 							stderr: "fatal: not a valid ref",
@@ -147,10 +135,7 @@ describe("GitService", () => {
 
 	describe("PERF-04: no sync calls", () => {
 		it("does NOT contain execFileSync or spawnSync", () => {
-			const sourceFile = resolve(
-				__dirname,
-				"../../src/services/git.service.ts",
-			);
+			const sourceFile = resolve(__dirname, "../../src/services/git.service.ts");
 			const source = readFileSync(sourceFile, "utf-8");
 			expect(source).not.toContain("execFileSync");
 			expect(source).not.toContain("spawnSync");

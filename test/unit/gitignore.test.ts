@@ -1,7 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import * as fs from "node:fs/promises";
-import * as path from "node:path";
 import * as os from "node:os";
+import * as path from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ensureGitignoreEntry } from "../../src/utils/gitignore.js";
 
 describe("ensureGitignoreEntry", () => {
@@ -36,10 +36,7 @@ describe("ensureGitignoreEntry", () => {
 	});
 
 	it("does not duplicate entry if already present", async () => {
-		await fs.writeFile(
-			path.join(tmpDir, ".gitignore"),
-			"node_modules/\n.worktrees/\n",
-		);
+		await fs.writeFile(path.join(tmpDir, ".gitignore"), "node_modules/\n.worktrees/\n");
 
 		await ensureGitignoreEntry(tmpDir);
 
@@ -61,10 +58,7 @@ describe("ensureGitignoreEntry", () => {
 	});
 
 	it("recognizes .worktrees (no trailing slash) as already present", async () => {
-		await fs.writeFile(
-			path.join(tmpDir, ".gitignore"),
-			"node_modules/\n.worktrees\n",
-		);
+		await fs.writeFile(path.join(tmpDir, ".gitignore"), "node_modules/\n.worktrees\n");
 
 		await ensureGitignoreEntry(tmpDir);
 

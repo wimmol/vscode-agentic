@@ -1,13 +1,10 @@
 import * as path from "node:path";
 import type * as vscode from "vscode";
-import type { WorktreeEntry, WorktreeOnDisk } from "../models/worktree.js";
-import {
-	WORKTREE_MANIFEST_KEY,
-	WORKTREE_DIR_NAME,
-} from "../models/worktree.js";
 import { DEFAULT_WORKTREE_LIMIT } from "../models/repo.js";
-import type { GitService } from "./git.service.js";
+import type { WorktreeEntry, WorktreeOnDisk } from "../models/worktree.js";
+import { WORKTREE_DIR_NAME, WORKTREE_MANIFEST_KEY } from "../models/worktree.js";
 import { parseWorktreeList } from "../utils/worktree-parser.js";
+import type { GitService } from "./git.service.js";
 
 export class WorktreeLimitError extends Error {
 	constructor(
@@ -40,10 +37,7 @@ export class WorktreeService {
 	 * Simple per-repo mutex. Queues operations so only one
 	 * addWorktree/removeWorktree runs at a time per repo, preventing TOCTOU races.
 	 */
-	private async withLock<T>(
-		repoPath: string,
-		fn: () => Promise<T>,
-	): Promise<T> {
+	private async withLock<T>(repoPath: string, fn: () => Promise<T>): Promise<T> {
 		// Wait for any existing operation on this repo to finish
 		const existing = this.locks.get(repoPath) ?? Promise.resolve();
 
@@ -84,11 +78,7 @@ export class WorktreeService {
 				throw new WorktreeLimitError(repoPath, effectiveLimit, repoEntries);
 			}
 
-			const worktreePath = path.join(
-				repoPath,
-				WORKTREE_DIR_NAME,
-				agentName,
-			);
+			const worktreePath = path.join(repoPath, WORKTREE_DIR_NAME, agentName);
 			const branchName = agentName;
 
 			await this.git.exec(repoPath, [
@@ -122,19 +112,12 @@ export class WorktreeService {
 	async removeWorktree(repoPath: string, agentName: string): Promise<void> {
 		return this.withLock(repoPath, async () => {
 			const allEntries = this.getAllManifestEntries();
-			const entry = allEntries.find(
-				(e) => e.agentName === agentName && e.repoPath === repoPath,
-			);
+			const entry = allEntries.find((e) => e.agentName === agentName && e.repoPath === repoPath);
 
 			if (entry) {
 				// Try to remove the worktree from disk (may already be gone)
 				try {
-					await this.git.exec(repoPath, [
-						"worktree",
-						"remove",
-						"--force",
-						entry.path,
-					]);
+					await this.git.exec(repoPath, ["worktree", "remove", "--force", entry.path]);
 				} catch {
 					// Worktree already gone from disk -- that's fine
 				}
@@ -159,9 +142,7 @@ export class WorktreeService {
 	 * Returns manifest entries for the given repo.
 	 */
 	getManifest(repoPath: string): WorktreeEntry[] {
-		return this.getAllManifestEntries().filter(
-			(e) => e.repoPath === repoPath,
-		);
+		return this.getAllManifestEntries().filter((e) => e.repoPath === repoPath);
 	}
 
 	/**
@@ -172,31 +153,21 @@ export class WorktreeService {
 	 */
 	async reconcile(repoPath: string): Promise<ReconciliationResult> {
 		const manifestEntries = this.getManifest(repoPath);
-		const diskOutput = await this.git.exec(repoPath, [
-			"worktree",
-			"list",
-			"--porcelain",
-		]);
+		const diskOutput = await this.git.exec(repoPath, ["worktree", "list", "--porcelain"]);
 		const diskEntries = parseWorktreeList(diskOutput);
 
 		// Only consider disk entries under .worktrees/ dir
 		const worktreesDirPrefix = path.join(repoPath, WORKTREE_DIR_NAME);
-		const managedDiskEntries = diskEntries.filter((d) =>
-			d.path.startsWith(worktreesDirPrefix),
-		);
+		const managedDiskEntries = diskEntries.filter((d) => d.path.startsWith(worktreesDirPrefix));
 
 		const diskPaths = new Set(managedDiskEntries.map((d) => d.path));
 		const manifestPaths = new Set(manifestEntries.map((m) => m.path));
 
 		// Entries in manifest but not on disk
-		const orphanedInManifest = manifestEntries.filter(
-			(m) => !diskPaths.has(m.path),
-		);
+		const orphanedInManifest = manifestEntries.filter((m) => !diskPaths.has(m.path));
 
 		// Entries on disk but not in manifest
-		const orphanedOnDisk = managedDiskEntries.filter(
-			(d) => !manifestPaths.has(d.path),
-		);
+		const orphanedOnDisk = managedDiskEntries.filter((d) => !manifestPaths.has(d.path));
 
 		// Entries in both
 		const healthy = manifestEntries.filter((m) => diskPaths.has(m.path));
@@ -212,12 +183,7 @@ export class WorktreeService {
 		// Clean up orphanedOnDisk: remove worktrees from disk
 		for (const orphan of orphanedOnDisk) {
 			try {
-				await this.git.exec(repoPath, [
-					"worktree",
-					"remove",
-					"--force",
-					orphan.path,
-				]);
+				await this.git.exec(repoPath, ["worktree", "remove", "--force", orphan.path]);
 			} catch {
 				// Best effort cleanup
 			}

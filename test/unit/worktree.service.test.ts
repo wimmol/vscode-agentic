@@ -1,17 +1,11 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
-import { createMockMemento } from "../__mocks__/vscode.js";
-import type { WorktreeEntry } from "../../src/models/worktree.js";
-import {
-	WORKTREE_MANIFEST_KEY,
-	WORKTREE_DIR_NAME,
-} from "../../src/models/worktree.js";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_WORKTREE_LIMIT } from "../../src/models/repo.js";
-import {
-	WorktreeService,
-	WorktreeLimitError,
-} from "../../src/services/worktree.service.js";
-import type { ReconciliationResult } from "../../src/services/worktree.service.js";
+import type { WorktreeEntry } from "../../src/models/worktree.js";
+import { WORKTREE_DIR_NAME, WORKTREE_MANIFEST_KEY } from "../../src/models/worktree.js";
 import type { GitService } from "../../src/services/git.service.js";
+import type { ReconciliationResult } from "../../src/services/worktree.service.js";
+import { WorktreeLimitError, WorktreeService } from "../../src/services/worktree.service.js";
+import { createMockMemento } from "../__mocks__/vscode.js";
 
 function createMockGitService(): GitService {
 	return {
@@ -136,12 +130,7 @@ describe("WorktreeService", () => {
 			];
 			await memento.update(WORKTREE_MANIFEST_KEY, existing);
 
-			const entry = await service.addWorktree(
-				"/repo",
-				"agent-2",
-				undefined,
-				5,
-			);
+			const entry = await service.addWorktree("/repo", "agent-2", undefined, 5);
 			expect(entry.agentName).toBe("agent-2");
 		});
 
@@ -158,9 +147,9 @@ describe("WorktreeService", () => {
 			}
 			await memento.update(WORKTREE_MANIFEST_KEY, existing);
 
-			await expect(
-				service.addWorktree("/repo", "agent-overflow"),
-			).rejects.toThrow(WorktreeLimitError);
+			await expect(service.addWorktree("/repo", "agent-overflow")).rejects.toThrow(
+				WorktreeLimitError,
+			);
 		});
 	});
 
@@ -179,11 +168,7 @@ describe("WorktreeService", () => {
 				"--force",
 				"/repo/.worktrees/agent-1",
 			]);
-			expect(git.exec).toHaveBeenCalledWith("/repo", [
-				"branch",
-				"-D",
-				"agent-1",
-			]);
+			expect(git.exec).toHaveBeenCalledWith("/repo", ["branch", "-D", "agent-1"]);
 
 			const manifest = memento.get(WORKTREE_MANIFEST_KEY, []) as WorktreeEntry[];
 			expect(manifest).toHaveLength(0);
@@ -201,9 +186,7 @@ describe("WorktreeService", () => {
 				.mockRejectedValueOnce(new Error("branch not found"));
 
 			// Should NOT throw
-			await expect(
-				service.removeWorktree("/repo", "agent-1"),
-			).resolves.not.toThrow();
+			await expect(service.removeWorktree("/repo", "agent-1")).resolves.not.toThrow();
 
 			// Manifest should still be cleaned up
 			const manifest = memento.get(WORKTREE_MANIFEST_KEY, []) as WorktreeEntry[];
@@ -256,12 +239,7 @@ describe("WorktreeService", () => {
 
 			// git worktree list returns only the main worktree (no .worktrees/ entries)
 			(git.exec as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-				[
-					"worktree /repo",
-					"HEAD abc123",
-					"branch refs/heads/main",
-					"",
-				].join("\n"),
+				["worktree /repo", "HEAD abc123", "branch refs/heads/main", ""].join("\n"),
 			);
 
 			const result = await service.reconcile("/repo");
@@ -293,9 +271,7 @@ describe("WorktreeService", () => {
 
 			const result = await service.reconcile("/repo");
 			expect(result.orphanedOnDisk).toHaveLength(1);
-			expect(result.orphanedOnDisk[0].path).toBe(
-				"/repo/.worktrees/orphan-agent",
-			);
+			expect(result.orphanedOnDisk[0].path).toBe("/repo/.worktrees/orphan-agent");
 		});
 
 		it("only flags .worktrees/ paths as orphanedOnDisk (ignores main worktree)", async () => {
@@ -303,9 +279,7 @@ describe("WorktreeService", () => {
 
 			// Disk has main worktree (no .worktrees/ prefix) -- should NOT be flagged
 			(git.exec as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-				["worktree /repo", "HEAD abc123", "branch refs/heads/main", ""].join(
-					"\n",
-				),
+				["worktree /repo", "HEAD abc123", "branch refs/heads/main", ""].join("\n"),
 			);
 
 			const result = await service.reconcile("/repo");
@@ -343,10 +317,7 @@ describe("WorktreeService", () => {
 			await service.reconcile("/repo");
 
 			// Manifest should only have the alive agent now
-			const manifest = memento.get(
-				WORKTREE_MANIFEST_KEY,
-				[],
-			) as WorktreeEntry[];
+			const manifest = memento.get(WORKTREE_MANIFEST_KEY, []) as WorktreeEntry[];
 			expect(manifest).toHaveLength(1);
 			expect(manifest[0].agentName).toBe("alive-agent");
 		});
@@ -437,9 +408,7 @@ describe("WorktreeService", () => {
 			expect(entry2.agentName).toBe("agent-b");
 
 			// The second call should have started AFTER the first ended
-			expect(callOrder.indexOf("end:agent-a")).toBeLessThan(
-				callOrder.indexOf("start:agent-b"),
-			);
+			expect(callOrder.indexOf("end:agent-a")).toBeLessThan(callOrder.indexOf("start:agent-b"));
 		});
 	});
 });

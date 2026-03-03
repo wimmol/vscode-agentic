@@ -38,11 +38,7 @@ export class GitService {
 
 	async branchExists(repoPath: string, branchName: string): Promise<boolean> {
 		try {
-			await this.exec(repoPath, [
-				"rev-parse",
-				"--verify",
-				`refs/heads/${branchName}`,
-			]);
+			await this.exec(repoPath, ["rev-parse", "--verify", `refs/heads/${branchName}`]);
 			return true;
 		} catch {
 			return false;

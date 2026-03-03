@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createMockMemento, window, workspace, Uri } from "vscode";
-import { RepoConfigService } from "../../src/services/repo-config.service.js";
+import { createMockMemento, Uri, window, workspace } from "vscode";
 import {
-	REPO_CONFIGS_KEY,
 	DEFAULT_STAGING_BRANCH,
 	DEFAULT_WORKTREE_LIMIT,
+	REPO_CONFIGS_KEY,
 } from "../../src/models/repo.js";
+import { RepoConfigService } from "../../src/services/repo-config.service.js";
 
 // Mock ensureGitignoreEntry
 vi.mock("../../src/utils/gitignore.js", () => ({
@@ -43,9 +43,7 @@ describe("RepoConfigService", () => {
 		});
 
 		it("returns stored configs", async () => {
-			const configs = [
-				{ path: "/repo1", stagingBranch: "staging", worktreeLimit: 5 },
-			];
+			const configs = [{ path: "/repo1", stagingBranch: "staging", worktreeLimit: 5 }];
 			await memento.update(REPO_CONFIGS_KEY, configs);
 
 			const result = service.getAll();
@@ -71,9 +69,7 @@ describe("RepoConfigService", () => {
 	describe("addRepo", () => {
 		it("happy path: workspace folder selected, staging branch entered, branch does not exist", async () => {
 			// Setup workspace folders
-			workspace.workspaceFolders = [
-				{ uri: { fsPath: "/my-repo" }, name: "my-repo", index: 0 },
-			];
+			workspace.workspaceFolders = [{ uri: { fsPath: "/my-repo" }, name: "my-repo", index: 0 }];
 
 			// User selects the workspace folder
 			window.showQuickPick.mockResolvedValueOnce({
@@ -107,9 +103,7 @@ describe("RepoConfigService", () => {
 		});
 
 		it("prompts user to confirm or pick different name when branch exists", async () => {
-			workspace.workspaceFolders = [
-				{ uri: { fsPath: "/my-repo" }, name: "my-repo", index: 0 },
-			];
+			workspace.workspaceFolders = [{ uri: { fsPath: "/my-repo" }, name: "my-repo", index: 0 }];
 
 			window.showQuickPick
 				// First: pick workspace folder
@@ -132,9 +126,7 @@ describe("RepoConfigService", () => {
 		});
 
 		it("loops back when user picks 'different name' and branch exists", async () => {
-			workspace.workspaceFolders = [
-				{ uri: { fsPath: "/my-repo" }, name: "my-repo", index: 0 },
-			];
+			workspace.workspaceFolders = [{ uri: { fsPath: "/my-repo" }, name: "my-repo", index: 0 }];
 
 			window.showQuickPick
 				// First: pick workspace folder
@@ -149,12 +141,8 @@ describe("RepoConfigService", () => {
 			gitService.exec.mockResolvedValueOnce(".git");
 
 			// First input: "staging" (exists), second input: "develop" (does not exist)
-			window.showInputBox
-				.mockResolvedValueOnce("staging")
-				.mockResolvedValueOnce("develop");
-			gitService.branchExists
-				.mockResolvedValueOnce(true)
-				.mockResolvedValueOnce(false);
+			window.showInputBox.mockResolvedValueOnce("staging").mockResolvedValueOnce("develop");
+			gitService.branchExists.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
 
 			const result = await service.addRepo();
 
@@ -163,9 +151,7 @@ describe("RepoConfigService", () => {
 		});
 
 		it("returns undefined when user cancels folder selection", async () => {
-			workspace.workspaceFolders = [
-				{ uri: { fsPath: "/my-repo" }, name: "my-repo", index: 0 },
-			];
+			workspace.workspaceFolders = [{ uri: { fsPath: "/my-repo" }, name: "my-repo", index: 0 }];
 			window.showQuickPick.mockResolvedValueOnce(undefined);
 
 			const result = await service.addRepo();
@@ -173,9 +159,7 @@ describe("RepoConfigService", () => {
 		});
 
 		it("returns undefined when user cancels staging branch input", async () => {
-			workspace.workspaceFolders = [
-				{ uri: { fsPath: "/my-repo" }, name: "my-repo", index: 0 },
-			];
+			workspace.workspaceFolders = [{ uri: { fsPath: "/my-repo" }, name: "my-repo", index: 0 }];
 
 			window.showQuickPick.mockResolvedValueOnce({
 				label: "my-repo",
@@ -194,9 +178,7 @@ describe("RepoConfigService", () => {
 			const existing = { path: "/my-repo", stagingBranch: "staging", worktreeLimit: 5 };
 			await memento.update(REPO_CONFIGS_KEY, [existing]);
 
-			workspace.workspaceFolders = [
-				{ uri: { fsPath: "/my-repo" }, name: "my-repo", index: 0 },
-			];
+			workspace.workspaceFolders = [{ uri: { fsPath: "/my-repo" }, name: "my-repo", index: 0 }];
 
 			window.showQuickPick.mockResolvedValueOnce({
 				label: "my-repo",

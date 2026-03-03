@@ -30,24 +30,16 @@ describe("parseWorktreeList", () => {
 	});
 
 	it("strips refs/heads/ prefix from branch names", () => {
-		const output = [
-			"worktree /repo",
-			"HEAD aaa",
-			"branch refs/heads/feature/my-branch",
-			"",
-		].join("\n");
+		const output = ["worktree /repo", "HEAD aaa", "branch refs/heads/feature/my-branch", ""].join(
+			"\n",
+		);
 
 		const result = parseWorktreeList(output);
 		expect(result[0].branch).toBe("feature/my-branch");
 	});
 
 	it("parses detached HEAD worktree (branch is null)", () => {
-		const output = [
-			"worktree /home/user/repo-detached",
-			"HEAD def456",
-			"detached",
-			"",
-		].join("\n");
+		const output = ["worktree /home/user/repo-detached", "HEAD def456", "detached", ""].join("\n");
 
 		const result = parseWorktreeList(output);
 		expect(result).toHaveLength(1);
