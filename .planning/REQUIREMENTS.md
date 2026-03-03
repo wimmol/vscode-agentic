@@ -35,11 +35,11 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Git Workflow
 
 - [ ] **GIT-01**: When a repo is first added, user configures a staging branch name (default: "staging")
-- [ ] **GIT-02**: Each agent works in its own git worktree, isolated from other agents and the main working directory
+- [x] **GIT-02**: Each agent works in its own git worktree, isolated from other agents and the main working directory
 - [ ] **GIT-03**: User can open VS Code's native diff view to review changes between an agent's branch and the staging branch
 - [ ] **GIT-04**: User can create a PR from an agent branch to the staging branch after reviewing diffs
-- [ ] **GIT-05**: Worktree creation is capped with hard limits per repo to prevent disk explosion
-- [ ] **GIT-06**: Extension tracks worktrees in a manifest and reconciles against actual state on activation
+- [x] **GIT-05**: Worktree creation is capped with hard limits per repo to prevent disk explosion
+- [x] **GIT-06**: Extension tracks worktrees in a manifest and reconciles against actual state on activation
 
 ### Remote
 
@@ -91,9 +91,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | GIT-01 | Phase 1 | Pending |
-| GIT-02 | Phase 1 | Pending |
-| GIT-05 | Phase 1 | Pending |
-| GIT-06 | Phase 1 | Pending |
+| GIT-02 | Phase 1 | Complete |
+| GIT-05 | Phase 1 | Complete |
+| GIT-06 | Phase 1 | Complete |
 | PERF-04 | Phase 1 | Complete |
 | AGENT-01 | Phase 2 | Pending |
 | AGENT-02 | Phase 2 | Pending |

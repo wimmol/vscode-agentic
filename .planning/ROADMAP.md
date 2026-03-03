@@ -34,8 +34,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 3 plans
 
 Plans:
-- [ ] 01-01-PLAN.md -- Project scaffold, build pipeline, type definitions, and Vitest test infrastructure
-- [ ] 01-02-PLAN.md -- GitService async wrapper, worktree parser, WorktreeService with limits and reconciliation
+- [x] 01-01-PLAN.md -- Project scaffold, build pipeline, type definitions, and Vitest test infrastructure
+- [x] 01-02-PLAN.md -- GitService async wrapper, worktree parser, WorktreeService with limits and reconciliation
 - [ ] 01-03-PLAN.md -- RepoConfigService, command handlers, gitignore utility, extension wiring
 
 ### Phase 2: Agent Lifecycle and Terminal Management
