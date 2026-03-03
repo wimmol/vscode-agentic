@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Completed 03-01-PLAN.md
-last_updated: "2026-03-03T21:26:14.000Z"
-last_activity: 2026-03-04 -- Completed Plan 03-01 (TreeDataProvider Core and TreeItems)
+stopped_at: Completed 03-02-PLAN.md
+last_updated: "2026-03-03T21:33:43.000Z"
+last_activity: 2026-03-04 -- Completed Plan 03-02 (Sidebar Wiring, Commands, Cross-Repo Switching)
 progress:
   total_phases: 7
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 7
-  completed_plans: 6
-  percent: 86
+  completed_plans: 7
+  percent: 100
 ---
 
 # Project State
@@ -26,18 +26,18 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 ## Current Position
 
 Phase: 3 of 7 (Sidebar UI and Agent Switching)
-Plan: 1 of 2 in current phase
-Status: Plan 03-01 Complete
-Last activity: 2026-03-04 -- Completed Plan 03-01 (TreeDataProvider Core and TreeItems)
+Plan: 2 of 2 in current phase
+Status: Phase 03 Complete
+Last activity: 2026-03-04 -- Completed Plan 03-02 (Sidebar Wiring, Commands, Cross-Repo Switching)
 
-Progress: [████████░░] 86% (Overall: 6/7 plans)
+Progress: [██████████] 100% (Overall: 7/7 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6
+- Total plans completed: 7
 - Average duration: 4min
-- Total execution time: 25min
+- Total execution time: 29min
 
 **By Phase:**
 
@@ -49,9 +49,10 @@ Progress: [████████░░] 86% (Overall: 6/7 plans)
 | 02 | P01 | 3min | 2 | 6 |
 | 02 | P02 | 4min | 2 | 8 |
 | 03 | P01 | 4min | 2 | 7 |
+| 03 | P02 | 4min | 3 | 10 |
 
 **Recent Trend:**
-- Last 5 plans: 5min, 4min, 3min, 4min, 4min
+- Last 5 plans: 4min, 3min, 4min, 4min, 4min
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -85,6 +86,9 @@ Recent decisions affecting current work:
 - [Phase 03]: Repo groups derived from agentService.getAll() grouping, not RepoConfigService -- only repos with agents appear
 - [Phase 03]: 150ms debounce on TreeDataProvider auto-refresh to prevent flickering
 - [Phase 03]: Status priority sorting: running(0) > created(1) > finished(2) > error(3)
+- [Phase 03]: Separate focusAgentFromTile (sidebar click with workspace switch) from focusAgent (command palette with picker)
+- [Phase 03]: Cross-repo switch opens README.md in preview tab with preserveFocus to avoid stealing sidebar focus
+- [Phase 03]: createAgentInRepo delegates to existing createAgent with preSelectedRepoPath to avoid duplication
 
 ### Pending Todos
 
@@ -98,6 +102,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-03T21:26:14Z
-Stopped at: Completed 03-01-PLAN.md
-Resume file: .planning/phases/03-sidebar-ui-and-agent-switching/03-02-PLAN.md
+Last session: 2026-03-03T21:33:43Z
+Stopped at: Completed 03-02-PLAN.md
+Resume file: Phase 03 complete. Next: Phase 04

@@ -19,8 +19,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [x] **UI-01**: Right sidebar shows agent tiles in a TreeView grouped by repository
 - [x] **UI-02**: Each agent tile displays name, repo, and current status indicator
-- [ ] **UI-03**: Clicking an agent tile from the same repo switches only the agent CLI panel and code editor to that agent's worktree
-- [ ] **UI-04**: Clicking an agent tile from a different repo switches the entire VS Code context -- file tree, code editor, bottom terminal, and agent CLI panel
+- [x] **UI-03**: Clicking an agent tile from the same repo switches only the agent CLI panel and code editor to that agent's worktree
+- [x] **UI-04**: Clicking an agent tile from a different repo switches the entire VS Code context -- file tree, code editor, bottom terminal, and agent CLI panel
 - [ ] **UI-05**: Agent tile shows a merge button when the agent's branch has diffs vs the staging branch
 
 ### Terminal & Sessions
@@ -103,8 +103,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PERF-01 | Phase 2 | Complete |
 | UI-01 | Phase 3 | Complete |
 | UI-02 | Phase 3 | Complete |
-| UI-03 | Phase 3 | Pending |
-| UI-04 | Phase 3 | Pending |
+| UI-03 | Phase 3 | Complete |
+| UI-04 | Phase 3 | Complete |
 | GIT-03 | Phase 4 | Pending |
 | GIT-04 | Phase 4 | Pending |
 | AGENT-04 | Phase 4 | Pending |
