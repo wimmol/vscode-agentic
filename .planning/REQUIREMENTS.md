@@ -1,7 +1,7 @@
 # Requirements: VS Code Agentic
 
 **Defined:** 2026-03-04
-**Core Value:** Fast, isolated multi-agent development — switch between AI coding agents and repos instantly, with each agent working in its own worktree so nothing conflicts.
+**Core Value:** Fast, isolated multi-agent development -- switch between AI coding agents and repos instantly, with each agent working in its own worktree so nothing conflicts.
 
 ## v1 Requirements
 
@@ -20,16 +20,16 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **UI-01**: Right sidebar shows agent tiles in a TreeView grouped by repository
 - [ ] **UI-02**: Each agent tile displays name, repo, and current status indicator
 - [ ] **UI-03**: Clicking an agent tile from the same repo switches only the agent CLI panel and code editor to that agent's worktree
-- [ ] **UI-04**: Clicking an agent tile from a different repo switches the entire VS Code context — file tree, code editor, bottom terminal, and agent CLI panel
+- [ ] **UI-04**: Clicking an agent tile from a different repo switches the entire VS Code context -- file tree, code editor, bottom terminal, and agent CLI panel
 - [ ] **UI-05**: Agent tile shows a merge button when the agent's branch has diffs vs the staging branch
 
 ### Terminal & Sessions
 
 - [ ] **TERM-01**: Each agent runs as a Claude Code CLI session in a VS Code integrated terminal
 - [ ] **TERM-02**: User can run 2-5 agent sessions concurrently without conflicts
-- [ ] **TERM-03**: Agent sessions persist across VS Code restarts — agent metadata and terminal sessions are restored
-- [ ] **TERM-04**: User can suspend an idle/finished agent to free RAM — terminal state is saved and process is killed
-- [ ] **TERM-05**: User can restore a suspended agent — process relaunches in the same worktree context
+- [ ] **TERM-03**: Agent sessions persist across VS Code restarts -- agent metadata and terminal sessions are restored
+- [ ] **TERM-04**: User can suspend an idle/finished agent to free RAM -- terminal state is saved and process is killed
+- [ ] **TERM-05**: User can restore a suspended agent -- process relaunches in the same worktree context
 - [ ] **TERM-06**: User receives OS notification when a background agent finishes work or needs input
 
 ### Git Workflow
@@ -51,7 +51,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **PERF-01**: Terminals are created lazily (only when agent is focused) to minimize RAM usage
 - [ ] **PERF-02**: Extension remains responsive with 5 concurrent agents and large repositories
 - [ ] **PERF-03**: Orphan agent processes are detected and cleaned up on extension activation
-- [ ] **PERF-04**: All git operations are async — no synchronous calls that block the VS Code UI
+- [ ] **PERF-04**: All git operations are async -- no synchronous calls that block the VS Code UI
 
 ## v2 Requirements
 
@@ -66,11 +66,11 @@ Deferred to future release. Tracked but not in current roadmap.
 
 - **UX-01**: Extension auto-arranges IDE layout (editor splits, panel positions) for the agent workflow
 - **UX-02**: Configurable branch naming patterns (e.g., `agent/{repo}/{name}`, `feature/{name}`)
-- **UX-03**: Agent resource monitoring — per-agent memory/CPU usage displayed on tiles
+- **UX-03**: Agent resource monitoring -- per-agent memory/CPU usage displayed on tiles
 
 ### Collaboration
 
-- **COLLAB-01**: Agent task queuing — schedule agents to run sequentially on related tasks
+- **COLLAB-01**: Agent task queuing -- schedule agents to run sequentially on related tasks
 
 ## Out of Scope
 
@@ -90,40 +90,40 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AGENT-01 | — | Pending |
-| AGENT-02 | — | Pending |
-| AGENT-03 | — | Pending |
-| AGENT-04 | — | Pending |
-| AGENT-05 | — | Pending |
-| UI-01 | — | Pending |
-| UI-02 | — | Pending |
-| UI-03 | — | Pending |
-| UI-04 | — | Pending |
-| UI-05 | — | Pending |
-| TERM-01 | — | Pending |
-| TERM-02 | — | Pending |
-| TERM-03 | — | Pending |
-| TERM-04 | — | Pending |
-| TERM-05 | — | Pending |
-| TERM-06 | — | Pending |
-| GIT-01 | — | Pending |
-| GIT-02 | — | Pending |
-| GIT-03 | — | Pending |
-| GIT-04 | — | Pending |
-| GIT-05 | — | Pending |
-| GIT-06 | — | Pending |
-| REMOTE-01 | — | Pending |
-| REMOTE-02 | — | Pending |
-| PERF-01 | — | Pending |
-| PERF-02 | — | Pending |
-| PERF-03 | — | Pending |
-| PERF-04 | — | Pending |
+| GIT-01 | Phase 1 | Pending |
+| GIT-02 | Phase 1 | Pending |
+| GIT-05 | Phase 1 | Pending |
+| GIT-06 | Phase 1 | Pending |
+| PERF-04 | Phase 1 | Pending |
+| AGENT-01 | Phase 2 | Pending |
+| AGENT-02 | Phase 2 | Pending |
+| AGENT-05 | Phase 2 | Pending |
+| TERM-01 | Phase 2 | Pending |
+| TERM-02 | Phase 2 | Pending |
+| PERF-01 | Phase 2 | Pending |
+| UI-01 | Phase 3 | Pending |
+| UI-02 | Phase 3 | Pending |
+| UI-03 | Phase 3 | Pending |
+| UI-04 | Phase 3 | Pending |
+| GIT-03 | Phase 4 | Pending |
+| GIT-04 | Phase 4 | Pending |
+| AGENT-04 | Phase 4 | Pending |
+| UI-05 | Phase 4 | Pending |
+| TERM-03 | Phase 5 | Pending |
+| AGENT-03 | Phase 5 | Pending |
+| PERF-03 | Phase 5 | Pending |
+| TERM-04 | Phase 6 | Pending |
+| TERM-05 | Phase 6 | Pending |
+| TERM-06 | Phase 6 | Pending |
+| REMOTE-01 | Phase 7 | Pending |
+| REMOTE-02 | Phase 7 | Pending |
+| PERF-02 | Phase 7 | Pending |
 
 **Coverage:**
 - v1 requirements: 28 total
-- Mapped to phases: 0
-- Unmapped: 28 ⚠️
+- Mapped to phases: 28
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-04*
-*Last updated: 2026-03-04 after initial definition*
+*Last updated: 2026-03-04 after roadmap creation*
