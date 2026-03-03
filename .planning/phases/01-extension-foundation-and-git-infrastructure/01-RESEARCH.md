@@ -125,8 +125,10 @@ vscode-agentic/
 │   │   ├── git.service.test.ts
 │   │   ├── worktree.service.test.ts
 │   │   └── repo-config.service.test.ts
-│   └── integration/
-│       └── .vscode-test.mjs     # Integration test config (Phase 1: minimal)
+│   ├── integration/
+│   │   └── .vscode-test.mjs     # Integration test config (Phase 1: minimal)
+│   └── __mocks__/
+│       └── vscode.ts            # Manual mock of the vscode module for Vitest
 ├── dist/                    # esbuild output (gitignored)
 ├── .vscodeignore            # Exclude src/, test/, node_modules/ from VSIX
 ├── biome.json               # Biome config
@@ -549,6 +551,10 @@ export default defineConfig({
     include: ['test/unit/**/*.test.ts'],
     globals: true,
     environment: 'node',
+    alias: {
+      // Resolve the virtual 'vscode' module to our manual mock
+      vscode: new URL('./test/__mocks__/vscode.ts', import.meta.url).pathname,
+    },
   },
 });
 ```
@@ -630,6 +636,347 @@ async reconcile(repoPath: string): Promise<ReconciliationResult> {
 
 Note: With VS Code 1.74+, contributed views automatically trigger activation without explicit `onView:` entries in `activationEvents`. Contributed commands also auto-register `onCommand:` events. An empty `activationEvents` array is correct -- VS Code infers the events from `contributes`.
 
+## Validation Architecture
+
+This section defines how to test and validate every Phase 1 success criterion. The strategy splits into two tiers: **Vitest unit tests** (fast, no VS Code runtime, mock everything) and **@vscode/test-cli integration tests** (slow, real VS Code runtime, minimal in Phase 1).
+
+### Test Framework
+
+| Property | Value |
+|----------|-------|
+| Unit Framework | Vitest ^4.0.0 |
+| Integration Framework | @vscode/test-cli ^0.0.12 (Mocha under the hood) |
+| Config files | `vitest.config.ts` (unit), `.vscode-test.mjs` (integration) |
+| Quick run command | `npm test` (runs `vitest run`) |
+| Full suite command | `npm test && npm run test:integration` |
+
+### Mocking Strategy: VS Code API
+
+The `vscode` module is virtual -- it only exists inside the VS Code extension host runtime. For Vitest unit tests, it must be mocked. Use the **alias approach** in `vitest.config.ts` to resolve `vscode` to a manual mock file.
+
+**vitest.config.ts alias** (shown above in Code Examples) resolves `import * as vscode from 'vscode'` to `test/__mocks__/vscode.ts`.
+
+**Manual mock file:**
+```typescript
+// test/__mocks__/vscode.ts
+// Minimal mock of VS Code API surfaces used by Phase 1 services
+import { vi } from 'vitest';
+
+// Memento mock -- the core persistence API used by services
+export function createMockMemento(): any {
+  const store = new Map<string, unknown>();
+  return {
+    get: vi.fn((key: string, defaultValue?: unknown) => {
+      return store.has(key) ? store.get(key) : defaultValue;
+    }),
+    update: vi.fn(async (key: string, value: unknown) => {
+      store.set(key, value);
+    }),
+    keys: vi.fn(() => [...store.keys()]),
+    // Expose store for test assertions
+    _store: store,
+  };
+}
+
+// Window API mocks
+export const window = {
+  showInputBox: vi.fn(),
+  showQuickPick: vi.fn(),
+  showInformationMessage: vi.fn(),
+  showWarningMessage: vi.fn(),
+  showErrorMessage: vi.fn(),
+  withProgress: vi.fn((_options: unknown, task: (progress: unknown) => Promise<unknown>) => {
+    return task({ report: vi.fn() });
+  }),
+};
+
+// Workspace API mocks
+export const workspace = {
+  workspaceFolders: undefined as unknown[] | undefined,
+  getConfiguration: vi.fn(() => ({
+    get: vi.fn(),
+    update: vi.fn(),
+  })),
+  fs: {
+    stat: vi.fn(),
+    readFile: vi.fn(),
+    writeFile: vi.fn(),
+  },
+};
+
+// Commands API mock
+export const commands = {
+  registerCommand: vi.fn(),
+  executeCommand: vi.fn(),
+};
+
+// URI mock
+export const Uri = {
+  file: vi.fn((path: string) => ({ fsPath: path, scheme: 'file' })),
+  parse: vi.fn((str: string) => ({ fsPath: str, scheme: 'file' })),
+};
+
+// ProgressLocation enum mock
+export const ProgressLocation = {
+  Notification: 15,
+  SourceControl: 1,
+  Window: 10,
+};
+```
+
+**Why this approach over `vi.mock('vscode')`:** Vitest needs to resolve the module at import time. Since `vscode` is not an installable package, using `vi.mock('vscode')` alone causes a resolution error. The alias approach in `vitest.config.ts` redirects the import to a real file on disk, avoiding the issue entirely. This is the pattern recommended in the [Vitest issue #993](https://github.com/vitest-dev/vitest/issues/993) discussion and in the [official Vitest mocking modules docs](https://vitest.dev/guide/mocking/modules).
+
+### Mocking Strategy: child_process (Git Commands)
+
+The `GitService` wraps `promisify(execFile)`. For unit tests, mock `node:child_process` at the module level using `vi.mock`:
+
+```typescript
+// test/unit/git.service.test.ts
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+// Mock the child_process module BEFORE importing GitService
+vi.mock('node:child_process', () => ({
+  execFile: vi.fn(),
+}));
+
+import { execFile } from 'node:child_process';
+import { GitService, GitError } from '../../src/services/git.service';
+
+// Helper to make the mocked execFile resolve/reject
+function mockExecFileResult(stdout: string, stderr = '') {
+  vi.mocked(execFile).mockImplementation(
+    (_cmd: string, _args: unknown, _opts: unknown, callback: Function) => {
+      callback(null, stdout, stderr);
+      return {} as any; // ChildProcess return value (unused by promisify)
+    }
+  );
+}
+
+function mockExecFileError(stderr: string, code = 1) {
+  vi.mocked(execFile).mockImplementation(
+    (_cmd: string, _args: unknown, _opts: unknown, callback: Function) => {
+      const err = Object.assign(new Error(stderr), { stderr, code });
+      callback(err, '', stderr);
+      return {} as any;
+    }
+  );
+}
+
+describe('GitService', () => {
+  let gitService: GitService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    gitService = new GitService();
+  });
+
+  it('executes git commands and returns trimmed stdout', async () => {
+    mockExecFileResult('  abc123  \n');
+    const result = await gitService.exec('/repo', ['rev-parse', 'HEAD']);
+    expect(result).toBe('abc123');
+    expect(execFile).toHaveBeenCalledWith(
+      'git',
+      ['rev-parse', 'HEAD'],
+      expect.objectContaining({ cwd: '/repo' }),
+      expect.any(Function)
+    );
+  });
+
+  it('throws GitError with stderr on failure', async () => {
+    mockExecFileError("fatal: not a git repository");
+    await expect(gitService.exec('/repo', ['status']))
+      .rejects.toThrow(GitError);
+  });
+
+  it('branchExists returns true for existing branch', async () => {
+    mockExecFileResult('abc123');
+    expect(await gitService.branchExists('/repo', 'main')).toBe(true);
+  });
+
+  it('branchExists returns false for non-existing branch', async () => {
+    mockExecFileError("fatal: Needed a single revision");
+    expect(await gitService.branchExists('/repo', 'nonexistent')).toBe(false);
+  });
+});
+```
+
+**Key pattern:** Vitest hoists `vi.mock()` calls above all imports regardless of where they appear in the file. The mock replaces the `execFile` export with a `vi.fn()`. Since `promisify(execFile)` wraps the callback-style function, the mock must implement the callback signature `(cmd, args, opts, callback) => ...` to make the promisified version resolve or reject.
+
+### Phase Requirements to Test Map
+
+| Req ID | Behavior | Test Type | Automated Command | File Needed |
+|--------|----------|-----------|-------------------|-------------|
+| GIT-01 | User adds repo, configures staging branch name (default "staging") | unit | `npx vitest run test/unit/repo-config.service.test.ts` | `test/unit/repo-config.service.test.ts` |
+| GIT-01 | Prompt user when staging branch already exists | unit | `npx vitest run test/unit/repo-config.service.test.ts` | (same file) |
+| GIT-02 | Worktree created with isolated branch via `git worktree add` | unit | `npx vitest run test/unit/worktree.service.test.ts` | `test/unit/worktree.service.test.ts` |
+| GIT-02 | Worktree path follows `.worktrees/<agent-name>/` convention | unit | `npx vitest run test/unit/worktree.service.test.ts` | (same file) |
+| GIT-05 | Worktree creation refused when limit reached | unit | `npx vitest run test/unit/worktree.service.test.ts` | (same file) |
+| GIT-05 | Warning message shown to user at limit | unit | `npx vitest run test/unit/worktree.service.test.ts` | (same file) |
+| GIT-06 | Manifest tracks worktree entries in workspaceState | unit | `npx vitest run test/unit/worktree.service.test.ts` | (same file) |
+| GIT-06 | Reconciliation detects orphaned-in-manifest (entry but no directory) | unit | `npx vitest run test/unit/worktree.service.test.ts` | (same file) |
+| GIT-06 | Reconciliation detects orphaned-on-disk (directory but no entry) | unit | `npx vitest run test/unit/worktree.service.test.ts` | (same file) |
+| GIT-06 | Reconciliation auto-cleans and notifies user | unit | `npx vitest run test/unit/worktree.service.test.ts` | (same file) |
+| PERF-04 | All git operations are async (no execFileSync anywhere) | static | `npx vitest run test/unit/git.service.test.ts` + grep check | `test/unit/git.service.test.ts` |
+| PERF-04 | Git operations do not block event loop | unit | `npx vitest run test/unit/git.service.test.ts` | (same file) |
+| -- | .gitignore entry added before first worktree | unit | `npx vitest run test/unit/gitignore.test.ts` | `test/unit/gitignore.test.ts` |
+| -- | Porcelain worktree list parsed correctly | unit | `npx vitest run test/unit/worktree-parser.test.ts` | `test/unit/worktree-parser.test.ts` |
+
+### Test Scenarios for Worktree Operations
+
+These are the critical test scenarios that validate worktree behavior:
+
+**Worktree Creation (GIT-02):**
+1. Happy path: create worktree with new branch, verify `git worktree add -b` called with correct args
+2. Path convention: verify worktree path is `<repoPath>/.worktrees/<agentName>/`
+3. .gitignore guard: verify `ensureGitignoreEntry` called before `git worktree add`
+4. Branch collision: mock git returning "already checked out" error, verify graceful error message
+5. Repo path validation: reject if path is not a git repository
+
+**Worktree Limit Enforcement (GIT-05):**
+1. Under limit: 3 worktrees with limit 5 -- creation succeeds
+2. At limit: 5 worktrees with limit 5 -- creation refused with warning message
+3. Custom limit: verify configurable limit from RepoConfig is respected (not just default 5)
+4. Concurrent guard: two simultaneous create calls should not both pass the limit check (mutex test)
+
+**Worktree Reconciliation (GIT-06):**
+1. Clean state: manifest matches disk -- no changes, no notifications
+2. Orphaned in manifest: manifest has entry, disk does not -- entry removed from manifest, user notified
+3. Orphaned on disk: disk has `.worktrees/` entry, manifest does not -- worktree removed with `git worktree remove`, user notified
+4. Mixed orphans: both types simultaneously -- both handled correctly
+5. Main worktree skipped: reconciliation ignores the main repo worktree (first entry in `git worktree list`)
+6. Non-extension worktrees ignored: worktrees outside `.worktrees/` directory are not touched
+
+**Worktree List Parsing:**
+1. Single worktree (main only)
+2. Multiple worktrees with branches
+3. Detached HEAD worktree
+4. Locked worktree
+5. Prunable worktree
+6. Empty output
+
+**Repo Config (GIT-01):**
+1. Add repo with default staging branch "staging"
+2. Add repo with custom staging branch name
+3. Staging branch already exists -- user confirms to use it
+4. Staging branch already exists -- user picks different name
+5. Multiple repos stored independently
+6. Retrieve config for specific repo path
+
+**Gitignore Management:**
+1. No .gitignore exists -- creates one with `.worktrees/` entry
+2. .gitignore exists, no entry -- appends `.worktrees/` entry
+3. .gitignore already has `.worktrees/` -- no duplicate added
+4. .gitignore has `.worktrees` (no trailing slash) -- recognized as existing
+5. .gitignore does not end with newline -- proper separator added
+
+### Static Analysis Check for PERF-04
+
+In addition to unit tests, add a static grep check to CI to verify no synchronous git calls exist anywhere in source:
+
+```bash
+# In package.json scripts or CI pipeline:
+# Fail if any synchronous child_process calls are found in src/
+! grep -rn 'execFileSync\|execSync\|spawnSync' src/ || (echo "PERF-04 VIOLATION: synchronous git calls found" && exit 1)
+```
+
+This can also be a Vitest test:
+```typescript
+// test/unit/perf-04.test.ts
+import { describe, it, expect } from 'vitest';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+
+describe('PERF-04: No synchronous git calls', () => {
+  it('should not contain execFileSync, execSync, or spawnSync in src/', () => {
+    const srcDir = path.resolve(__dirname, '../../src');
+    const files = getAllTsFiles(srcDir);
+    const violations: string[] = [];
+
+    for (const file of files) {
+      const content = fs.readFileSync(file, 'utf-8');
+      if (/execFileSync|execSync|spawnSync/.test(content)) {
+        violations.push(path.relative(srcDir, file));
+      }
+    }
+
+    expect(violations).toEqual([]);
+  });
+});
+
+function getAllTsFiles(dir: string): string[] {
+  const files: string[] = [];
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) files.push(...getAllTsFiles(fullPath));
+    else if (entry.name.endsWith('.ts')) files.push(fullPath);
+  }
+  return files;
+}
+```
+
+### Integration Test Config (Phase 1: Minimal)
+
+Phase 1 integration tests are minimal -- just verifying the extension activates and registers its commands. Extensive integration tests come in later phases.
+
+```javascript
+// .vscode-test.mjs
+import { defineConfig } from '@vscode/test-cli';
+
+export default defineConfig({
+  files: 'out/test/integration/**/*.test.js',
+  version: 'stable',
+  mocha: {
+    timeout: 60_000,
+  },
+});
+```
+
+```typescript
+// test/integration/extension.test.ts (minimal Phase 1)
+import * as assert from 'assert';
+import * as vscode from 'vscode';
+
+suite('Extension Activation', () => {
+  test('Extension should be present', () => {
+    assert.ok(vscode.extensions.getExtension('vscode-agentic.vscode-agentic'));
+  });
+
+  test('Extension should activate', async () => {
+    const ext = vscode.extensions.getExtension('vscode-agentic.vscode-agentic');
+    if (ext && !ext.isActive) {
+      await ext.activate();
+    }
+    assert.ok(ext?.isActive);
+  });
+
+  test('addRepo command should be registered', async () => {
+    const commands = await vscode.commands.getCommands(true);
+    assert.ok(commands.includes('vscode-agentic.addRepo'));
+  });
+});
+```
+
+### Sampling Rate
+
+- **Per task commit:** `npm test` (Vitest unit tests only -- runs in < 5 seconds)
+- **Per wave merge:** `npm test && npm run test:integration` (full suite including VS Code integration)
+- **Phase gate:** Full suite green + PERF-04 static check before `/gsd:verify-work`
+
+### Wave 0 Test Infrastructure Gaps
+
+These files must be created during the scaffolding task (Wave 0) before any service implementation:
+
+- [ ] `vitest.config.ts` -- with `vscode` alias pointing to mock file
+- [ ] `test/__mocks__/vscode.ts` -- manual mock of VS Code API (Memento, window, workspace, commands)
+- [ ] `test/unit/git.service.test.ts` -- skeleton with `vi.mock('node:child_process')` pattern
+- [ ] `test/unit/worktree.service.test.ts` -- skeleton with mock GitService and mock Memento
+- [ ] `test/unit/repo-config.service.test.ts` -- skeleton with mock Memento
+- [ ] `test/unit/gitignore.test.ts` -- skeleton (uses real fs via `node:fs/promises` on temp dirs)
+- [ ] `test/unit/worktree-parser.test.ts` -- skeleton for `parseWorktreeList` pure function
+- [ ] `.vscode-test.mjs` -- integration test config
+- [ ] `test/integration/extension.test.ts` -- minimal activation test
+- [ ] Framework install: `npm install --save-dev vitest@^4.0.0 @vscode/test-cli@^0.0.12 @vscode/test-electron@^2.5.0`
+
 ## State of the Art
 
 | Old Approach | Current Approach | When Changed | Impact |
@@ -641,6 +988,7 @@ Note: With VS Code 1.74+, contributed views automatically trigger activation wit
 | `vsce` package | `@vscode/vsce` package | 2023 | Scoped package; same tool, new name |
 | Mocha for all tests | Vitest for unit + Mocha for integration | 2023-2024 | Faster unit tests; Mocha still required for integration by @vscode/test-cli |
 | `child_process.exec` | `promisify(child_process.execFile)` | Always preferred | execFile avoids shell injection; promisify enables async/await |
+| Jest `__mocks__/vscode.js` | Vitest `test.alias` config | 2024+ | Vitest resolves virtual modules via Vite alias; __mocks__ dir not needed for resolution |
 
 **Deprecated/outdated:**
 - `vscode` npm package: Deprecated. Use `@types/vscode` for types and `@vscode/test-electron` for test runtime.
@@ -675,11 +1023,16 @@ Note: With VS Code 1.74+, contributed views automatically trigger activation wit
 - [Node.js child_process docs](https://nodejs.org/api/child_process.html) - execFile, promisify, async patterns
 - [Microsoft esbuild-sample](https://github.com/microsoft/vscode-extension-samples/tree/main/esbuild-sample) - Official reference project structure
 - npm registry (live queries) - Verified current versions: @types/vscode@1.109.0, typescript@5.9.3, vitest@4.0.18, @biomejs/biome@2.4.5, esbuild@0.27.3
+- [Vitest Module Mocking Docs](https://vitest.dev/guide/mocking/modules) - vi.mock with factory functions, alias-based virtual module resolution, __mocks__ directory patterns
+- [Vitest Issue #993](https://github.com/vitest-dev/vitest/issues/993) - Mocking uninstalled modules (vscode) -- confirmed fixed in latest Vitest with Vite plugin or alias approach
+- [@vscode/test-cli README](https://github.com/microsoft/vscode-test-cli) - Configuration-driven CLI runner, .vscode-test.mjs format, Mocha integration
 
 ### Secondary (MEDIUM confidence)
 - [Biome vs ESLint comparison articles](https://medium.com/@harryespant/biome-vs-eslint-the-ultimate-2025-showdown) - Performance claims (25x faster), feature coverage (97% Prettier compatible)
 - [pnpm + vsce compatibility](https://opensciencelabs.org/blog/packaging-a-vs-code-extension-using-pnpm-and-vsce/) - --no-dependencies workaround required for pnpm
 - [Git worktree best practices](https://devtoolbox.dedyn.io/blog/git-worktrees-complete-guide) - Community patterns for worktree organization
+- [Mock VS Code API pattern (Jest)](https://www.richardkotze.com/coding/unit-test-mock-vs-code-extension-api-jest) - Manual mock pattern adapted to Vitest; Memento mock structure
+- [Mock child_process.exec in Vitest (Gist)](https://gist.github.com/joemaller/f9171aa19a187f59f406ef1ffe87d9ac) - Callback-style mock pattern for promisified execFile
 
 ### Tertiary (LOW confidence)
 - Service architecture patterns for VS Code extensions: Derived from VS Code's own Git extension patterns and general TypeScript architecture. No single authoritative source for "the right way" to structure a VS Code extension's internal services.
@@ -691,6 +1044,7 @@ Note: With VS Code 1.74+, contributed views automatically trigger activation wit
 - Architecture: HIGH - Service-layer pattern is derived from VS Code's own extensions and Microsoft's samples. The async git wrapper is a well-established Node.js pattern.
 - Pitfalls: HIGH - All pitfalls are derived from git documentation (branch-already-checked-out, worktree pruning) or well-known VS Code extension development issues (extension host blocking, workspaceState vs globalState).
 - Code examples: HIGH - esbuild config and package.json scripts come directly from Microsoft's official documentation and sample repos.
+- Validation architecture: HIGH - Vitest mocking patterns verified via official Vitest docs and confirmed issue resolutions. VS Code mock approach verified via Vitest issue #993 (resolved). child_process mocking pattern verified via multiple community sources and Vitest docs.
 
 **Research date:** 2026-03-04
 **Valid until:** 2026-04-04 (30 days - stable technologies, slow-moving APIs)
