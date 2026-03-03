@@ -17,6 +17,21 @@
 				"command": "vscode-agentic.addRepo",
 				"title": "Add Repository",
 				"category": "Agentic"
+			},
+			{
+				"command": "vscode-agentic.createAgent",
+				"title": "Create Agent",
+				"category": "Agentic"
+			},
+			{
+				"command": "vscode-agentic.deleteAgent",
+				"title": "Delete Agent",
+				"category": "Agentic"
+			},
+			{
+				"command": "vscode-agentic.focusAgent",
+				"title": "Focus Agent",
+				"category": "Agentic"
 			}
 		],
 		"viewsContainers": {

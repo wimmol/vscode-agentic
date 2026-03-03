@@ -258,7 +258,7 @@ describe("Agent Commands", () => {
 			window.showInputBox.mockResolvedValueOnce("existing-agent"); // name that collides
 			// User chooses to reuse
 			window.showQuickPick.mockResolvedValueOnce({
-				label: expect.stringContaining("Reuse"),
+				label: "Reuse existing agent 'existing-agent'",
 			});
 
 			const handler = registeredHandlers.get("vscode-agentic.createAgent")!;
