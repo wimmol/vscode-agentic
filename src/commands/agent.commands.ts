@@ -26,8 +26,8 @@ export function registerAgentCommands(
 	// --- Create Agent ---
 	const createDisposable = vscode.commands.registerCommand(
 		"vscode-agentic.createAgent",
-		async () => {
-			// 1. Pick repo
+		async (preSelectedRepoPath?: string) => {
+			// 1. Pick repo (skip if pre-selected from sidebar inline button)
 			const repos = repoConfigService.getAll();
 			if (repos.length === 0) {
 				vscode.window.showErrorMessage(
@@ -37,7 +37,12 @@ export function registerAgentCommands(
 			}
 
 			let repoPath: string;
-			if (repos.length === 1) {
+			const matchedPreSelected =
+				preSelectedRepoPath &&
+				repos.find((r) => r.path === preSelectedRepoPath);
+			if (matchedPreSelected) {
+				repoPath = matchedPreSelected.path;
+			} else if (repos.length === 1) {
 				repoPath = repos[0].path;
 			} else {
 				const repoItems: RepoPickItem[] = repos.map((r) => ({
@@ -134,7 +139,16 @@ export function registerAgentCommands(
 	// --- Focus Agent ---
 	const focusDisposable = vscode.commands.registerCommand(
 		"vscode-agentic.focusAgent",
-		async () => {
+		async (preSelectedRepoPath?: string, preSelectedAgentName?: string) => {
+			// If both parameters provided (programmatic call), skip the picker
+			if (preSelectedRepoPath && preSelectedAgentName) {
+				await agentService.focusAgent(
+					preSelectedRepoPath,
+					preSelectedAgentName,
+				);
+				return;
+			}
+
 			const agents = agentService.getAll();
 			if (agents.length === 0) {
 				vscode.window.showInformationMessage("No agents available.");

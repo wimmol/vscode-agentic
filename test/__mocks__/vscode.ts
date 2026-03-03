@@ -50,6 +50,7 @@ export const window = {
 		return task({ report: vi.fn() });
 	}),
 	createTerminal: vi.fn(),
+	showTextDocument: vi.fn(),
 	createTreeView: vi.fn(() => ({
 		reveal: vi.fn(),
 		dispose: vi.fn(),
@@ -64,6 +65,7 @@ export const window = {
 export const workspace = {
 	workspaceFolders: undefined as unknown[] | undefined,
 	updateWorkspaceFolders: vi.fn(),
+	openTextDocument: vi.fn().mockResolvedValue({ uri: { fsPath: "/mock-doc" } }),
 	getConfiguration: vi.fn(() => ({
 		get: vi.fn(),
 		update: vi.fn(),
@@ -85,6 +87,10 @@ export const commands = {
 export const Uri = {
 	file: vi.fn((path: string) => ({ fsPath: path, scheme: "file" })),
 	parse: vi.fn((str: string) => ({ fsPath: str, scheme: "file" })),
+	joinPath: vi.fn((base: { fsPath: string }, ...pathSegments: string[]) => ({
+		fsPath: [base.fsPath, ...pathSegments].join("/"),
+		scheme: "file",
+	})),
 };
 
 // ProgressLocation enum mock
@@ -151,6 +157,14 @@ export class ThemeIcon {
 		public color?: ThemeColor,
 	) {}
 }
+
+// Environment API mocks
+export const env = {
+	clipboard: {
+		writeText: vi.fn(),
+		readText: vi.fn(),
+	},
+};
 
 // Extensions mock
 export const extensions = {

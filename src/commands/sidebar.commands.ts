@@ -1,0 +1,86 @@
+import * as vscode from "vscode";
+import type { AgentService } from "../services/agent.service.js";
+import type { WorkspaceSwitchService } from "../services/workspace-switch.service.js";
+import type { AgentTreeProvider } from "../views/agent-tree-provider.js";
+import { AgentTreeItem } from "../views/agent-tree-items.js";
+
+/**
+ * Registers sidebar-specific commands:
+ * - focusAgentFromTile: click handler for agent TreeItem (distinct from command palette focusAgent)
+ * - deleteAgentFromTile: context menu delete on agent tile
+ * - copyBranchName: context menu copy branch name
+ * - createAgentInRepo: inline "+" button on repo group header
+ */
+export function registerSidebarCommands(
+	context: vscode.ExtensionContext,
+	agentService: AgentService,
+	workspaceSwitchService: WorkspaceSwitchService,
+	treeView: vscode.TreeView<unknown>,
+	_treeProvider: AgentTreeProvider,
+): void {
+	// --- Focus Agent From Tile (click handler) ---
+	const focusFromTile = vscode.commands.registerCommand(
+		"vscode-agentic.focusAgentFromTile",
+		async (repoPath: string, agentName: string) => {
+			await workspaceSwitchService.switchToAgent(repoPath, agentName);
+
+			// Reveal the agent in the TreeView for active highlighting.
+			// TreeView matches by id -- status doesn't matter for id construction.
+			const agentItem = new AgentTreeItem(
+				agentName,
+				repoPath,
+				"created",
+			);
+			treeView.reveal(agentItem, { select: true, focus: false });
+		},
+	);
+
+	// --- Delete Agent From Tile (context menu) ---
+	const deleteFromTile = vscode.commands.registerCommand(
+		"vscode-agentic.deleteAgentFromTile",
+		async (repoPath: string, agentName: string) => {
+			const confirmed = await vscode.window.showWarningMessage(
+				`Delete agent '${agentName}'? This removes the worktree and branch.`,
+				{ modal: true },
+				"Delete",
+			);
+			if (confirmed !== "Delete") {
+				return;
+			}
+
+			await agentService.deleteAgent(repoPath, agentName);
+			vscode.window.showInformationMessage(
+				`Agent '${agentName}' deleted.`,
+			);
+		},
+	);
+
+	// --- Copy Branch Name (context menu) ---
+	const copyBranch = vscode.commands.registerCommand(
+		"vscode-agentic.copyBranchName",
+		async (_repoPath: string, agentName: string) => {
+			await vscode.env.clipboard.writeText(agentName);
+			vscode.window.showInformationMessage(
+				`Copied branch name: ${agentName}`,
+			);
+		},
+	);
+
+	// --- Create Agent In Repo (inline button on repo group) ---
+	const createInRepo = vscode.commands.registerCommand(
+		"vscode-agentic.createAgentInRepo",
+		async (repoPath: string) => {
+			await vscode.commands.executeCommand(
+				"vscode-agentic.createAgent",
+				repoPath,
+			);
+		},
+	);
+
+	context.subscriptions.push(
+		focusFromTile,
+		deleteFromTile,
+		copyBranch,
+		createInRepo,
+	);
+}
