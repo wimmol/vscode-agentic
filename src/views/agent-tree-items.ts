@@ -84,7 +84,7 @@ export class AgentTreeItem extends vscode.TreeItem {
 		this.iconPath = getStatusIcon(status);
 		this.tooltip = `${agentName} (${status})\n${repoPath}`;
 		this.command = {
-			command: "vscode-agentic.focusAgent",
+			command: "vscode-agentic.focusAgentFromTile",
 			title: "Focus Agent",
 			arguments: [repoPath, agentName],
 		};

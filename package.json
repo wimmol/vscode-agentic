@@ -16,12 +16,14 @@
 			{
 				"command": "vscode-agentic.addRepo",
 				"title": "Add Repository",
-				"category": "Agentic"
+				"category": "Agentic",
+				"icon": "$(file-directory)"
 			},
 			{
 				"command": "vscode-agentic.createAgent",
 				"title": "Create Agent",
-				"category": "Agentic"
+				"category": "Agentic",
+				"icon": "$(add)"
 			},
 			{
 				"command": "vscode-agentic.deleteAgent",
@@ -32,6 +34,28 @@
 				"command": "vscode-agentic.focusAgent",
 				"title": "Focus Agent",
 				"category": "Agentic"
+			},
+			{
+				"command": "vscode-agentic.focusAgentFromTile",
+				"title": "Focus Agent",
+				"category": "Agentic"
+			},
+			{
+				"command": "vscode-agentic.deleteAgentFromTile",
+				"title": "Delete Agent",
+				"category": "Agentic",
+				"icon": "$(trash)"
+			},
+			{
+				"command": "vscode-agentic.copyBranchName",
+				"title": "Copy Branch Name",
+				"category": "Agentic"
+			},
+			{
+				"command": "vscode-agentic.createAgentInRepo",
+				"title": "Create Agent in Repo",
+				"category": "Agentic",
+				"icon": "$(add)"
 			}
 		],
 		"viewsContainers": {
@@ -50,7 +74,49 @@
 					"name": "Agents"
 				}
 			]
-		}
+		},
+		"menus": {
+			"view/title": [
+				{
+					"command": "vscode-agentic.createAgent",
+					"when": "view == vscode-agentic.agents",
+					"group": "navigation@1"
+				},
+				{
+					"command": "vscode-agentic.addRepo",
+					"when": "view == vscode-agentic.agents",
+					"group": "navigation@2"
+				}
+			],
+			"view/item/context": [
+				{
+					"command": "vscode-agentic.deleteAgentFromTile",
+					"when": "view == vscode-agentic.agents && viewItem == agentItem",
+					"group": "inline"
+				},
+				{
+					"command": "vscode-agentic.deleteAgentFromTile",
+					"when": "view == vscode-agentic.agents && viewItem == agentItem",
+					"group": "destructive"
+				},
+				{
+					"command": "vscode-agentic.copyBranchName",
+					"when": "view == vscode-agentic.agents && viewItem == agentItem",
+					"group": "other"
+				},
+				{
+					"command": "vscode-agentic.createAgentInRepo",
+					"when": "view == vscode-agentic.agents && viewItem == repoGroup",
+					"group": "inline"
+				}
+			]
+		},
+		"viewsWelcome": [
+			{
+				"view": "vscode-agentic.agents",
+				"contents": "No agents yet.\n[Create Agent](command:vscode-agentic.createAgent)"
+			}
+		]
 	},
 	"scripts": {
 		"compile": "npm run check-types && node esbuild.js",

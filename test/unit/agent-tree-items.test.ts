@@ -113,7 +113,7 @@ describe("AgentTreeItem", () => {
 	it("has command to focus agent", () => {
 		const item = new AgentTreeItem("fix-bug", "/repo", "running");
 		expect(item.command).toEqual({
-			command: "vscode-agentic.focusAgent",
+			command: "vscode-agentic.focusAgentFromTile",
 			title: "Focus Agent",
 			arguments: ["/repo", "fix-bug"],
 		});
