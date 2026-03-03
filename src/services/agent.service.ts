@@ -1,4 +1,4 @@
-import type * as vscode from "vscode";
+import * as vscode from "vscode";
 import type { AgentEntry, AgentStatus } from "../models/agent.js";
 import { AGENT_REGISTRY_KEY } from "../models/agent.js";
 import type { TerminalService } from "./terminal.service.js";
@@ -14,6 +14,8 @@ import type { WorktreeService } from "./worktree.service.js";
  */
 export class AgentService {
 	private terminalService: TerminalService | undefined;
+	private readonly _onDidChangeAgents = new vscode.EventEmitter<void>();
+	readonly onDidChangeAgents = this._onDidChangeAgents.event;
 
 	constructor(
 		private readonly state: vscode.Memento,
@@ -58,6 +60,7 @@ export class AgentService {
 		const registry = this.getRegistry();
 		registry.push(entry);
 		await this.saveRegistry(registry);
+		this._onDidChangeAgents.fire();
 
 		return entry;
 	}
@@ -102,6 +105,7 @@ export class AgentService {
 			(e) => !(e.repoPath === repoPath && e.agentName === agentName),
 		);
 		await this.saveRegistry(registry);
+		this._onDidChangeAgents.fire();
 	}
 
 	/**
@@ -157,6 +161,7 @@ export class AgentService {
 		agent.status = status;
 		agent.exitCode = exitCode;
 		await this.saveRegistry(registry);
+		this._onDidChangeAgents.fire();
 	}
 
 	/**
@@ -177,7 +182,15 @@ export class AgentService {
 
 		if (changed) {
 			await this.saveRegistry(registry);
+			this._onDidChangeAgents.fire();
 		}
+	}
+
+	/**
+	 * Disposes the change event emitter. Called on extension deactivation.
+	 */
+	dispose(): void {
+		this._onDidChangeAgents.dispose();
 	}
 
 	private requireTerminalService(): TerminalService {

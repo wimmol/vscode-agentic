@@ -50,6 +50,11 @@ export const window = {
 		return task({ report: vi.fn() });
 	}),
 	createTerminal: vi.fn(),
+	createTreeView: vi.fn(() => ({
+		reveal: vi.fn(),
+		dispose: vi.fn(),
+		onDidChangeVisibility: vi.fn(),
+	})),
 	onDidCloseTerminal: vi.fn(),
 	onDidChangeActiveTerminal: vi.fn(),
 	terminals: [] as ReturnType<typeof createMockTerminal>[],
@@ -58,6 +63,7 @@ export const window = {
 // Workspace API mocks
 export const workspace = {
 	workspaceFolders: undefined as unknown[] | undefined,
+	updateWorkspaceFolders: vi.fn(),
 	getConfiguration: vi.fn(() => ({
 		get: vi.fn(),
 		update: vi.fn(),
@@ -132,6 +138,19 @@ export const TreeItemCollapsibleState = {
 	Collapsed: 1,
 	Expanded: 2,
 };
+
+// ThemeColor mock
+export class ThemeColor {
+	constructor(public id: string) {}
+}
+
+// ThemeIcon mock
+export class ThemeIcon {
+	constructor(
+		public id: string,
+		public color?: ThemeColor,
+	) {}
+}
 
 // Extensions mock
 export const extensions = {

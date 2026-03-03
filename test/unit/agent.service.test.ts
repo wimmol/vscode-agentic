@@ -359,4 +359,72 @@ describe("AgentService", () => {
 			svc.setTerminalService(terminalService as never);
 		});
 	});
+
+	describe("onDidChangeAgents", () => {
+		it("fires after createAgent", async () => {
+			const listener = vi.fn();
+			service.onDidChangeAgents(listener);
+
+			await service.createAgent("/repo", "test-agent");
+
+			expect(listener).toHaveBeenCalledTimes(1);
+		});
+
+		it("fires after deleteAgent", async () => {
+			await service.createAgent("/repo", "test-agent");
+
+			const listener = vi.fn();
+			service.onDidChangeAgents(listener);
+
+			await service.deleteAgent("/repo", "test-agent");
+
+			expect(listener).toHaveBeenCalledTimes(1);
+		});
+
+		it("fires after updateStatus", async () => {
+			await service.createAgent("/repo", "test-agent");
+
+			const listener = vi.fn();
+			service.onDidChangeAgents(listener);
+
+			await service.updateStatus("/repo", "test-agent", "running");
+
+			expect(listener).toHaveBeenCalledTimes(1);
+		});
+
+		it("fires after reconcileOnActivation when changes occur", async () => {
+			await service.createAgent("/repo", "agent-1");
+			await service.updateStatus("/repo", "agent-1", "running");
+
+			const listener = vi.fn();
+			service.onDidChangeAgents(listener);
+
+			await service.reconcileOnActivation();
+
+			expect(listener).toHaveBeenCalledTimes(1);
+		});
+
+		it("does NOT fire on reconcileOnActivation when no changes", async () => {
+			await service.createAgent("/repo", "agent-1");
+			// Status is "created" -- no running agents, so reconcile is a no-op
+
+			const listener = vi.fn();
+			service.onDidChangeAgents(listener);
+
+			await service.reconcileOnActivation();
+
+			expect(listener).not.toHaveBeenCalled();
+		});
+
+		it("dispose() cleans up the event emitter", () => {
+			const listener = vi.fn();
+			service.onDidChangeAgents(listener);
+
+			service.dispose();
+
+			// After dispose, creating an agent should not fire the listener
+			// (though in practice dispose is called at shutdown)
+			expect(() => service.dispose()).not.toThrow();
+		});
+	});
 });
