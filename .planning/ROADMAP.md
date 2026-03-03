@@ -63,11 +63,11 @@ Plans:
   2. Each agent tile shows the agent's name, repository, and a visual status indicator (running, idle, finished, error, suspended)
   3. Clicking an agent tile from the same repo switches the agent CLI panel and code editor to that agent's worktree without affecting the file explorer or bottom terminal
   4. Clicking an agent tile from a different repo switches the entire VS Code context -- file tree, code editor, bottom terminal, and agent CLI panel all change to the new repo's worktree
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 03-01: TBD
-- [ ] 03-02: TBD
+- [ ] 03-01-PLAN.md -- AgentService change event, TreeDataProvider, and TreeItem classes (repo groups + agent tiles with status icons)
+- [ ] 03-02-PLAN.md -- WorkspaceSwitchService, sidebar commands, package.json menus/welcome, extension wiring
 
 ### Phase 4: Git Workflow and Merge Protection
 **Goal**: User can review agent work via VS Code's native diff editor and merge agent branches to staging, with protection against deleting agents that have unmerged work
@@ -135,7 +135,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 |-------|----------------|--------|-----------|
 | 1. Extension Foundation and Git Infrastructure | 3/3 | Complete | 2026-03-04 |
 | 2. Agent Lifecycle and Terminal Management | 0/2 | Planning complete | - |
-| 3. Sidebar UI and Agent Switching | 0/? | Not started | - |
+| 3. Sidebar UI and Agent Switching | 0/2 | Planning complete | - |
 | 4. Git Workflow and Merge Protection | 0/? | Not started | - |
 | 5. Session Persistence and Agent Reuse | 0/? | Not started | - |
 | 6. Suspend/Restore and Notifications | 0/? | Not started | - |
