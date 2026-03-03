@@ -31,11 +31,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Extension creates git worktrees in the repo without blocking the VS Code UI (all git operations are async)
   3. Worktree creation is refused when the per-repo hard limit is reached, with a clear message to the user
   4. On extension activation, orphaned worktrees (in manifest but not on disk, or on disk but not in manifest) are detected and reconciled
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 01-01: TBD
-- [ ] 01-02: TBD
+- [ ] 01-01-PLAN.md -- Project scaffold, build pipeline, type definitions, and Vitest test infrastructure
+- [ ] 01-02-PLAN.md -- GitService async wrapper, worktree parser, WorktreeService with limits and reconciliation
+- [ ] 01-03-PLAN.md -- RepoConfigService, command handlers, gitignore utility, extension wiring
 
 ### Phase 2: Agent Lifecycle and Terminal Management
 **Goal**: User can create named agents that run Claude Code CLI in isolated worktrees, run multiple agents concurrently, and delete agents cleanly
@@ -132,7 +133,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Extension Foundation and Git Infrastructure | 0/? | Not started | - |
+| 1. Extension Foundation and Git Infrastructure | 0/3 | Planning complete | - |
 | 2. Agent Lifecycle and Terminal Management | 0/? | Not started | - |
 | 3. Sidebar UI and Agent Switching | 0/? | Not started | - |
 | 4. Git Workflow and Merge Protection | 0/? | Not started | - |
