@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in-progress
-stopped_at: Completed 02-01-PLAN.md
-last_updated: "2026-03-03T20:27:37Z"
-last_activity: 2026-03-04 -- Completed Plan 02-01 (Agent Model, Branch Validation, Terminal Service)
+stopped_at: Completed 02-02-PLAN.md
+last_updated: "2026-03-03T20:34:56Z"
+last_activity: 2026-03-04 -- Completed Plan 02-02 (AgentService Lifecycle and Agent Commands)
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 5
-  completed_plans: 4
-  percent: 80
+  completed_plans: 5
+  percent: 100
 ---
 
 # Project State
@@ -26,18 +26,18 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 ## Current Position
 
 Phase: 2 of 7 (Agent Lifecycle and Terminal Management)
-Plan: 1 of 2 in current phase
-Status: Plan 02-01 Complete
-Last activity: 2026-03-04 -- Completed Plan 02-01 (Agent Model, Branch Validation, Terminal Service)
+Plan: 2 of 2 in current phase
+Status: Phase 02 Complete
+Last activity: 2026-03-04 -- Completed Plan 02-02 (AgentService Lifecycle and Agent Commands)
 
-Progress: [████████░░] 80% (Overall: 4/5 plans)
+Progress: [██████████] 100% (Overall: 5/5 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 4
+- Total plans completed: 5
 - Average duration: 4min
-- Total execution time: 17min
+- Total execution time: 21min
 
 **By Phase:**
 
@@ -47,10 +47,11 @@ Progress: [████████░░] 80% (Overall: 4/5 plans)
 | 01 | P02 | 5min | 2 | 8 |
 | 01 | P03 | 4min | 3 | 11 |
 | 02 | P01 | 3min | 2 | 6 |
+| 02 | P02 | 4min | 2 | 8 |
 
 **Recent Trend:**
-- Last 5 plans: 5min, 5min, 4min, 3min
-- Trend: Improving
+- Last 5 plans: 5min, 5min, 4min, 3min, 4min
+- Trend: Stable
 
 *Updated after each plan completion*
 
@@ -77,6 +78,9 @@ Recent decisions affecting current work:
 - [Phase 02]: Compound key repoPath::agentName for terminal-to-agent mapping
 - [Phase 02]: Map entry removal before dispose() to prevent close handler race condition
 - [Phase 02]: Four-state agent status: created, running, finished, error
+- [Phase 02]: setTerminalService setter pattern breaks circular dependency between AgentService and TerminalService
+- [Phase 02]: Lazy terminal creation on focusAgent -- agents start "created", terminal only on focus
+- [Phase 02]: Recursive promptForAgentName for name collision with reuse or rename options
 
 ### Pending Todos
 
@@ -90,6 +94,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-03T20:27:37Z
-Stopped at: Completed 02-01-PLAN.md
-Resume file: .planning/phases/02-agent-lifecycle-terminal-mgmt/02-01-SUMMARY.md
+Last session: 2026-03-03T20:34:56Z
+Stopped at: Completed 02-02-PLAN.md
+Resume file: .planning/phases/02-agent-lifecycle-terminal-mgmt/02-02-SUMMARY.md

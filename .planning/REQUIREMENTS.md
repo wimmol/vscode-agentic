@@ -9,11 +9,11 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Agent Lifecycle
 
-- [ ] **AGENT-01**: User can create an agent by naming it, which auto-creates a git branch with that name and a worktree, then launches Claude Code CLI in the worktree
-- [ ] **AGENT-02**: User can delete an agent, which kills the process, removes the worktree, and deletes the branch
+- [x] **AGENT-01**: User can create an agent by naming it, which auto-creates a git branch with that name and a worktree, then launches Claude Code CLI in the worktree
+- [x] **AGENT-02**: User can delete an agent, which kills the process, removes the worktree, and deletes the branch
 - [ ] **AGENT-03**: User can restart a previously finished agent, reusing its existing branch and worktree
 - [ ] **AGENT-04**: User cannot delete an agent whose branch has unmerged changes vs staging (merge protection)
-- [ ] **AGENT-05**: Agent status is tracked and visible (running, idle, finished, error, suspended)
+- [x] **AGENT-05**: Agent status is tracked and visible (running, idle, finished, error, suspended)
 
 ### Sidebar & UI
 
@@ -95,9 +95,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | GIT-05 | Phase 1 | Complete |
 | GIT-06 | Phase 1 | Complete |
 | PERF-04 | Phase 1 | Complete |
-| AGENT-01 | Phase 2 | Pending |
-| AGENT-02 | Phase 2 | Pending |
-| AGENT-05 | Phase 2 | Pending |
+| AGENT-01 | Phase 2 | Complete |
+| AGENT-02 | Phase 2 | Complete |
+| AGENT-05 | Phase 2 | Complete |
 | TERM-01 | Phase 2 | Complete |
 | TERM-02 | Phase 2 | Complete |
 | PERF-01 | Phase 2 | Complete |
