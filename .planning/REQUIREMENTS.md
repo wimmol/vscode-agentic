@@ -25,8 +25,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Terminal & Sessions
 
-- [ ] **TERM-01**: Each agent runs as a Claude Code CLI session in a VS Code integrated terminal
-- [ ] **TERM-02**: User can run 2-5 agent sessions concurrently without conflicts
+- [x] **TERM-01**: Each agent runs as a Claude Code CLI session in a VS Code integrated terminal
+- [x] **TERM-02**: User can run 2-5 agent sessions concurrently without conflicts
 - [ ] **TERM-03**: Agent sessions persist across VS Code restarts -- agent metadata and terminal sessions are restored
 - [ ] **TERM-04**: User can suspend an idle/finished agent to free RAM -- terminal state is saved and process is killed
 - [ ] **TERM-05**: User can restore a suspended agent -- process relaunches in the same worktree context
@@ -48,7 +48,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Performance
 
-- [ ] **PERF-01**: Terminals are created lazily (only when agent is focused) to minimize RAM usage
+- [x] **PERF-01**: Terminals are created lazily (only when agent is focused) to minimize RAM usage
 - [ ] **PERF-02**: Extension remains responsive with 5 concurrent agents and large repositories
 - [ ] **PERF-03**: Orphan agent processes are detected and cleaned up on extension activation
 - [x] **PERF-04**: All git operations are async -- no synchronous calls that block the VS Code UI
@@ -98,9 +98,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AGENT-01 | Phase 2 | Pending |
 | AGENT-02 | Phase 2 | Pending |
 | AGENT-05 | Phase 2 | Pending |
-| TERM-01 | Phase 2 | Pending |
-| TERM-02 | Phase 2 | Pending |
-| PERF-01 | Phase 2 | Pending |
+| TERM-01 | Phase 2 | Complete |
+| TERM-02 | Phase 2 | Complete |
+| PERF-01 | Phase 2 | Complete |
 | UI-01 | Phase 3 | Pending |
 | UI-02 | Phase 3 | Pending |
 | UI-03 | Phase 3 | Pending |
