@@ -120,11 +120,11 @@ Plans:
   1. User can connect to a remote machine via VS Code Remote SSH and create/manage agents on the remote repo as if it were local
   2. User can configure resource limits for remote environments (max agents, max worktrees) independently from local settings
   3. Extension remains responsive (sidebar updates, agent switching, terminal focus) with 5 concurrent agents and large repositories
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 07-01: TBD
-- [ ] 07-02: TBD
+- [ ] 07-01-PLAN.md -- VS Code settings migration, resource limit configuration, Claude CLI health check, agent limit enforcement
+- [ ] 07-02-PLAN.md -- Targeted per-agent diff updates with TTL cache, auto-suspend UX on limit errors
 
 ## Progress
 
@@ -139,4 +139,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 | 4. Git Workflow and Merge Protection | 0/2 | Planning complete | - |
 | 5. Session Persistence and Agent Reuse | 0/2 | Planning complete | - |
 | 6. Suspend/Restore and Notifications | 0/2 | Planning complete | - |
-| 7. Remote Support and Performance at Scale | 0/? | Not started | - |
+| 7. Remote Support and Performance at Scale | 0/2 | Planning complete | - |
