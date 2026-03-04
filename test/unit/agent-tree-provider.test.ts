@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EventEmitter, TreeItemCollapsibleState } from "../__mocks__/vscode.js";
 import { AgentTreeProvider } from "../../src/views/agent-tree-provider.js";
 import { AgentTreeItem, RepoGroupItem } from "../../src/views/agent-tree-items.js";
@@ -198,6 +198,94 @@ describe("AgentTreeProvider", () => {
 	describe("dispose", () => {
 		it("does not throw when called", () => {
 			expect(() => provider.dispose()).not.toThrow();
+		});
+	});
+
+	describe("targeted diff status updates", () => {
+		let diffService: {
+			hasUnmergedChanges: ReturnType<typeof vi.fn>;
+		};
+		let providerWithDiff: AgentTreeProvider;
+
+		beforeEach(() => {
+			vi.useFakeTimers();
+			diffService = {
+				hasUnmergedChanges: vi.fn<(repoPath: string, agentName: string) => Promise<boolean>>().mockResolvedValue(false),
+			};
+			providerWithDiff = new AgentTreeProvider(agentService as never, diffService as never);
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+			providerWithDiff.dispose();
+		});
+
+		it("updateDiffStatusForAgent calls hasUnmergedChanges for specific agent only", async () => {
+			agentService.getAll.mockReturnValue([
+				makeAgent("agent1", "/repo", "created"),
+				makeAgent("agent2", "/repo", "running"),
+				makeAgent("agent3", "/repo", "finished"),
+			]);
+
+			await providerWithDiff.updateDiffStatusForAgent("/repo", "agent1");
+
+			expect(diffService.hasUnmergedChanges).toHaveBeenCalledTimes(1);
+			expect(diffService.hasUnmergedChanges).toHaveBeenCalledWith("/repo", "agent1");
+		});
+
+		it("updateDiffStatusForAgent skips when within TTL", async () => {
+			await providerWithDiff.updateDiffStatusForAgent("/repo", "agent1");
+			expect(diffService.hasUnmergedChanges).toHaveBeenCalledTimes(1);
+
+			// Call again immediately -- should be skipped (TTL still valid)
+			await providerWithDiff.updateDiffStatusForAgent("/repo", "agent1");
+			expect(diffService.hasUnmergedChanges).toHaveBeenCalledTimes(1);
+		});
+
+		it("updateDiffStatusForAgent recomputes after TTL expires", async () => {
+			await providerWithDiff.updateDiffStatusForAgent("/repo", "agent1");
+			expect(diffService.hasUnmergedChanges).toHaveBeenCalledTimes(1);
+
+			// Advance past the 30s TTL
+			vi.advanceTimersByTime(31_000);
+
+			await providerWithDiff.updateDiffStatusForAgent("/repo", "agent1");
+			expect(diffService.hasUnmergedChanges).toHaveBeenCalledTimes(2);
+		});
+
+		it("updateDiffStatus respects per-agent TTL", async () => {
+			agentService.getAll.mockReturnValue([
+				makeAgent("agent1", "/repo", "created"),
+				makeAgent("agent2", "/repo", "running"),
+			]);
+
+			// Pre-fill cache for agent1
+			await providerWithDiff.updateDiffStatusForAgent("/repo", "agent1");
+			expect(diffService.hasUnmergedChanges).toHaveBeenCalledTimes(1);
+
+			// Full refresh should skip agent1 (TTL hit) but check agent2 (cache miss)
+			await providerWithDiff.updateDiffStatus();
+			expect(diffService.hasUnmergedChanges).toHaveBeenCalledTimes(2);
+			expect(diffService.hasUnmergedChanges).toHaveBeenCalledWith("/repo", "agent2");
+		});
+
+		it("invalidateDiffCache forces recomputation", async () => {
+			await providerWithDiff.updateDiffStatusForAgent("/repo", "agent1");
+			expect(diffService.hasUnmergedChanges).toHaveBeenCalledTimes(1);
+
+			providerWithDiff.invalidateDiffCache("/repo", "agent1");
+
+			await providerWithDiff.updateDiffStatusForAgent("/repo", "agent1");
+			expect(diffService.hasUnmergedChanges).toHaveBeenCalledTimes(2);
+		});
+
+		it("fires tree refresh after diff status update", async () => {
+			const listener = vi.fn();
+			providerWithDiff.onDidChangeTreeData(listener);
+
+			await providerWithDiff.updateDiffStatusForAgent("/repo", "agent1");
+
+			expect(listener).toHaveBeenCalledTimes(1);
 		});
 	});
 });

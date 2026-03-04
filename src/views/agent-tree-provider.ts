@@ -29,6 +29,8 @@ export class AgentTreeProvider implements vscode.TreeDataProvider<RepoGroupItem 
 	private readonly agentChangeSubscription: { dispose(): void };
 	private debounceTimer: ReturnType<typeof setTimeout> | undefined;
 	private diffStatusCache = new Map<string, boolean>();
+	private diffTimestamps = new Map<string, number>();
+	private readonly DIFF_TTL_MS = 30_000; // 30 seconds
 	private diffDebounceTimer: ReturnType<typeof setTimeout> | undefined;
 
 	constructor(
@@ -100,21 +102,40 @@ export class AgentTreeProvider implements vscode.TreeDataProvider<RepoGroupItem 
 	}
 
 	/**
+	 * Updates diff status for a single agent, respecting the TTL cache.
+	 * Skips computation if the cache entry is still within the TTL window.
+	 */
+	async updateDiffStatusForAgent(repoPath: string, agentName: string): Promise<void> {
+		if (!this.diffService) return;
+		const key = `${repoPath}::${agentName}`;
+		const lastChecked = this.diffTimestamps.get(key) ?? 0;
+		if (Date.now() - lastChecked < this.DIFF_TTL_MS) return; // TTL still valid
+
+		const hasDiffs = await this.diffService.hasUnmergedChanges(repoPath, agentName);
+		this.diffStatusCache.set(key, hasDiffs);
+		this.diffTimestamps.set(key, Date.now());
+		this.refresh();
+	}
+
+	/**
 	 * Asynchronously updates the diff status cache for all agents.
-	 * Triggers a tree refresh when new data arrives.
+	 * Delegates to per-agent method which respects TTL (skips recently checked).
 	 */
 	async updateDiffStatus(): Promise<void> {
-		if (!this.diffService) {
-			return;
-		}
-
+		if (!this.diffService) return;
 		const agents = this.agentService.getAll();
 		for (const agent of agents) {
-			const hasDiffs = await this.diffService.hasUnmergedChanges(agent.repoPath, agent.agentName);
-			this.diffStatusCache.set(`${agent.repoPath}::${agent.agentName}`, hasDiffs);
+			await this.updateDiffStatusForAgent(agent.repoPath, agent.agentName);
 		}
+	}
 
-		this.refresh();
+	/**
+	 * Invalidates the diff cache for a specific agent, forcing recomputation on next call.
+	 */
+	invalidateDiffCache(repoPath: string, agentName: string): void {
+		const key = `${repoPath}::${agentName}`;
+		this.diffStatusCache.delete(key);
+		this.diffTimestamps.delete(key);
 	}
 
 	private debouncedDiffUpdate(): void {
@@ -148,6 +169,7 @@ export class AgentTreeProvider implements vscode.TreeDataProvider<RepoGroupItem 
 		if (this.diffDebounceTimer !== undefined) {
 			clearTimeout(this.diffDebounceTimer);
 		}
+		this.diffTimestamps.clear();
 		this.agentChangeSubscription.dispose();
 		this._onDidChangeTreeData.dispose();
 	}
