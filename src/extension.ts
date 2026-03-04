@@ -1,3 +1,5 @@
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import * as vscode from "vscode";
 import { registerAgentCommands } from "./commands/agent.commands.js";
 import { registerDiffCommands } from "./commands/diff.commands.js";
@@ -82,12 +84,25 @@ export function activate(context: vscode.ExtensionContext): void {
 		{ dispose: () => terminalService.dispose() },
 	);
 
-	// 5. Git health check (warn if git not available, non-blocking)
+	// 5a. Git health check (warn if git not available, non-blocking)
 	gitService.exec(".", ["--version"]).catch(() => {
 		vscode.window.showErrorMessage(
 			"VS Code Agentic: git is not installed or not in PATH. Worktree features are disabled.",
 		);
 	});
+
+	// 5b. Claude CLI health check (warn if not available, non-blocking)
+	const execFileAsync = promisify(execFile);
+	execFileAsync("claude", ["--version"], { timeout: 10_000 })
+		.then(() => {
+			vscode.commands.executeCommand("setContext", "vscode-agentic.claudeAvailable", true);
+		})
+		.catch(() => {
+			vscode.window.showWarningMessage(
+				"VS Code Agentic: 'claude' CLI not found in PATH. Agent creation is disabled until it is installed.",
+			);
+			vscode.commands.executeCommand("setContext", "vscode-agentic.claudeAvailable", false);
+		});
 
 	// 6. Ordered reconciliation sequence (fire-and-forget, non-blocking)
 	(async () => {

@@ -142,7 +142,7 @@
 			"view/title": [
 				{
 					"command": "vscode-agentic.createAgent",
-					"when": "view == vscode-agentic.agents",
+					"when": "view == vscode-agentic.agents && vscode-agentic.claudeAvailable != false",
 					"group": "navigation@1"
 				},
 				{
@@ -194,7 +194,7 @@
 				},
 				{
 					"command": "vscode-agentic.createAgentInRepo",
-					"when": "view == vscode-agentic.agents && viewItem == repoGroup",
+					"when": "view == vscode-agentic.agents && viewItem == repoGroup && vscode-agentic.claudeAvailable != false",
 					"group": "inline"
 				}
 			]

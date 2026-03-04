@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createMockMemento } from "../__mocks__/vscode.js";
-import { AgentService } from "../../src/services/agent.service.js";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createMockMemento, _setConfigValue, _clearConfig } from "../__mocks__/vscode.js";
+import { AgentService, AgentLimitError } from "../../src/services/agent.service.js";
 import { AGENT_REGISTRY_KEY, LAST_FOCUSED_KEY } from "../../src/models/agent.js";
 import type { AgentEntry } from "../../src/models/agent.js";
 
@@ -53,6 +53,10 @@ describe("AgentService", () => {
 		terminalService = createMockTerminalService();
 		service = new AgentService(state, worktreeService as never);
 		service.setTerminalService(terminalService as never);
+	});
+
+	afterEach(() => {
+		_clearConfig();
 	});
 
 	describe("createAgent", () => {
@@ -925,6 +929,88 @@ describe("AgentService", () => {
 			// After dispose, creating an agent should not fire the listener
 			// (though in practice dispose is called at shutdown)
 			expect(() => service.dispose()).not.toThrow();
+		});
+	});
+
+	describe("agent limit enforcement", () => {
+		it("throws AgentLimitError with per-repo type when maxAgentsPerRepo reached", async () => {
+			_setConfigValue("vscode-agentic.maxAgentsPerRepo", 2);
+			_setConfigValue("vscode-agentic.maxConcurrentAgents", 10);
+
+			await service.createAgent("/repo", "agent-1");
+			await service.createAgent("/repo", "agent-2");
+
+			try {
+				await service.createAgent("/repo", "agent-3");
+				expect.unreachable("Expected AgentLimitError to be thrown");
+			} catch (err) {
+				expect(err).toBeInstanceOf(AgentLimitError);
+				const limitErr = err as AgentLimitError;
+				expect(limitErr.limitType).toBe("per-repo");
+				expect(limitErr.limit).toBe(2);
+				expect(limitErr.repoPath).toBe("/repo");
+				expect(limitErr.existingAgents).toHaveLength(2);
+			}
+		});
+
+		it("throws AgentLimitError with global type when maxConcurrentAgents reached", async () => {
+			_setConfigValue("vscode-agentic.maxAgentsPerRepo", 10);
+			_setConfigValue("vscode-agentic.maxConcurrentAgents", 3);
+
+			await service.createAgent("/repo1", "agent-1");
+			worktreeService.addWorktree.mockResolvedValue({
+				path: "/repo2/.worktrees/agent-2",
+				branch: "agent-2",
+				agentName: "agent-2",
+				repoPath: "/repo2",
+				createdAt: new Date().toISOString(),
+			});
+			await service.createAgent("/repo2", "agent-2");
+			worktreeService.addWorktree.mockResolvedValue({
+				path: "/repo1/.worktrees/agent-3",
+				branch: "agent-3",
+				agentName: "agent-3",
+				repoPath: "/repo1",
+				createdAt: new Date().toISOString(),
+			});
+			await service.createAgent("/repo1", "agent-3");
+
+			try {
+				await service.createAgent("/repo2", "agent-4");
+				expect.unreachable("Expected AgentLimitError to be thrown");
+			} catch (err) {
+				expect(err).toBeInstanceOf(AgentLimitError);
+				const limitErr = err as AgentLimitError;
+				expect(limitErr.limitType).toBe("global");
+				expect(limitErr.limit).toBe(3);
+				expect(limitErr.existingAgents).toHaveLength(3);
+			}
+		});
+
+		it("succeeds when under both limits", async () => {
+			_setConfigValue("vscode-agentic.maxAgentsPerRepo", 5);
+			_setConfigValue("vscode-agentic.maxConcurrentAgents", 10);
+
+			const entry = await service.createAgent("/repo", "agent-1");
+
+			expect(entry.agentName).toBe("agent-1");
+			expect(entry.status).toBe("created");
+		});
+
+		it("checks per-repo limit before global limit", async () => {
+			_setConfigValue("vscode-agentic.maxAgentsPerRepo", 1);
+			_setConfigValue("vscode-agentic.maxConcurrentAgents", 10);
+
+			await service.createAgent("/repo", "agent-1");
+
+			try {
+				await service.createAgent("/repo", "agent-2");
+				expect.unreachable("Expected AgentLimitError to be thrown");
+			} catch (err) {
+				expect(err).toBeInstanceOf(AgentLimitError);
+				const limitErr = err as AgentLimitError;
+				expect(limitErr.limitType).toBe("per-repo");
+			}
 		});
 	});
 });

@@ -4,6 +4,22 @@ import { AGENT_REGISTRY_KEY, LAST_FOCUSED_KEY } from "../models/agent.js";
 import type { TerminalService } from "./terminal.service.js";
 import type { WorktreeService } from "./worktree.service.js";
 
+export class AgentLimitError extends Error {
+	constructor(
+		public readonly repoPath: string,
+		public readonly limit: number,
+		public readonly limitType: "per-repo" | "global",
+		public readonly existingAgents: AgentEntry[],
+	) {
+		const scope =
+			limitType === "per-repo"
+				? `per-repo agent limit (${limit})`
+				: `global agent limit (${limit})`;
+		super(`${scope} reached. Suspend or delete an agent to make room.`);
+		this.name = "AgentLimitError";
+	}
+}
+
 /**
  * Checks if a process with the given PID is alive by sending signal 0.
  * Returns true if no error (process exists and we can signal it), false otherwise.
@@ -54,12 +70,31 @@ export class AgentService {
 	/**
 	 * Creates a new agent: creates a git worktree+branch, persists the agent entry.
 	 * Does NOT create a terminal -- that happens lazily on focusAgent.
+	 * Checks per-repo and global agent limits before proceeding.
 	 */
 	async createAgent(
 		repoPath: string,
 		agentName: string,
 		initialPrompt?: string,
 	): Promise<AgentEntry> {
+		// Check per-repo agent limit
+		const maxPerRepo = vscode.workspace
+			.getConfiguration("vscode-agentic", vscode.Uri.file(repoPath))
+			.get<number>("maxAgentsPerRepo", 5);
+		const repoAgents = this.getForRepo(repoPath);
+		if (repoAgents.length >= maxPerRepo) {
+			throw new AgentLimitError(repoPath, maxPerRepo, "per-repo", repoAgents);
+		}
+
+		// Check global concurrent agent limit
+		const maxGlobal = vscode.workspace
+			.getConfiguration("vscode-agentic")
+			.get<number>("maxConcurrentAgents", 10);
+		const allAgents = this.getAll();
+		if (allAgents.length >= maxGlobal) {
+			throw new AgentLimitError(repoPath, maxGlobal, "global", allAgents);
+		}
+
 		await this.worktreeService.addWorktree(repoPath, agentName);
 
 		const entry: AgentEntry = {
