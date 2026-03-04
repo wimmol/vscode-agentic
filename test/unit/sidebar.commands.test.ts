@@ -6,6 +6,8 @@ function createMockAgentService() {
 	return {
 		focusAgent: vi.fn().mockResolvedValue(undefined),
 		deleteAgent: vi.fn().mockResolvedValue(undefined),
+		suspendAgent: vi.fn().mockResolvedValue(undefined),
+		suspendAllIdle: vi.fn().mockResolvedValue(0),
 		getAll: vi.fn().mockReturnValue([]),
 		getForRepo: vi.fn().mockReturnValue([]),
 		getAgent: vi.fn().mockReturnValue(undefined),
@@ -86,11 +88,13 @@ describe("Sidebar Commands", () => {
 	});
 
 	describe("registerSidebarCommands", () => {
-		it("registers four sidebar commands", () => {
+		it("registers six sidebar commands", () => {
 			expect(registeredHandlers.has("vscode-agentic.focusAgentFromTile")).toBe(true);
 			expect(registeredHandlers.has("vscode-agentic.deleteAgentFromTile")).toBe(true);
 			expect(registeredHandlers.has("vscode-agentic.copyBranchName")).toBe(true);
 			expect(registeredHandlers.has("vscode-agentic.createAgentInRepo")).toBe(true);
+			expect(registeredHandlers.has("vscode-agentic.suspendAgentFromTile")).toBe(true);
+			expect(registeredHandlers.has("vscode-agentic.restoreAgentFromTile")).toBe(true);
 		});
 	});
 
@@ -141,6 +145,29 @@ describe("Sidebar Commands", () => {
 			expect(window.showInformationMessage).toHaveBeenCalledWith(
 				expect.stringContaining("my-agent"),
 			);
+		});
+	});
+
+	describe("suspendAgentFromTile", () => {
+		it("calls agentService.suspendAgent with correct args", async () => {
+			agentService.suspendAgent = vi.fn().mockResolvedValue(undefined);
+
+			const handler = registeredHandlers.get("vscode-agentic.suspendAgentFromTile")!;
+			await handler("/repo", "my-agent");
+
+			expect(agentService.suspendAgent).toHaveBeenCalledWith("/repo", "my-agent");
+			expect(window.showInformationMessage).toHaveBeenCalledWith("Agent 'my-agent' suspended.");
+		});
+	});
+
+	describe("restoreAgentFromTile", () => {
+		it("calls workspaceSwitchService.switchToAgent (same as focusAgentFromTile behavior)", async () => {
+			const handler = registeredHandlers.get("vscode-agentic.restoreAgentFromTile")!;
+			await handler("/repo", "my-agent");
+
+			expect(switchService.switchToAgent).toHaveBeenCalledWith("/repo", "my-agent");
+			expect(treeView.reveal).toHaveBeenCalled();
+			expect(window.showInformationMessage).toHaveBeenCalledWith("Agent 'my-agent' restored.");
 		});
 	});
 

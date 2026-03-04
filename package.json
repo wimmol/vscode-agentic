@@ -58,6 +58,28 @@
 				"icon": "$(add)"
 			},
 			{
+				"command": "vscode-agentic.suspendAgent",
+				"title": "Suspend Agent",
+				"category": "Agentic"
+			},
+			{
+				"command": "vscode-agentic.suspendAllIdle",
+				"title": "Suspend All Idle Agents",
+				"category": "Agentic"
+			},
+			{
+				"command": "vscode-agentic.suspendAgentFromTile",
+				"title": "Suspend Agent",
+				"category": "Agentic",
+				"icon": "$(debug-pause)"
+			},
+			{
+				"command": "vscode-agentic.restoreAgentFromTile",
+				"title": "Restore Agent",
+				"category": "Agentic",
+				"icon": "$(debug-start)"
+			},
+			{
 				"command": "vscode-agentic.reviewChanges",
 				"title": "Review Changes",
 				"category": "Agentic",
@@ -103,7 +125,7 @@
 			"view/item/context": [
 				{
 					"command": "vscode-agentic.reviewChanges",
-					"when": "view == vscode-agentic.agents && viewItem == agentItemWithDiffs",
+					"when": "view == vscode-agentic.agents && viewItem =~ /WithDiffs$/",
 					"group": "inline"
 				},
 				{
@@ -113,13 +135,23 @@
 				},
 				{
 					"command": "vscode-agentic.reviewChanges",
-					"when": "view == vscode-agentic.agents && viewItem == agentItemWithDiffs",
+					"when": "view == vscode-agentic.agents && viewItem =~ /WithDiffs$/",
 					"group": "navigation"
 				},
 				{
 					"command": "vscode-agentic.createPR",
-					"when": "view == vscode-agentic.agents && viewItem == agentItemWithDiffs",
+					"when": "view == vscode-agentic.agents && viewItem =~ /WithDiffs$/",
 					"group": "navigation"
+				},
+				{
+					"command": "vscode-agentic.suspendAgentFromTile",
+					"when": "view == vscode-agentic.agents && viewItem =~ /^agentItem(WithDiffs)?$/",
+					"group": "lifecycle"
+				},
+				{
+					"command": "vscode-agentic.restoreAgentFromTile",
+					"when": "view == vscode-agentic.agents && viewItem =~ /^agentItemSuspended/",
+					"group": "lifecycle"
 				},
 				{
 					"command": "vscode-agentic.deleteAgentFromTile",

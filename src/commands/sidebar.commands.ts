@@ -99,10 +99,42 @@ export function registerSidebarCommands(
 		},
 	);
 
+	// --- Suspend Agent From Tile (context menu) ---
+	const suspendFromTile = vscode.commands.registerCommand(
+		"vscode-agentic.suspendAgentFromTile",
+		async (repoPath: string, agentName: string) => {
+			await agentService.suspendAgent(repoPath, agentName);
+			vscode.window.showInformationMessage(
+				`Agent '${agentName}' suspended.`,
+			);
+		},
+	);
+
+	// --- Restore Agent From Tile (context menu) ---
+	const restoreFromTile = vscode.commands.registerCommand(
+		"vscode-agentic.restoreAgentFromTile",
+		async (repoPath: string, agentName: string) => {
+			await workspaceSwitchService.switchToAgent(repoPath, agentName);
+
+			const agentItem = new AgentTreeItem(
+				agentName,
+				repoPath,
+				"created",
+			);
+			treeView.reveal(agentItem, { select: true, focus: false });
+
+			vscode.window.showInformationMessage(
+				`Agent '${agentName}' restored.`,
+			);
+		},
+	);
+
 	context.subscriptions.push(
 		focusFromTile,
 		deleteFromTile,
 		copyBranch,
 		createInRepo,
+		suspendFromTile,
+		restoreFromTile,
 	);
 }

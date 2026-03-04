@@ -13,6 +13,8 @@ function createMockAgentService() {
 		}),
 		deleteAgent: vi.fn().mockResolvedValue(undefined),
 		focusAgent: vi.fn().mockResolvedValue(undefined),
+		suspendAgent: vi.fn().mockResolvedValue(undefined),
+		suspendAllIdle: vi.fn().mockResolvedValue(0),
 		getAgent: vi.fn().mockReturnValue(undefined),
 		getAll: vi.fn().mockReturnValue([]),
 		getForRepo: vi.fn().mockReturnValue([]),
@@ -85,15 +87,17 @@ describe("Agent Commands", () => {
 	});
 
 	describe("registerAgentCommands", () => {
-		it("registers three commands", () => {
-			expect(commands.registerCommand).toHaveBeenCalledTimes(3);
+		it("registers five commands", () => {
+			expect(commands.registerCommand).toHaveBeenCalledTimes(5);
 			expect(registeredHandlers.has("vscode-agentic.createAgent")).toBe(true);
 			expect(registeredHandlers.has("vscode-agentic.deleteAgent")).toBe(true);
 			expect(registeredHandlers.has("vscode-agentic.focusAgent")).toBe(true);
+			expect(registeredHandlers.has("vscode-agentic.suspendAgent")).toBe(true);
+			expect(registeredHandlers.has("vscode-agentic.suspendAllIdle")).toBe(true);
 		});
 
 		it("pushes disposables to context.subscriptions", () => {
-			expect(context.subscriptions.length).toBe(3);
+			expect(context.subscriptions.length).toBe(5);
 		});
 	});
 
@@ -462,6 +466,85 @@ describe("Agent Commands", () => {
 			expect(window.showInformationMessage).toHaveBeenCalledWith(
 				expect.stringContaining("agent-1"),
 			);
+		});
+	});
+
+	describe("suspendAgent command", () => {
+		it("shows QuickPick of suspendable agents and calls agentService.suspendAgent", async () => {
+			agentService.getAll.mockReturnValue([
+				{ agentName: "idle-agent", repoPath: "/repo", status: "finished", createdAt: new Date().toISOString() },
+				{ agentName: "running-agent", repoPath: "/repo", status: "running", createdAt: new Date().toISOString() },
+				{ agentName: "suspended-agent", repoPath: "/repo", status: "suspended", createdAt: new Date().toISOString() },
+			]);
+			agentService.suspendAgent = vi.fn().mockResolvedValue(undefined);
+			window.showQuickPick.mockResolvedValueOnce({
+				label: "idle-agent",
+				description: "finished - /repo",
+				_repoPath: "/repo",
+				_agentName: "idle-agent",
+			});
+
+			const handler = registeredHandlers.get("vscode-agentic.suspendAgent")!;
+			await handler();
+
+			// QuickPick should only show non-running, non-suspended agents
+			expect(window.showQuickPick).toHaveBeenCalledWith(
+				expect.arrayContaining([
+					expect.objectContaining({ label: "idle-agent" }),
+				]),
+				expect.any(Object),
+			);
+			// Should NOT include running or suspended agents
+			const quickPickItems = window.showQuickPick.mock.calls[0][0];
+			expect(quickPickItems).toHaveLength(1);
+			expect(agentService.suspendAgent).toHaveBeenCalledWith("/repo", "idle-agent");
+			expect(window.showInformationMessage).toHaveBeenCalledWith("Agent 'idle-agent' suspended.");
+		});
+
+		it("shows info message when no suspendable agents", async () => {
+			agentService.getAll.mockReturnValue([
+				{ agentName: "running-agent", repoPath: "/repo", status: "running", createdAt: new Date().toISOString() },
+				{ agentName: "suspended-agent", repoPath: "/repo", status: "suspended", createdAt: new Date().toISOString() },
+			]);
+
+			const handler = registeredHandlers.get("vscode-agentic.suspendAgent")!;
+			await handler();
+
+			expect(window.showInformationMessage).toHaveBeenCalledWith("No agents available to suspend.");
+		});
+
+		it("returns early when user cancels QuickPick", async () => {
+			agentService.getAll.mockReturnValue([
+				{ agentName: "idle-agent", repoPath: "/repo", status: "finished", createdAt: new Date().toISOString() },
+			]);
+			agentService.suspendAgent = vi.fn().mockResolvedValue(undefined);
+			window.showQuickPick.mockResolvedValueOnce(undefined);
+
+			const handler = registeredHandlers.get("vscode-agentic.suspendAgent")!;
+			await handler();
+
+			expect(agentService.suspendAgent).not.toHaveBeenCalled();
+		});
+	});
+
+	describe("suspendAllIdle command", () => {
+		it("calls agentService.suspendAllIdle and shows count", async () => {
+			agentService.suspendAllIdle = vi.fn().mockResolvedValue(3);
+
+			const handler = registeredHandlers.get("vscode-agentic.suspendAllIdle")!;
+			await handler();
+
+			expect(agentService.suspendAllIdle).toHaveBeenCalled();
+			expect(window.showInformationMessage).toHaveBeenCalledWith("Suspended 3 agent(s).");
+		});
+
+		it("shows 'no idle agents' when count is 0", async () => {
+			agentService.suspendAllIdle = vi.fn().mockResolvedValue(0);
+
+			const handler = registeredHandlers.get("vscode-agentic.suspendAllIdle")!;
+			await handler();
+
+			expect(window.showInformationMessage).toHaveBeenCalledWith("No idle agents to suspend.");
 		});
 	});
 

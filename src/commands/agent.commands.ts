@@ -199,7 +199,62 @@ export function registerAgentCommands(
 		},
 	);
 
-	context.subscriptions.push(createDisposable, deleteDisposable, focusDisposable);
+	// --- Suspend Agent ---
+	const suspendDisposable = vscode.commands.registerCommand(
+		"vscode-agentic.suspendAgent",
+		async () => {
+			const agents = agentService.getAll();
+			const suspendable = agents.filter(
+				(a) => a.status !== "running" && a.status !== "suspended",
+			);
+
+			if (suspendable.length === 0) {
+				vscode.window.showInformationMessage("No agents available to suspend.");
+				return;
+			}
+
+			const items: AgentPickItem[] = suspendable.map((a) => ({
+				label: a.agentName,
+				description: `${a.status} - ${a.repoPath}`,
+				_repoPath: a.repoPath,
+				_agentName: a.agentName,
+			}));
+
+			const selected = await vscode.window.showQuickPick(items, {
+				placeHolder: "Select an agent to suspend",
+				title: "Suspend Agent",
+			});
+			if (!selected) {
+				return;
+			}
+
+			await agentService.suspendAgent(selected._repoPath, selected._agentName);
+			vscode.window.showInformationMessage(
+				`Agent '${selected._agentName}' suspended.`,
+			);
+		},
+	);
+
+	// --- Suspend All Idle Agents ---
+	const suspendAllDisposable = vscode.commands.registerCommand(
+		"vscode-agentic.suspendAllIdle",
+		async () => {
+			const count = await agentService.suspendAllIdle();
+			if (count === 0) {
+				vscode.window.showInformationMessage("No idle agents to suspend.");
+			} else {
+				vscode.window.showInformationMessage(`Suspended ${count} agent(s).`);
+			}
+		},
+	);
+
+	context.subscriptions.push(
+		createDisposable,
+		deleteDisposable,
+		focusDisposable,
+		suspendDisposable,
+		suspendAllDisposable,
+	);
 }
 
 /**
