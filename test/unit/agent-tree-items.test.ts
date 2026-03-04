@@ -124,4 +124,19 @@ describe("AgentTreeItem", () => {
 		expect(item.repoPath).toBe("/repo");
 		expect(item.agentName).toBe("fix-bug");
 	});
+
+	it("sets contextValue to 'agentItemWithDiffs' when hasDiffs is true", () => {
+		const item = new AgentTreeItem("fix-bug", "/repo", "running", undefined, true);
+		expect(item.contextValue).toBe("agentItemWithDiffs");
+	});
+
+	it("sets contextValue to 'agentItem' when hasDiffs is false", () => {
+		const item = new AgentTreeItem("fix-bug", "/repo", "running", undefined, false);
+		expect(item.contextValue).toBe("agentItem");
+	});
+
+	it("sets contextValue to 'agentItem' when hasDiffs is undefined", () => {
+		const item = new AgentTreeItem("fix-bug", "/repo", "running");
+		expect(item.contextValue).toBe("agentItem");
+	});
 });

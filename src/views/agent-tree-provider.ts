@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import type { AgentEntry } from "../models/agent.js";
 import type { AgentService } from "../services/agent.service.js";
+import type { DiffService } from "../services/diff.service.js";
 import { AgentTreeItem, RepoGroupItem } from "./agent-tree-items.js";
 
 /** Status priority for sorting: lower number = higher priority */
@@ -28,10 +29,18 @@ export class AgentTreeProvider
 
 	private readonly agentChangeSubscription: { dispose(): void };
 	private debounceTimer: ReturnType<typeof setTimeout> | undefined;
+	private diffStatusCache = new Map<string, boolean>();
+	private diffDebounceTimer: ReturnType<typeof setTimeout> | undefined;
 
-	constructor(private readonly agentService: AgentService) {
+	constructor(
+		private readonly agentService: AgentService,
+		private readonly diffService?: DiffService,
+	) {
 		this.agentChangeSubscription = this.agentService.onDidChangeAgents(
-			() => this.debouncedRefresh(),
+			() => {
+				this.debouncedRefresh();
+				this.debouncedDiffUpdate();
+			},
 		);
 	}
 
@@ -87,6 +96,7 @@ export class AgentTreeProvider
 					a.repoPath,
 					a.status,
 					a.initialPrompt,
+					this.diffStatusCache.get(`${a.repoPath}::${a.agentName}`) ?? false,
 				),
 		);
 	}
@@ -98,6 +108,40 @@ export class AgentTreeProvider
 			return new RepoGroupItem(element.repoPath);
 		}
 		return undefined;
+	}
+
+	/**
+	 * Asynchronously updates the diff status cache for all agents.
+	 * Triggers a tree refresh when new data arrives.
+	 */
+	async updateDiffStatus(): Promise<void> {
+		if (!this.diffService) {
+			return;
+		}
+
+		const agents = this.agentService.getAll();
+		for (const agent of agents) {
+			const hasDiffs = await this.diffService.hasUnmergedChanges(
+				agent.repoPath,
+				agent.agentName,
+			);
+			this.diffStatusCache.set(
+				`${agent.repoPath}::${agent.agentName}`,
+				hasDiffs,
+			);
+		}
+
+		this.refresh();
+	}
+
+	private debouncedDiffUpdate(): void {
+		if (this.diffDebounceTimer !== undefined) {
+			clearTimeout(this.diffDebounceTimer);
+		}
+		this.diffDebounceTimer = setTimeout(() => {
+			this.diffDebounceTimer = undefined;
+			this.updateDiffStatus();
+		}, 300);
 	}
 
 	private sortAgents(agents: AgentEntry[]): AgentEntry[] {
@@ -117,6 +161,9 @@ export class AgentTreeProvider
 	dispose(): void {
 		if (this.debounceTimer !== undefined) {
 			clearTimeout(this.debounceTimer);
+		}
+		if (this.diffDebounceTimer !== undefined) {
+			clearTimeout(this.diffDebounceTimer);
 		}
 		this.agentChangeSubscription.dispose();
 		this._onDidChangeTreeData.dispose();

@@ -71,13 +71,14 @@ export class AgentTreeItem extends vscode.TreeItem {
 		repoPath: string,
 		status: AgentStatus,
 		initialPrompt?: string,
+		hasDiffs?: boolean,
 	) {
 		super(agentName, vscode.TreeItemCollapsibleState.None);
 
 		this.agentName = agentName;
 		this.repoPath = repoPath;
 		this.id = `agent:${repoPath}::${agentName}`;
-		this.contextValue = "agentItem";
+		this.contextValue = hasDiffs ? "agentItemWithDiffs" : "agentItem";
 		this.description = initialPrompt
 			? truncate(initialPrompt, 40)
 			: "Interactive session";

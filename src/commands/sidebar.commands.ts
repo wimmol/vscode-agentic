@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import type { AgentService } from "../services/agent.service.js";
+import type { DiffService } from "../services/diff.service.js";
 import type { WorkspaceSwitchService } from "../services/workspace-switch.service.js";
 import type { AgentTreeProvider } from "../views/agent-tree-provider.js";
 import { AgentTreeItem } from "../views/agent-tree-items.js";
@@ -17,6 +18,7 @@ export function registerSidebarCommands(
 	workspaceSwitchService: WorkspaceSwitchService,
 	treeView: vscode.TreeView<unknown>,
 	_treeProvider: AgentTreeProvider,
+	diffService?: DiffService,
 ): void {
 	// --- Focus Agent From Tile (click handler) ---
 	const focusFromTile = vscode.commands.registerCommand(
@@ -39,6 +41,26 @@ export function registerSidebarCommands(
 	const deleteFromTile = vscode.commands.registerCommand(
 		"vscode-agentic.deleteAgentFromTile",
 		async (repoPath: string, agentName: string) => {
+			// Merge guard: block deletion if agent has unmerged changes
+			if (diffService) {
+				const hasUnmerged = await diffService.hasUnmergedChanges(repoPath, agentName);
+				if (hasUnmerged) {
+					const action = await vscode.window.showWarningMessage(
+						`Agent '${agentName}' has unmerged changes vs staging. Review changes or create a PR first.`,
+						"Review Changes",
+						"Cancel",
+					);
+					if (action === "Review Changes") {
+						await vscode.commands.executeCommand(
+							"vscode-agentic.reviewChanges",
+							repoPath,
+							agentName,
+						);
+					}
+					return;
+				}
+			}
+
 			const confirmed = await vscode.window.showWarningMessage(
 				`Delete agent '${agentName}'? This removes the worktree and branch.`,
 				{ modal: true },

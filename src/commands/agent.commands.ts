@@ -3,6 +3,7 @@ import { isValidBranchName } from "../utils/branch-validation.js";
 import type { AgentService } from "../services/agent.service.js";
 import type { TerminalService } from "../services/terminal.service.js";
 import type { RepoConfigService } from "../services/repo-config.service.js";
+import type { DiffService } from "../services/diff.service.js";
 
 interface AgentPickItem extends vscode.QuickPickItem {
 	_repoPath: string;
@@ -22,6 +23,7 @@ export function registerAgentCommands(
 	agentService: AgentService,
 	_terminalService: TerminalService,
 	repoConfigService: RepoConfigService,
+	diffService?: DiffService,
 ): void {
 	// --- Create Agent ---
 	const createDisposable = vscode.commands.registerCommand(
@@ -114,6 +116,29 @@ export function registerAgentCommands(
 			});
 			if (!selected) {
 				return;
+			}
+
+			// Merge guard: block deletion if agent has unmerged changes
+			if (diffService) {
+				const hasUnmerged = await diffService.hasUnmergedChanges(
+					selected._repoPath,
+					selected._agentName,
+				);
+				if (hasUnmerged) {
+					const action = await vscode.window.showWarningMessage(
+						`Agent '${selected._agentName}' has unmerged changes vs staging. Review changes or create a PR first.`,
+						"Review Changes",
+						"Cancel",
+					);
+					if (action === "Review Changes") {
+						await vscode.commands.executeCommand(
+							"vscode-agentic.reviewChanges",
+							selected._repoPath,
+							selected._agentName,
+						);
+					}
+					return;
+				}
 			}
 
 			// Confirmation dialog
