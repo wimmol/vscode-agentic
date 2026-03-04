@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: in_progress
-stopped_at: "Completed 05-01-PLAN.md"
-last_updated: "2026-03-04T08:39:19Z"
-last_activity: 2026-03-04 -- Completed Plan 05-01 (Session Persistence Foundation)
+status: completed
+stopped_at: Completed 05-02-PLAN.md
+last_updated: "2026-03-04T08:47:42.627Z"
+last_activity: 2026-03-04 -- Completed Plan 05-02 (Activation Reconciliation)
 progress:
   total_phases: 7
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 11
-  completed_plans: 10
-  percent: 91
+  completed_plans: 11
+  percent: 100
 ---
 
 # Project State
@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** Fast, isolated multi-agent development -- switch between AI coding agents and repos instantly, with each agent working in its own worktree so nothing conflicts.
-**Current focus:** Phase 5 in progress -- Session Persistence and Agent Reuse
+**Current focus:** Phase 5 complete -- Session Persistence and Agent Reuse
 
 ## Current Position
 
 Phase: 5 of 7 (Session Persistence and Agent Reuse)
-Plan: 1 of 2 in current phase
-Status: Plan 05-01 Complete
-Last activity: 2026-03-04 -- Completed Plan 05-01 (Session Persistence Foundation)
+Plan: 2 of 2 in current phase
+Status: Phase 05 Complete
+Last activity: 2026-03-04 -- Completed Plan 05-02 (Activation Reconciliation)
 
-Progress: [█████████░] 91% (Overall: 10/11 plans)
+Progress: [██████████] 100% (Overall: 11/11 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 10
+- Total plans completed: 11
 - Average duration: 4min
-- Total execution time: 40min
+- Total execution time: 43min
 
 **By Phase:**
 
@@ -53,9 +53,10 @@ Progress: [█████████░] 91% (Overall: 10/11 plans)
 | 04 | P01 | 2min | 2 | 5 |
 | 04 | P02 | 5min | 2 | 9 |
 | 05 | P01 | 4min | 2 | 7 |
+| 05 | P02 | 3min | 2 | 3 |
 
 **Recent Trend:**
-- Last 5 plans: 4min, 4min, 2min, 5min, 4min
+- Last 5 plans: 4min, 2min, 5min, 4min, 3min
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -101,6 +102,10 @@ Recent decisions affecting current work:
 - [Phase 05]: hasBeenRun boolean on AgentEntry drives restart vs first-run detection in focusAgent
 - [Phase 05]: Single registry read-modify-write in focusAgent combines status and hasBeenRun update
 - [Phase 05]: Fire-and-forget PID tracking via terminal.processId with best-effort error handling
+- [Phase 05]: isProcessAlive uses process.kill(pid, 0) for cross-platform liveness check
+- [Phase 05]: EPERM on SIGTERM counts as not-killed (process owned by another user)
+- [Phase 05]: Orphan agent removal runs before running->created reset
+- [Phase 05]: Single combined notification for agent + process orphan cleanup
 
 ### Pending Todos
 
@@ -114,6 +119,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-04T08:39:19Z
-Stopped at: Completed 05-01-PLAN.md
-Resume file: .planning/phases/05-session-persistence-and-agent-reuse/05-CONTEXT.md
+Last session: 2026-03-04T08:47:42.623Z
+Stopped at: Completed 05-02-PLAN.md
+Resume file: None
