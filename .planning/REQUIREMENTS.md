@@ -11,7 +11,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [x] **AGENT-01**: User can create an agent by naming it, which auto-creates a git branch with that name and a worktree, then launches Claude Code CLI in the worktree
 - [x] **AGENT-02**: User can delete an agent, which kills the process, removes the worktree, and deletes the branch
-- [ ] **AGENT-03**: User can restart a previously finished agent, reusing its existing branch and worktree
+- [x] **AGENT-03**: User can restart a previously finished agent, reusing its existing branch and worktree
 - [x] **AGENT-04**: User cannot delete an agent whose branch has unmerged changes vs staging (merge protection)
 - [x] **AGENT-05**: Agent status is tracked and visible (running, idle, finished, error, suspended)
 
@@ -27,7 +27,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [x] **TERM-01**: Each agent runs as a Claude Code CLI session in a VS Code integrated terminal
 - [x] **TERM-02**: User can run 2-5 agent sessions concurrently without conflicts
-- [ ] **TERM-03**: Agent sessions persist across VS Code restarts -- agent metadata and terminal sessions are restored
+- [x] **TERM-03**: Agent sessions persist across VS Code restarts -- agent metadata and terminal sessions are restored
 - [ ] **TERM-04**: User can suspend an idle/finished agent to free RAM -- terminal state is saved and process is killed
 - [ ] **TERM-05**: User can restore a suspended agent -- process relaunches in the same worktree context
 - [ ] **TERM-06**: User receives OS notification when a background agent finishes work or needs input
@@ -109,8 +109,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | GIT-04 | Phase 4 | Complete |
 | AGENT-04 | Phase 4 | Complete |
 | UI-05 | Phase 4 | Complete |
-| TERM-03 | Phase 5 | Pending |
-| AGENT-03 | Phase 5 | Pending |
+| TERM-03 | Phase 5 | Complete |
+| AGENT-03 | Phase 5 | Complete |
 | PERF-03 | Phase 5 | Pending |
 | TERM-04 | Phase 6 | Pending |
 | TERM-05 | Phase 6 | Pending |

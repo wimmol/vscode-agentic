@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Phase 5 context gathered
-last_updated: "2026-03-04T08:20:05.144Z"
-last_activity: 2026-03-04 -- Completed Plan 04-02 (Diff Review, PR Creation, Merge Protection)
+status: in_progress
+stopped_at: "Completed 05-01-PLAN.md"
+last_updated: "2026-03-04T08:39:19Z"
+last_activity: 2026-03-04 -- Completed Plan 05-01 (Session Persistence Foundation)
 progress:
   total_phases: 7
   completed_phases: 4
-  total_plans: 9
-  completed_plans: 9
-  percent: 100
+  total_plans: 11
+  completed_plans: 10
+  percent: 91
 ---
 
 # Project State
@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** Fast, isolated multi-agent development -- switch between AI coding agents and repos instantly, with each agent working in its own worktree so nothing conflicts.
-**Current focus:** Phase 4 Complete -- Git Workflow and Merge Protection finished
+**Current focus:** Phase 5 in progress -- Session Persistence and Agent Reuse
 
 ## Current Position
 
-Phase: 4 of 7 (Git Workflow and Merge Protection)
-Plan: 2 of 2 in current phase
-Status: Phase 04 Complete
-Last activity: 2026-03-04 -- Completed Plan 04-02 (Diff Review, PR Creation, Merge Protection)
+Phase: 5 of 7 (Session Persistence and Agent Reuse)
+Plan: 1 of 2 in current phase
+Status: Plan 05-01 Complete
+Last activity: 2026-03-04 -- Completed Plan 05-01 (Session Persistence Foundation)
 
-Progress: [██████████] 100% (Overall: 9/9 plans)
+Progress: [█████████░] 91% (Overall: 10/11 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 9
+- Total plans completed: 10
 - Average duration: 4min
-- Total execution time: 36min
+- Total execution time: 40min
 
 **By Phase:**
 
@@ -52,9 +52,10 @@ Progress: [██████████] 100% (Overall: 9/9 plans)
 | 03 | P02 | 4min | 3 | 10 |
 | 04 | P01 | 2min | 2 | 5 |
 | 04 | P02 | 5min | 2 | 9 |
+| 05 | P01 | 4min | 2 | 7 |
 
 **Recent Trend:**
-- Last 5 plans: 4min, 4min, 4min, 2min, 5min
+- Last 5 plans: 4min, 4min, 2min, 5min, 4min
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -96,6 +97,10 @@ Recent decisions affecting current work:
 - [Phase 04]: Regex viewItem matching (/^agentItem/) in package.json menus for multi-variant contextValue support
 - [Phase 04]: Async diff status cache in AgentTreeProvider avoids blocking getChildren with separate debounced update
 - [Phase 04]: DiffService optional parameter in command registrations for backward compatibility with existing tests
+- [Phase 05]: claude --continue flag for agent restart (directory-scoped session resumption in worktree cwd)
+- [Phase 05]: hasBeenRun boolean on AgentEntry drives restart vs first-run detection in focusAgent
+- [Phase 05]: Single registry read-modify-write in focusAgent combines status and hasBeenRun update
+- [Phase 05]: Fire-and-forget PID tracking via terminal.processId with best-effort error handling
 
 ### Pending Todos
 
@@ -109,6 +114,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-04T08:20:05.130Z
-Stopped at: Phase 5 context gathered
+Last session: 2026-03-04T08:39:19Z
+Stopped at: Completed 05-01-PLAN.md
 Resume file: .planning/phases/05-session-persistence-and-agent-reuse/05-CONTEXT.md
