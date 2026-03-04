@@ -106,11 +106,11 @@ Plans:
   1. User can suspend an idle or finished agent -- terminal state is saved and the process is killed to free RAM
   2. User can restore a suspended agent -- the process relaunches in the same worktree context and the agent returns to an active state
   3. User receives an OS notification when a background (unfocused) agent finishes its work or requires input
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 06-01: TBD
-- [ ] 06-02: TBD
+- [ ] 06-01-PLAN.md -- AgentStatus "suspended" type, suspend/restore service methods, background exit notification callback, TreeView icon/sort/contextValue
+- [ ] 06-02-PLAN.md -- Suspend/restore commands (palette + context menu), notification wiring in extension, package.json menus
 
 ### Phase 7: Remote Support and Performance at Scale
 **Goal**: User can manage agents on remote machines via VS Code Remote SSH with configurable resource limits, and the extension remains responsive at scale
@@ -138,5 +138,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 | 3. Sidebar UI and Agent Switching | 0/2 | Planning complete | - |
 | 4. Git Workflow and Merge Protection | 0/2 | Planning complete | - |
 | 5. Session Persistence and Agent Reuse | 0/2 | Planning complete | - |
-| 6. Suspend/Restore and Notifications | 0/? | Not started | - |
+| 6. Suspend/Restore and Notifications | 0/2 | Planning complete | - |
 | 7. Remote Support and Performance at Scale | 0/? | Not started | - |
