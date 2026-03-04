@@ -33,6 +33,21 @@ export function activate(context: vscode.ExtensionContext): void {
 			agentService.updateStatus(repoPath, agentName, status, exitCode);
 		},
 		context.workspaceState,
+		// Notification callback for background agent exits
+		async (agentName, repoPath, status) => {
+			const statusLabel = status === "error" ? "encountered an error" : "finished";
+			const action = await vscode.window.showInformationMessage(
+				`Agent '${agentName}' ${statusLabel}.`,
+				"Show Agent",
+			);
+			if (action === "Show Agent") {
+				await vscode.commands.executeCommand(
+					"vscode-agentic.focusAgent",
+					repoPath,
+					agentName,
+				);
+			}
+		},
 	);
 	agentService.setTerminalService(terminalService);
 
