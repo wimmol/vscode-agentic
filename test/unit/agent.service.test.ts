@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockMemento } from "../__mocks__/vscode.js";
 import { AgentService } from "../../src/services/agent.service.js";
-import { AGENT_REGISTRY_KEY } from "../../src/models/agent.js";
+import { AGENT_REGISTRY_KEY, LAST_FOCUSED_KEY } from "../../src/models/agent.js";
 import type { AgentEntry } from "../../src/models/agent.js";
 
 // Mock WorktreeService
@@ -199,6 +199,7 @@ describe("AgentService", () => {
 				"test-agent",
 				"/repo/.worktrees/test-agent",
 				undefined,
+				false,
 			);
 			const agent = service.getAgent("/repo", "test-agent");
 			expect(agent!.status).toBe("running");
@@ -254,6 +255,7 @@ describe("AgentService", () => {
 				"test-agent",
 				"/repo/.worktrees/test-agent",
 				undefined,
+				false,
 			);
 		});
 
@@ -273,7 +275,7 @@ describe("AgentService", () => {
 			expect(terminalService.createTerminal).not.toHaveBeenCalled();
 		});
 
-		it("passes initialPrompt when creating terminal", async () => {
+		it("passes initialPrompt when creating terminal for first focus", async () => {
 			await service.createAgent("/repo", "test-agent", "Fix auth");
 
 			await service.focusAgent("/repo", "test-agent");
@@ -283,7 +285,104 @@ describe("AgentService", () => {
 				"test-agent",
 				"/repo/.worktrees/test-agent",
 				"Fix auth",
+				false,
 			);
+		});
+	});
+
+	describe("focusAgent restart detection", () => {
+		it("passes initialPrompt and continueSession=false on first focus (hasBeenRun undefined)", async () => {
+			await service.createAgent("/repo", "test-agent", "Build the feature");
+
+			await service.focusAgent("/repo", "test-agent");
+
+			expect(terminalService.createTerminal).toHaveBeenCalledWith(
+				"/repo",
+				"test-agent",
+				"/repo/.worktrees/test-agent",
+				"Build the feature",
+				false,
+			);
+		});
+
+		it("sets hasBeenRun=true after first focus", async () => {
+			await service.createAgent("/repo", "test-agent", "Build the feature");
+
+			const agentBefore = service.getAgent("/repo", "test-agent");
+			expect(agentBefore!.hasBeenRun).toBeUndefined();
+
+			await service.focusAgent("/repo", "test-agent");
+
+			const agentAfter = service.getAgent("/repo", "test-agent");
+			expect(agentAfter!.hasBeenRun).toBe(true);
+		});
+
+		it("passes continueSession=true on restart (hasBeenRun=true)", async () => {
+			await service.createAgent("/repo", "test-agent", "Build the feature");
+
+			// First focus -- sets hasBeenRun=true
+			await service.focusAgent("/repo", "test-agent");
+			// Simulate terminal close (agent goes to "finished")
+			await service.updateStatus("/repo", "test-agent", "finished", 0);
+
+			terminalService.createTerminal.mockClear();
+
+			// Second focus -- should use --continue
+			await service.focusAgent("/repo", "test-agent");
+
+			expect(terminalService.createTerminal).toHaveBeenCalledWith(
+				"/repo",
+				"test-agent",
+				"/repo/.worktrees/test-agent",
+				undefined,
+				true,
+			);
+		});
+
+		it("does not change hasBeenRun for running agents (showTerminal path)", async () => {
+			await service.createAgent("/repo", "test-agent");
+			await service.updateStatus("/repo", "test-agent", "running");
+
+			await service.focusAgent("/repo", "test-agent");
+
+			expect(terminalService.showTerminal).toHaveBeenCalledWith("/repo", "test-agent");
+			// hasBeenRun should not be set from showTerminal path
+			const agent = service.getAgent("/repo", "test-agent");
+			expect(agent!.hasBeenRun).toBeUndefined();
+		});
+	});
+
+	describe("lastFocused", () => {
+		it("setLastFocused stores repoPath::agentName in Memento", async () => {
+			await service.setLastFocused("/repo", "test-agent");
+
+			expect(state.get(LAST_FOCUSED_KEY)).toBe("/repo::test-agent");
+		});
+
+		it("getLastFocused returns stored compound key", async () => {
+			await service.setLastFocused("/repo", "test-agent");
+
+			expect(service.getLastFocused()).toBe("/repo::test-agent");
+		});
+
+		it("getLastFocused returns undefined when nothing stored", () => {
+			expect(service.getLastFocused()).toBeUndefined();
+		});
+
+		it("focusAgent stores last-focused key after focusing", async () => {
+			await service.createAgent("/repo", "test-agent");
+
+			await service.focusAgent("/repo", "test-agent");
+
+			expect(state.get(LAST_FOCUSED_KEY)).toBe("/repo::test-agent");
+		});
+	});
+
+	describe("createAgent hasBeenRun", () => {
+		it("does not set hasBeenRun on creation (field remains undefined)", async () => {
+			const entry = await service.createAgent("/repo", "test-agent");
+
+			expect(entry.hasBeenRun).toBeUndefined();
 		});
 	});
 

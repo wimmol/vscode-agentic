@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import type { AgentEntry, AgentStatus } from "../models/agent.js";
-import { AGENT_REGISTRY_KEY } from "../models/agent.js";
+import { AGENT_REGISTRY_KEY, LAST_FOCUSED_KEY } from "../models/agent.js";
 import type { TerminalService } from "./terminal.service.js";
 import type { WorktreeService } from "./worktree.service.js";
 
@@ -112,6 +112,11 @@ export class AgentService {
 	 * Focuses an agent: lazily creates a terminal (or shows existing one).
 	 * - Status "created"/"finished"/"error": create terminal, update to "running"
 	 * - Status "running": show existing terminal
+	 *
+	 * Restart detection: if the agent has been run before (hasBeenRun=true),
+	 * passes continueSession=true to createTerminal which uses --continue flag.
+	 * On first focus, passes the initialPrompt and sets hasBeenRun=true.
+	 * Stores last-focused agent key in Memento after every focus.
 	 */
 	async focusAgent(repoPath: string, agentName: string): Promise<void> {
 		const agent = this.getAgent(repoPath, agentName);
@@ -131,14 +136,31 @@ export class AgentService {
 			return;
 		}
 
+		// Determine if this is a restart (agent has been run before)
+		const isRestart = agent.hasBeenRun === true;
+
 		this.requireTerminalService().createTerminal(
 			repoPath,
 			agentName,
 			worktreeEntry.path,
-			agent.initialPrompt,
+			isRestart ? undefined : agent.initialPrompt,
+			isRestart,
 		);
 
-		await this.updateStatus(repoPath, agentName, "running");
+		// Single registry read-modify-write: set status to "running" and hasBeenRun=true
+		const registry = this.getRegistry();
+		const registryAgent = registry.find(
+			(e) => e.repoPath === repoPath && e.agentName === agentName,
+		);
+		if (registryAgent) {
+			registryAgent.status = "running";
+			registryAgent.hasBeenRun = true;
+			await this.saveRegistry(registry);
+			this._onDidChangeAgents.fire();
+		}
+
+		// Store last-focused agent key
+		await this.setLastFocused(repoPath, agentName);
 	}
 
 	/**
@@ -184,6 +206,23 @@ export class AgentService {
 			await this.saveRegistry(registry);
 			this._onDidChangeAgents.fire();
 		}
+	}
+
+	/**
+	 * Stores the last-focused agent compound key in Memento.
+	 */
+	async setLastFocused(
+		repoPath: string,
+		agentName: string,
+	): Promise<void> {
+		await this.state.update(LAST_FOCUSED_KEY, `${repoPath}::${agentName}`);
+	}
+
+	/**
+	 * Returns the last-focused agent compound key from Memento, or undefined.
+	 */
+	getLastFocused(): string | undefined {
+		return this.state.get<string>(LAST_FOCUSED_KEY);
 	}
 
 	/**
