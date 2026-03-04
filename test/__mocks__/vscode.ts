@@ -84,9 +84,25 @@ export const commands = {
 };
 
 // URI mock
+function parseUri(str: string) {
+	try {
+		const url = new URL(str);
+		return {
+			scheme: url.protocol.replace(/:$/, ""),
+			authority: url.host,
+			path: decodeURIComponent(url.pathname),
+			query: url.search.replace(/^\?/, ""),
+			fragment: url.hash.replace(/^#/, ""),
+			fsPath: decodeURIComponent(url.pathname),
+		};
+	} catch {
+		return { fsPath: str, scheme: "file", authority: "", path: str, query: "", fragment: "" };
+	}
+}
+
 export const Uri = {
 	file: vi.fn((path: string) => ({ fsPath: path, scheme: "file" })),
-	parse: vi.fn((str: string) => ({ fsPath: str, scheme: "file" })),
+	parse: vi.fn((str: string) => parseUri(str)),
 	joinPath: vi.fn((base: { fsPath: string }, ...pathSegments: string[]) => ({
 		fsPath: [base.fsPath, ...pathSegments].join("/"),
 		scheme: "file",
