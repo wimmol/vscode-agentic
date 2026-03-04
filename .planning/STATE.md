@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 Phase: 7 of 7 (Remote Support and Performance at Scale)
 Plan: 2 of 2 in current phase
 Status: Plan 07-02 Complete -- Phase 7 Complete
-Last activity: 2026-03-04 -- Completed Plan 07-02 (Diff TTL Cache and Auto-Suspend UX)
+Last activity: 2026-03-04 - Completed quick task 1: try to run npm run lint and fix issues
 
 Progress: [██████████] 100% (Overall: 15/15 plans)
 
@@ -134,6 +134,12 @@ None yet.
 - [Research]: Claude Code `--resume` flag scope unclear -- affects Phase 5/6 suspend/restore design
 - [Resolved]: Real terminal chosen over Pseudoterminal -- Claude Code CLI is a full TUI needing real PTY
 - [Research]: Claude Code CLI programmatic interface (IPC/status files) unknown -- affects agent status detection
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 1 | try to run npm run lint and fix issues | 2026-03-04 | b3278ba | [1-try-to-run-npm-run-lint-and-fix-issues](./quick/1-try-to-run-npm-run-lint-and-fix-issues/) |
 
 ## Session Continuity
 
