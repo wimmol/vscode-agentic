@@ -35,6 +35,8 @@ function createMockTerminalService() {
 		showTerminal: vi.fn(),
 		hasTerminal: vi.fn().mockReturnValue(false),
 		dispose: vi.fn(),
+		getAllPids: vi.fn().mockReturnValue({}),
+		clearAllPids: vi.fn().mockResolvedValue(undefined),
 	};
 }
 
@@ -415,6 +417,12 @@ describe("AgentService", () => {
 			await service.createAgent("/repo", "agent-2");
 			await service.updateStatus("/repo", "agent-2", "running");
 
+			// Both agents have matching worktrees
+			worktreeService.getManifest.mockReturnValue([
+				{ path: "/repo/.worktrees/agent-1", branch: "agent-1", agentName: "agent-1", repoPath: "/repo", createdAt: new Date().toISOString() },
+				{ path: "/repo/.worktrees/agent-2", branch: "agent-2", agentName: "agent-2", repoPath: "/repo", createdAt: new Date().toISOString() },
+			]);
+
 			await service.reconcileOnActivation();
 
 			expect(service.getAgent("/repo", "agent-1")!.status).toBe("created");
@@ -427,6 +435,13 @@ describe("AgentService", () => {
 			await service.updateStatus("/repo", "finished-agent", "finished", 0);
 			await service.createAgent("/repo", "error-agent");
 			await service.updateStatus("/repo", "error-agent", "error", 1);
+
+			// All agents have matching worktrees
+			worktreeService.getManifest.mockReturnValue([
+				{ path: "/repo/.worktrees/created-agent", branch: "created-agent", agentName: "created-agent", repoPath: "/repo", createdAt: new Date().toISOString() },
+				{ path: "/repo/.worktrees/finished-agent", branch: "finished-agent", agentName: "finished-agent", repoPath: "/repo", createdAt: new Date().toISOString() },
+				{ path: "/repo/.worktrees/error-agent", branch: "error-agent", agentName: "error-agent", repoPath: "/repo", createdAt: new Date().toISOString() },
+			]);
 
 			await service.reconcileOnActivation();
 
@@ -443,11 +458,233 @@ describe("AgentService", () => {
 			registry[0].exitCode = 42;
 			await state.update(AGENT_REGISTRY_KEY, registry);
 
+			// Agent has matching worktree
+			worktreeService.getManifest.mockReturnValue([
+				{ path: "/repo/.worktrees/agent-1", branch: "agent-1", agentName: "agent-1", repoPath: "/repo", createdAt: new Date().toISOString() },
+			]);
+
 			await service.reconcileOnActivation();
 
 			const agent = service.getAgent("/repo", "agent-1");
 			expect(agent!.status).toBe("created");
 			expect(agent!.exitCode).toBeUndefined();
+		});
+
+		it("returns { resetCount, orphanedAgentCount }", async () => {
+			await service.createAgent("/repo", "running-agent");
+			await service.updateStatus("/repo", "running-agent", "running");
+
+			// Agent has matching worktree
+			worktreeService.getManifest.mockReturnValue([
+				{ path: "/repo/.worktrees/running-agent", branch: "running-agent", agentName: "running-agent", repoPath: "/repo", createdAt: new Date().toISOString() },
+			]);
+
+			const result = await service.reconcileOnActivation();
+
+			expect(result).toEqual({ resetCount: 1, orphanedAgentCount: 0 });
+		});
+	});
+
+	describe("reconcileOnActivation cross-reference", () => {
+		it("removes agent entries whose worktrees are NOT in the manifest", async () => {
+			await service.createAgent("/repo", "agent-in-manifest");
+			await service.createAgent("/repo", "orphaned-agent");
+
+			// Mock: manifest only has agent-in-manifest
+			worktreeService.getManifest.mockReturnValue([
+				{
+					path: "/repo/.worktrees/agent-in-manifest",
+					branch: "agent-in-manifest",
+					agentName: "agent-in-manifest",
+					repoPath: "/repo",
+					createdAt: new Date().toISOString(),
+				},
+			]);
+
+			await service.reconcileOnActivation();
+
+			expect(service.getAgent("/repo", "agent-in-manifest")).toBeDefined();
+			expect(service.getAgent("/repo", "orphaned-agent")).toBeUndefined();
+		});
+
+		it("keeps agent entries whose worktrees ARE in the manifest", async () => {
+			await service.createAgent("/repo", "valid-agent");
+
+			worktreeService.getManifest.mockReturnValue([
+				{
+					path: "/repo/.worktrees/valid-agent",
+					branch: "valid-agent",
+					agentName: "valid-agent",
+					repoPath: "/repo",
+					createdAt: new Date().toISOString(),
+				},
+			]);
+
+			await service.reconcileOnActivation();
+
+			expect(service.getAgent("/repo", "valid-agent")).toBeDefined();
+		});
+
+		it("returns orphanedAgentCount in the result", async () => {
+			await service.createAgent("/repo", "valid-agent");
+			await service.createAgent("/repo", "orphan-1");
+			await service.createAgent("/repo", "orphan-2");
+
+			worktreeService.getManifest.mockReturnValue([
+				{
+					path: "/repo/.worktrees/valid-agent",
+					branch: "valid-agent",
+					agentName: "valid-agent",
+					repoPath: "/repo",
+					createdAt: new Date().toISOString(),
+				},
+			]);
+
+			const result = await service.reconcileOnActivation();
+
+			expect(result.orphanedAgentCount).toBe(2);
+		});
+
+		it("running agents that ARE in manifest still reset to 'created'", async () => {
+			await service.createAgent("/repo", "running-valid");
+			await service.updateStatus("/repo", "running-valid", "running");
+
+			worktreeService.getManifest.mockReturnValue([
+				{
+					path: "/repo/.worktrees/running-valid",
+					branch: "running-valid",
+					agentName: "running-valid",
+					repoPath: "/repo",
+					createdAt: new Date().toISOString(),
+				},
+			]);
+
+			const result = await service.reconcileOnActivation();
+
+			expect(service.getAgent("/repo", "running-valid")!.status).toBe("created");
+			expect(result.resetCount).toBe(1);
+			expect(result.orphanedAgentCount).toBe(0);
+		});
+
+		it("cross-references agents across multiple repos", async () => {
+			await service.createAgent("/repo1", "agent-a");
+			await service.createAgent("/repo2", "agent-b");
+
+			// repo1 has agent-a in manifest, repo2 does NOT have agent-b
+			worktreeService.getManifest.mockImplementation((repoPath: string) => {
+				if (repoPath === "/repo1") {
+					return [
+						{
+							path: "/repo1/.worktrees/agent-a",
+							branch: "agent-a",
+							agentName: "agent-a",
+							repoPath: "/repo1",
+							createdAt: new Date().toISOString(),
+						},
+					];
+				}
+				return []; // repo2 has no worktrees
+			});
+
+			await service.reconcileOnActivation();
+
+			expect(service.getAgent("/repo1", "agent-a")).toBeDefined();
+			expect(service.getAgent("/repo2", "agent-b")).toBeUndefined();
+		});
+	});
+
+	describe("cleanupOrphanProcesses", () => {
+		it("kills alive PIDs via process.kill(pid, 'SIGTERM')", async () => {
+			const killSpy = vi.spyOn(process, "kill").mockImplementation(() => true);
+			terminalService.getAllPids.mockReturnValue({ "/repo::agent-1": 12345 });
+
+			const count = await service.cleanupOrphanProcesses();
+
+			// First call: isProcessAlive check (signal 0)
+			expect(killSpy).toHaveBeenCalledWith(12345, 0);
+			// Second call: actual kill
+			expect(killSpy).toHaveBeenCalledWith(12345, "SIGTERM");
+			expect(count).toBe(1);
+			expect(terminalService.clearAllPids).toHaveBeenCalled();
+
+			killSpy.mockRestore();
+		});
+
+		it("skips dead PIDs (process.kill(pid, 0) throws)", async () => {
+			const killSpy = vi.spyOn(process, "kill").mockImplementation(() => {
+				const err = new Error("ESRCH");
+				(err as NodeJS.ErrnoException).code = "ESRCH";
+				throw err;
+			});
+			terminalService.getAllPids.mockReturnValue({ "/repo::agent-1": 99999 });
+
+			const count = await service.cleanupOrphanProcesses();
+
+			// Only the alive check should have been called, no SIGTERM
+			expect(killSpy).toHaveBeenCalledWith(99999, 0);
+			expect(killSpy).not.toHaveBeenCalledWith(99999, "SIGTERM");
+			expect(count).toBe(0);
+			expect(terminalService.clearAllPids).toHaveBeenCalled();
+
+			killSpy.mockRestore();
+		});
+
+		it("clears PID registry after cleanup", async () => {
+			const killSpy = vi.spyOn(process, "kill").mockImplementation(() => true);
+			terminalService.getAllPids.mockReturnValue({});
+
+			await service.cleanupOrphanProcesses();
+
+			expect(terminalService.clearAllPids).toHaveBeenCalled();
+
+			killSpy.mockRestore();
+		});
+
+		it("returns count of killed processes", async () => {
+			let callCount = 0;
+			const killSpy = vi.spyOn(process, "kill").mockImplementation((_pid, signal) => {
+				if (signal === 0) {
+					callCount++;
+					// First PID alive, second PID dead
+					if (callCount === 2) {
+						const err = new Error("ESRCH");
+						(err as NodeJS.ErrnoException).code = "ESRCH";
+						throw err;
+					}
+				}
+				return true;
+			});
+			terminalService.getAllPids.mockReturnValue({
+				"/repo::alive-agent": 111,
+				"/repo::dead-agent": 222,
+			});
+
+			const count = await service.cleanupOrphanProcesses();
+
+			expect(count).toBe(1); // Only the alive one was killed
+
+			killSpy.mockRestore();
+		});
+
+		it("handles EPERM gracefully on kill attempt (process owned by another user)", async () => {
+			const killSpy = vi.spyOn(process, "kill").mockImplementation((_pid, signal) => {
+				if (signal === 0) {
+					return true; // Process is alive
+				}
+				// SIGTERM fails with EPERM
+				const err = new Error("EPERM");
+				(err as NodeJS.ErrnoException).code = "EPERM";
+				throw err;
+			});
+			terminalService.getAllPids.mockReturnValue({ "/repo::agent-1": 12345 });
+
+			// Should not throw, should count as 0 killed (failed to kill)
+			const count = await service.cleanupOrphanProcesses();
+
+			expect(count).toBe(0);
+			expect(terminalService.clearAllPids).toHaveBeenCalled();
+
+			killSpy.mockRestore();
 		});
 	});
 
@@ -495,6 +732,11 @@ describe("AgentService", () => {
 			await service.createAgent("/repo", "agent-1");
 			await service.updateStatus("/repo", "agent-1", "running");
 
+			// Agent has matching worktree
+			worktreeService.getManifest.mockReturnValue([
+				{ path: "/repo/.worktrees/agent-1", branch: "agent-1", agentName: "agent-1", repoPath: "/repo", createdAt: new Date().toISOString() },
+			]);
+
 			const listener = vi.fn();
 			service.onDidChangeAgents(listener);
 
@@ -505,7 +747,18 @@ describe("AgentService", () => {
 
 		it("does NOT fire on reconcileOnActivation when no changes", async () => {
 			await service.createAgent("/repo", "agent-1");
-			// Status is "created" -- no running agents, so reconcile is a no-op
+			// Status is "created" -- no running agents
+
+			// Mock: agent IS in manifest so no orphans
+			worktreeService.getManifest.mockReturnValue([
+				{
+					path: "/repo/.worktrees/agent-1",
+					branch: "agent-1",
+					agentName: "agent-1",
+					repoPath: "/repo",
+					createdAt: new Date().toISOString(),
+				},
+			]);
 
 			const listener = vi.fn();
 			service.onDidChangeAgents(listener);

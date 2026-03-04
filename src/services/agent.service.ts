@@ -5,6 +5,19 @@ import type { TerminalService } from "./terminal.service.js";
 import type { WorktreeService } from "./worktree.service.js";
 
 /**
+ * Checks if a process with the given PID is alive by sending signal 0.
+ * Returns true if no error (process exists and we can signal it), false otherwise.
+ */
+function isProcessAlive(pid: number): boolean {
+	try {
+		process.kill(pid, 0);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+/**
  * Orchestrates agent lifecycle by coordinating WorktreeService (git operations),
  * TerminalService (terminal management), and Memento (persistence).
  *
@@ -187,17 +200,53 @@ export class AgentService {
 	}
 
 	/**
-	 * On extension activation, resets any "running" agents to "created"
-	 * because terminals are lost on VS Code restart.
+	 * On extension activation, cross-references agent registry with worktree
+	 * manifests and resets any "running" agents to "created".
+	 *
+	 * Ordering:
+	 * 1. Remove orphaned agents (no matching worktree in manifest)
+	 * 2. Reset remaining "running" agents to "created"
+	 *
+	 * Returns counts for notification purposes.
 	 */
-	async reconcileOnActivation(): Promise<void> {
+	async reconcileOnActivation(): Promise<{
+		resetCount: number;
+		orphanedAgentCount: number;
+	}> {
 		const registry = this.getRegistry();
 		let changed = false;
 
+		// Step 1: Cross-reference agents with worktree manifests
+		const orphanedIndices = new Set<number>();
+		for (let i = 0; i < registry.length; i++) {
+			const agent = registry[i];
+			const manifest = this.worktreeService.getManifest(agent.repoPath);
+			const hasWorktree = manifest.some(
+				(w) => w.agentName === agent.agentName,
+			);
+			if (!hasWorktree) {
+				orphanedIndices.add(i);
+			}
+		}
+
+		const orphanedAgentCount = orphanedIndices.size;
+
+		// Remove orphaned agents (iterate in reverse to maintain indices)
+		if (orphanedAgentCount > 0) {
+			const sortedIndices = [...orphanedIndices].sort((a, b) => b - a);
+			for (const idx of sortedIndices) {
+				registry.splice(idx, 1);
+			}
+			changed = true;
+		}
+
+		// Step 2: Reset "running" agents to "created"
+		let resetCount = 0;
 		for (const agent of registry) {
 			if (agent.status === "running") {
 				agent.status = "created";
 				agent.exitCode = undefined;
+				resetCount++;
 				changed = true;
 			}
 		}
@@ -206,6 +255,33 @@ export class AgentService {
 			await this.saveRegistry(registry);
 			this._onDidChangeAgents.fire();
 		}
+
+		return { resetCount, orphanedAgentCount };
+	}
+
+	/**
+	 * Cleans up orphan processes from previous sessions.
+	 * Reads the PID registry, checks each PID, kills alive ones, clears the registry.
+	 * Returns the number of processes successfully killed.
+	 */
+	async cleanupOrphanProcesses(): Promise<number> {
+		const pidMap = this.requireTerminalService().getAllPids();
+		let killedCount = 0;
+
+		for (const [, pid] of Object.entries(pidMap)) {
+			if (isProcessAlive(pid)) {
+				try {
+					process.kill(pid, "SIGTERM");
+					killedCount++;
+				} catch {
+					// EPERM or other error -- process exists but we can't kill it
+					// Count as not killed, continue
+				}
+			}
+		}
+
+		await this.requireTerminalService().clearAllPids();
+		return killedCount;
 	}
 
 	/**
