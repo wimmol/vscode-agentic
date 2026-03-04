@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Completed 06-01-PLAN.md
-last_updated: "2026-03-04T09:18:28.796Z"
-last_activity: 2026-03-04 -- Completed Plan 06-01 (Suspend/Restore Core)
+stopped_at: Completed 06-02-PLAN.md
+last_updated: "2026-03-04T09:24:00.785Z"
+last_activity: 2026-03-04 -- Completed Plan 06-02 (Suspend/Restore Commands and Notifications)
 progress:
   total_phases: 7
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 13
-  completed_plans: 12
-  percent: 92
+  completed_plans: 13
+  percent: 100
 ---
 
 # Project State
@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** Fast, isolated multi-agent development -- switch between AI coding agents and repos instantly, with each agent working in its own worktree so nothing conflicts.
-**Current focus:** Phase 6 in progress -- Suspend/Restore and Notifications
+**Current focus:** Phase 6 complete -- Suspend/Restore and Notifications
 
 ## Current Position
 
 Phase: 6 of 7 (Suspend/Restore and Notifications)
-Plan: 1 of 2 in current phase
-Status: Plan 06-01 Complete
-Last activity: 2026-03-04 -- Completed Plan 06-01 (Suspend/Restore Core)
+Plan: 2 of 2 in current phase
+Status: Phase 06 Complete
+Last activity: 2026-03-04 -- Completed Plan 06-02 (Suspend/Restore Commands and Notifications)
 
-Progress: [█████████░] 92% (Overall: 12/13 plans)
+Progress: [██████████] 100% (Overall: 13/13 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 12
+- Total plans completed: 13
 - Average duration: 4min
-- Total execution time: 47min
+- Total execution time: 50min
 
 **By Phase:**
 
@@ -55,9 +55,10 @@ Progress: [█████████░] 92% (Overall: 12/13 plans)
 | 05 | P01 | 4min | 2 | 7 |
 | 05 | P02 | 3min | 2 | 3 |
 | 06 | P01 | 4min | 2 | 10 |
+| 06 | P02 | 3min | 2 | 6 |
 
 **Recent Trend:**
-- Last 5 plans: 5min, 4min, 3min, 4min, 4min
+- Last 5 plans: 3min, 4min, 3min, 4min, 3min
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -110,6 +111,9 @@ Recent decisions affecting current work:
 - [Phase 06]: Status-based contextValue encoding (agentItemSuspended/agentItemRunning) for conditional menus
 - [Phase 06]: onBackgroundExit as optional third TerminalService constructor parameter preserves backward compatibility
 - [Phase 06]: Suspended icon uses debug-pause with disabledForeground -- distinct from created while sharing muted color
+- [Phase 06]: Suspend QuickPick filters to status !== running && status !== suspended for suspendable agent list
+- [Phase 06]: Restore from tile reuses switchToAgent + reveal pattern for consistent UX
+- [Phase 06]: reviewChanges/createPR when clauses updated to /WithDiffs$/ regex for all status variants
 
 ### Pending Todos
 
@@ -123,6 +127,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-04T09:18:28.794Z
-Stopped at: Completed 06-01-PLAN.md
+Last session: 2026-03-04T09:24:00.781Z
+Stopped at: Completed 06-02-PLAN.md
 Resume file: None
