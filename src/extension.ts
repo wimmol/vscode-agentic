@@ -11,6 +11,7 @@ import { RepoConfigService } from "./services/repo-config.service.js";
 import { TerminalService } from "./services/terminal.service.js";
 import { WorkspaceSwitchService } from "./services/workspace-switch.service.js";
 import { WorktreeService } from "./services/worktree.service.js";
+import { AgentTreeItem } from "./views/agent-tree-items.js";
 import { AgentTreeProvider } from "./views/agent-tree-provider.js";
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -73,32 +74,66 @@ export function activate(context: vscode.ExtensionContext): void {
 		);
 	});
 
-	// 6. Reconcile all known repos on activation (GIT-06, non-blocking)
-	const repos = repoConfigService.getAll();
-	for (const repo of repos) {
-		worktreeService
-			.reconcile(repo.path)
-			.then((result) => {
-				const orphanCount = result.orphanedInManifest.length + result.orphanedOnDisk.length;
-				if (orphanCount > 0) {
-					vscode.window.showInformationMessage(
-						`Agentic: Cleaned up ${orphanCount} orphaned worktree(s) in ${repo.path}`,
-					);
-				}
-			})
-			.catch((err: Error) => {
-				vscode.window.showErrorMessage(
-					`Agentic: Worktree reconciliation failed for ${repo.path}: ${err.message}`,
+	// 6. Ordered reconciliation sequence (fire-and-forget, non-blocking)
+	(async () => {
+		try {
+			// Step 1: Worktree reconciliation per repo (removes disk/manifest orphans)
+			const repos = repoConfigService.getAll();
+			let worktreeOrphanCount = 0;
+			for (const repo of repos) {
+				const result = await worktreeService.reconcile(repo.path);
+				worktreeOrphanCount +=
+					result.orphanedInManifest.length + result.orphanedOnDisk.length;
+			}
+			if (worktreeOrphanCount > 0) {
+				vscode.window.showInformationMessage(
+					`Agentic: Cleaned up ${worktreeOrphanCount} orphaned worktree(s)`,
 				);
-			});
-	}
+			}
 
-	// 7. Reconcile agent state on activation (reset "running" to "created")
-	agentService.reconcileOnActivation().catch((err: Error) => {
-		vscode.window.showErrorMessage(
-			`Agentic: Agent reconciliation failed: ${err.message}`,
-		);
-	});
+			// Step 2: Agent-worktree cross-reference + reset running to created
+			const { orphanedAgentCount } =
+				await agentService.reconcileOnActivation();
+
+			// Step 3: Orphan process cleanup
+			const killedCount = await agentService.cleanupOrphanProcesses();
+
+			// Combine agent + process orphan notification
+			const totalCleaned = orphanedAgentCount + killedCount;
+			if (totalCleaned > 0) {
+				vscode.window.showInformationMessage(
+					`Agentic: Cleaned up ${totalCleaned} orphaned agent(s)/process(es)`,
+				);
+			}
+
+			// Step 4: Recompute diff status cache from scratch
+			agentTreeProvider.updateDiffStatus();
+
+			// Step 5: Reveal last-focused agent in sidebar
+			const lastFocusedKey = agentService.getLastFocused();
+			if (lastFocusedKey) {
+				const [repoPath, agentName] = lastFocusedKey.split("::");
+				if (repoPath && agentName) {
+					const agent = agentService.getAgent(repoPath, agentName);
+					if (agent) {
+						const treeItem = new AgentTreeItem(
+							agentName,
+							repoPath,
+							agent.status,
+							agent.initialPrompt,
+						);
+						treeView.reveal(treeItem, { select: true, focus: false });
+					}
+				}
+			}
+		} catch (err) {
+			if (err instanceof Error) {
+				vscode.window.showErrorMessage(
+					`Agentic: Reconciliation failed: ${err.message}`,
+				);
+			}
+		}
+	})();
 }
 
 export function deactivate(): void {
