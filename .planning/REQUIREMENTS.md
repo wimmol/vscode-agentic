@@ -43,8 +43,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Remote
 
-- [ ] **REMOTE-01**: User can connect to remote repos via VS Code Remote SSH and manage agents on the remote machine
-- [ ] **REMOTE-02**: Resource limits are configurable for remote environments (max agents, max worktrees)
+- [x] **REMOTE-01**: User can connect to remote repos via VS Code Remote SSH and manage agents on the remote machine
+- [x] **REMOTE-02**: Resource limits are configurable for remote environments (max agents, max worktrees)
 
 ### Performance
 
@@ -115,8 +115,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TERM-04 | Phase 6 | Complete |
 | TERM-05 | Phase 6 | Complete |
 | TERM-06 | Phase 6 | Complete |
-| REMOTE-01 | Phase 7 | Pending |
-| REMOTE-02 | Phase 7 | Pending |
+| REMOTE-01 | Phase 7 | Complete |
+| REMOTE-02 | Phase 7 | Complete |
 | PERF-02 | Phase 7 | Pending |
 
 **Coverage:**
