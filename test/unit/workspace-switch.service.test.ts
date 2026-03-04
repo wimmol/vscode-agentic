@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { Uri, commands, window, workspace } from "../__mocks__/vscode.js";
 import { WorkspaceSwitchService } from "../../src/services/workspace-switch.service.js";
+import { commands, Uri, window, workspace } from "../__mocks__/vscode.js";
 
 function createMockAgentService() {
 	return {
@@ -33,7 +33,9 @@ function createMockWorktreeService() {
 		getManifest: vi.fn().mockReturnValue([]),
 		addWorktree: vi.fn().mockResolvedValue(undefined),
 		removeWorktree: vi.fn().mockResolvedValue(undefined),
-		reconcile: vi.fn().mockResolvedValue({ orphanedInManifest: [], orphanedOnDisk: [], healthy: [] }),
+		reconcile: vi
+			.fn()
+			.mockResolvedValue({ orphanedInManifest: [], orphanedOnDisk: [], healthy: [] }),
 	};
 }
 
@@ -63,7 +65,13 @@ describe("WorkspaceSwitchService", () => {
 
 		it("returns active agent after switching", async () => {
 			worktreeService.getManifest.mockReturnValue([
-				{ path: "/worktree/agent-1", branch: "agent-1", agentName: "agent-1", repoPath: "/repo", createdAt: "2026-01-01" },
+				{
+					path: "/worktree/agent-1",
+					branch: "agent-1",
+					agentName: "agent-1",
+					repoPath: "/repo",
+					createdAt: "2026-01-01",
+				},
 			]);
 
 			await switchService.switchToAgent("/repo", "agent-1");
@@ -79,14 +87,26 @@ describe("WorkspaceSwitchService", () => {
 		it("calls agentService.focusAgent only for same-repo switch", async () => {
 			// Set up initial active agent
 			worktreeService.getManifest.mockReturnValue([
-				{ path: "/worktree/agent-1", branch: "agent-1", agentName: "agent-1", repoPath: "/repo", createdAt: "2026-01-01" },
+				{
+					path: "/worktree/agent-1",
+					branch: "agent-1",
+					agentName: "agent-1",
+					repoPath: "/repo",
+					createdAt: "2026-01-01",
+				},
 			]);
 			await switchService.switchToAgent("/repo", "agent-1");
 			vi.clearAllMocks();
 
 			// Now switch to another agent in the same repo
 			worktreeService.getManifest.mockReturnValue([
-				{ path: "/worktree/agent-2", branch: "agent-2", agentName: "agent-2", repoPath: "/repo", createdAt: "2026-01-01" },
+				{
+					path: "/worktree/agent-2",
+					branch: "agent-2",
+					agentName: "agent-2",
+					repoPath: "/repo",
+					createdAt: "2026-01-01",
+				},
 			]);
 			await switchService.switchToAgent("/repo", "agent-2");
 
@@ -101,15 +121,21 @@ describe("WorkspaceSwitchService", () => {
 		it("adds worktree folder, reveals in explorer, and opens README in editor", async () => {
 			workspace.workspaceFolders = [{ uri: { fsPath: "/other-repo" } }];
 			worktreeService.getManifest.mockReturnValue([
-				{ path: "/repo/.worktrees/agent-1", branch: "agent-1", agentName: "agent-1", repoPath: "/repo", createdAt: "2026-01-01" },
+				{
+					path: "/repo/.worktrees/agent-1",
+					branch: "agent-1",
+					agentName: "agent-1",
+					repoPath: "/repo",
+					createdAt: "2026-01-01",
+				},
 			]);
 
 			await switchService.switchToAgent("/repo", "agent-1");
 
 			expect(agentService.focusAgent).toHaveBeenCalledWith("/repo", "agent-1");
-			expect(workspace.updateWorkspaceFolders).toHaveBeenCalledWith(
-				1, 0, { uri: Uri.file("/repo/.worktrees/agent-1") },
-			);
+			expect(workspace.updateWorkspaceFolders).toHaveBeenCalledWith(1, 0, {
+				uri: Uri.file("/repo/.worktrees/agent-1"),
+			});
 			expect(commands.executeCommand).toHaveBeenCalledWith("workbench.view.explorer");
 			expect(commands.executeCommand).toHaveBeenCalledWith(
 				"revealInExplorer",
@@ -124,7 +150,13 @@ describe("WorkspaceSwitchService", () => {
 			workspace.workspaceFolders = [{ uri: worktreeUri }];
 			Uri.file.mockReturnValue(worktreeUri);
 			worktreeService.getManifest.mockReturnValue([
-				{ path: "/repo/.worktrees/agent-1", branch: "agent-1", agentName: "agent-1", repoPath: "/repo", createdAt: "2026-01-01" },
+				{
+					path: "/repo/.worktrees/agent-1",
+					branch: "agent-1",
+					agentName: "agent-1",
+					repoPath: "/repo",
+					createdAt: "2026-01-01",
+				},
 			]);
 
 			await switchService.switchToAgent("/repo", "agent-1");
@@ -138,28 +170,35 @@ describe("WorkspaceSwitchService", () => {
 		it("opens README.md from worktree root", async () => {
 			workspace.workspaceFolders = [];
 			worktreeService.getManifest.mockReturnValue([
-				{ path: "/repo/.worktrees/agent-1", branch: "agent-1", agentName: "agent-1", repoPath: "/repo", createdAt: "2026-01-01" },
+				{
+					path: "/repo/.worktrees/agent-1",
+					branch: "agent-1",
+					agentName: "agent-1",
+					repoPath: "/repo",
+					createdAt: "2026-01-01",
+				},
 			]);
 
 			await switchService.switchToAgent("/repo", "agent-1");
 
-			expect(Uri.joinPath).toHaveBeenCalledWith(
-				Uri.file("/repo/.worktrees/agent-1"),
-				"README.md",
-			);
+			expect(Uri.joinPath).toHaveBeenCalledWith(Uri.file("/repo/.worktrees/agent-1"), "README.md");
 		});
 
 		it("does not throw when README.md does not exist", async () => {
 			workspace.workspaceFolders = [];
 			worktreeService.getManifest.mockReturnValue([
-				{ path: "/repo/.worktrees/agent-1", branch: "agent-1", agentName: "agent-1", repoPath: "/repo", createdAt: "2026-01-01" },
+				{
+					path: "/repo/.worktrees/agent-1",
+					branch: "agent-1",
+					agentName: "agent-1",
+					repoPath: "/repo",
+					createdAt: "2026-01-01",
+				},
 			]);
 			workspace.openTextDocument.mockRejectedValueOnce(new Error("File not found"));
 
 			// Should not throw
-			await expect(
-				switchService.switchToAgent("/repo", "agent-1"),
-			).resolves.not.toThrow();
+			await expect(switchService.switchToAgent("/repo", "agent-1")).resolves.not.toThrow();
 
 			expect(agentService.focusAgent).toHaveBeenCalledWith("/repo", "agent-1");
 		});
@@ -168,13 +207,25 @@ describe("WorkspaceSwitchService", () => {
 	describe("active agent tracking", () => {
 		it("updates activeAgent after each switch", async () => {
 			worktreeService.getManifest.mockReturnValue([
-				{ path: "/worktree/a", branch: "a", agentName: "a", repoPath: "/repo1", createdAt: "2026-01-01" },
+				{
+					path: "/worktree/a",
+					branch: "a",
+					agentName: "a",
+					repoPath: "/repo1",
+					createdAt: "2026-01-01",
+				},
 			]);
 			await switchService.switchToAgent("/repo1", "a");
 			expect(switchService.getActiveAgent()).toEqual({ repoPath: "/repo1", agentName: "a" });
 
 			worktreeService.getManifest.mockReturnValue([
-				{ path: "/worktree/b", branch: "b", agentName: "b", repoPath: "/repo2", createdAt: "2026-01-01" },
+				{
+					path: "/worktree/b",
+					branch: "b",
+					agentName: "b",
+					repoPath: "/repo2",
+					createdAt: "2026-01-01",
+				},
 			]);
 			await switchService.switchToAgent("/repo2", "b");
 			expect(switchService.getActiveAgent()).toEqual({ repoPath: "/repo2", agentName: "b" });

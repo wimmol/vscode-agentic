@@ -1,10 +1,10 @@
-import * as vscode from "vscode";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import * as vscode from "vscode";
+import { GitContentProvider } from "../providers/git-content.provider.js";
+import type { AgentService } from "../services/agent.service.js";
 import type { DiffService } from "../services/diff.service.js";
 import type { RepoConfigService } from "../services/repo-config.service.js";
-import type { AgentService } from "../services/agent.service.js";
-import { GitContentProvider } from "../providers/git-content.provider.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -31,9 +31,7 @@ export function registerDiffCommands(
 			const changedFiles = await diffService.getChangedFiles(repoPath, agentName);
 
 			if (changedFiles.length === 0) {
-				vscode.window.showInformationMessage(
-					`No changes between ${agentName} and ${staging}.`,
-				);
+				vscode.window.showInformationMessage(`No changes between ${agentName} and ${staging}.`);
 				return;
 			}
 
@@ -114,9 +112,7 @@ export function registerDiffCommands(
 						"GitHub CLI (gh) is not installed. Install from https://cli.github.com/",
 					);
 				} else {
-					vscode.window.showErrorMessage(
-						`Failed to create PR: ${error.stderr || error.message}`,
-					);
+					vscode.window.showErrorMessage(`Failed to create PR: ${error.stderr || error.message}`);
 				}
 			}
 		},

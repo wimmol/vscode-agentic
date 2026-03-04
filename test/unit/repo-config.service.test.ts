@@ -1,9 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockMemento, Uri, window, workspace } from "vscode";
-import {
-	DEFAULT_STAGING_BRANCH,
-	REPO_CONFIGS_KEY,
-} from "../../src/models/repo.js";
+import { DEFAULT_STAGING_BRANCH, REPO_CONFIGS_KEY } from "../../src/models/repo.js";
 import { RepoConfigService } from "../../src/services/repo-config.service.js";
 
 // Mock ensureGitignoreEntry

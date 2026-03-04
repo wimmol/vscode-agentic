@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { AgentTreeItem, getStatusIcon, RepoGroupItem } from "../../src/views/agent-tree-items.js";
 import { TreeItemCollapsibleState } from "../__mocks__/vscode.js";
-import {
-	AgentTreeItem,
-	RepoGroupItem,
-	getStatusIcon,
-} from "../../src/views/agent-tree-items.js";
 
 describe("getStatusIcon", () => {
 	it("returns circle-filled with green color for running", () => {

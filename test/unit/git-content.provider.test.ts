@@ -39,10 +39,7 @@ describe("GitContentProvider", () => {
 			const result = await provider.provideTextDocumentContent(uri as any);
 
 			expect(result).toBe("file content here");
-			expect(git.exec).toHaveBeenCalledWith("/repo", [
-				"show",
-				"staging:src/file.ts",
-			]);
+			expect(git.exec).toHaveBeenCalledWith("/repo", ["show", "staging:src/file.ts"]);
 		});
 
 		it("extracts repo, ref, and path from URI query parameters", async () => {
@@ -96,10 +93,7 @@ describe("GitContentProvider", () => {
 			const result = await provider.provideTextDocumentContent(uri as any);
 
 			expect(result).toBe("roundtrip content");
-			expect(git.exec).toHaveBeenCalledWith(repoPath, [
-				"show",
-				`${ref}:${filePath}`,
-			]);
+			expect(git.exec).toHaveBeenCalledWith(repoPath, ["show", `${ref}:${filePath}`]);
 		});
 	});
 });

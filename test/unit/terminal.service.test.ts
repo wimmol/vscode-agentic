@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createMockMemento, createMockTerminal, window } from "../__mocks__/vscode.js";
-import { TerminalService } from "../../src/services/terminal.service.js";
 import { PID_REGISTRY_KEY } from "../../src/models/agent.js";
+import { TerminalService } from "../../src/services/terminal.service.js";
+import { createMockMemento, createMockTerminal, window } from "../__mocks__/vscode.js";
 
 describe("TerminalService", () => {
 	let service: TerminalService;
@@ -76,16 +76,8 @@ describe("TerminalService", () => {
 			const mockTerminal = createMockTerminal("Agent: test-agent");
 			window.createTerminal.mockReturnValue(mockTerminal);
 
-			const first = service.createTerminal(
-				"/repo",
-				"test-agent",
-				"/repo/.worktrees/test-agent",
-			);
-			const second = service.createTerminal(
-				"/repo",
-				"test-agent",
-				"/repo/.worktrees/test-agent",
-			);
+			const first = service.createTerminal("/repo", "test-agent", "/repo/.worktrees/test-agent");
+			const second = service.createTerminal("/repo", "test-agent", "/repo/.worktrees/test-agent");
 
 			expect(second).toBe(first);
 			expect(mockTerminal.show).toHaveBeenCalled();
@@ -146,9 +138,7 @@ describe("TerminalService", () => {
 		it("identifies the correct agent by terminal identity (===)", () => {
 			const terminal1 = createMockTerminal("Agent: agent-1");
 			const terminal2 = createMockTerminal("Agent: agent-2");
-			window.createTerminal
-				.mockReturnValueOnce(terminal1)
-				.mockReturnValueOnce(terminal2);
+			window.createTerminal.mockReturnValueOnce(terminal1).mockReturnValueOnce(terminal2);
 
 			service.createTerminal("/repo", "agent-1", "/repo/.worktrees/agent-1");
 			service.createTerminal("/repo", "agent-2", "/repo/.worktrees/agent-2");
@@ -183,12 +173,7 @@ describe("TerminalService", () => {
 			mockTerminal._setExitStatus(undefined, 3);
 			closeListener(mockTerminal);
 
-			expect(onStatusChange).toHaveBeenCalledWith(
-				"test-agent",
-				"/repo",
-				"finished",
-				undefined,
-			);
+			expect(onStatusChange).toHaveBeenCalledWith("test-agent", "/repo", "finished", undefined);
 		});
 
 		it('calls onStatusChange with status="error" when exitCode is non-zero', () => {
@@ -309,7 +294,13 @@ describe("TerminalService", () => {
 			const mockTerminal = createMockTerminal("Agent: test-agent");
 			window.createTerminal.mockReturnValue(mockTerminal);
 
-			service.createTerminal("/repo", "test-agent", "/repo/.worktrees/test-agent", "Fix the bug", false);
+			service.createTerminal(
+				"/repo",
+				"test-agent",
+				"/repo/.worktrees/test-agent",
+				"Fix the bug",
+				false,
+			);
 
 			expect(window.createTerminal).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -322,7 +313,13 @@ describe("TerminalService", () => {
 			const mockTerminal = createMockTerminal("Agent: test-agent");
 			window.createTerminal.mockReturnValue(mockTerminal);
 
-			service.createTerminal("/repo", "test-agent", "/repo/.worktrees/test-agent", undefined, false);
+			service.createTerminal(
+				"/repo",
+				"test-agent",
+				"/repo/.worktrees/test-agent",
+				undefined,
+				false,
+			);
 
 			expect(window.createTerminal).toHaveBeenCalledWith(
 				expect.objectContaining({

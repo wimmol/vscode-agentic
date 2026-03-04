@@ -55,9 +55,7 @@ export class WorkspaceSwitchService {
 
 				// Add worktree folder to workspace if not already present
 				const folders = vscode.workspace.workspaceFolders ?? [];
-				const alreadyInWorkspace = folders.some(
-					(f) => f.uri.fsPath === worktreePath,
-				);
+				const alreadyInWorkspace = folders.some((f) => f.uri.fsPath === worktreePath);
 				if (!alreadyInWorkspace) {
 					vscode.workspace.updateWorkspaceFolders(folders.length, 0, {
 						uri: worktreeUri,
@@ -66,19 +64,12 @@ export class WorkspaceSwitchService {
 
 				// Focus file explorer on the worktree
 				await vscode.commands.executeCommand("workbench.view.explorer");
-				await vscode.commands.executeCommand(
-					"revealInExplorer",
-					worktreeUri,
-				);
+				await vscode.commands.executeCommand("revealInExplorer", worktreeUri);
 
 				// Open a file from the worktree in the editor (best-effort README.md)
-				const readmePath = vscode.Uri.joinPath(
-					vscode.Uri.file(worktreePath),
-					"README.md",
-				);
+				const readmePath = vscode.Uri.joinPath(vscode.Uri.file(worktreePath), "README.md");
 				try {
-					const doc =
-						await vscode.workspace.openTextDocument(readmePath);
+					const doc = await vscode.workspace.openTextDocument(readmePath);
 					await vscode.window.showTextDocument(doc, {
 						preview: true,
 						preserveFocus: true,

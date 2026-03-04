@@ -56,10 +56,7 @@ export class DiffService {
 				"--name-only",
 				`${staging}...${agentBranch}`,
 			]);
-			return output
-				.trim()
-				.split("\n")
-				.filter(Boolean);
+			return output.trim().split("\n").filter(Boolean);
 		} catch {
 			return [];
 		}

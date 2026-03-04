@@ -142,13 +142,27 @@ describe("handleWorktreeLimitError", () => {
 			const error = createMockWorktreeLimitError("/repo", 3, sampleEntries);
 			const agentService = createMockAgentService();
 			agentService.getForRepo.mockReturnValue([
-				{ agentName: "oldest-idle", repoPath: "/repo", status: "finished", createdAt: "2026-01-01T00:00:00Z" },
-				{ agentName: "running-one", repoPath: "/repo", status: "running", createdAt: "2026-02-01T00:00:00Z" },
+				{
+					agentName: "oldest-idle",
+					repoPath: "/repo",
+					status: "finished",
+					createdAt: "2026-01-01T00:00:00Z",
+				},
+				{
+					agentName: "running-one",
+					repoPath: "/repo",
+					status: "running",
+					createdAt: "2026-02-01T00:00:00Z",
+				},
 			]);
 
 			window.showWarningMessage.mockResolvedValueOnce("Suspend & Continue");
 
-			const result = await handleWorktreeLimitError(error as any, worktreeService as any, agentService as any);
+			const result = await handleWorktreeLimitError(
+				error as any,
+				worktreeService as any,
+				agentService as any,
+			);
 
 			expect(result).toBe(true);
 			expect(agentService.suspendAgent).toHaveBeenCalledWith("/repo", "oldest-idle");
@@ -158,7 +172,12 @@ describe("handleWorktreeLimitError", () => {
 			const error = createMockWorktreeLimitError("/repo", 3, sampleEntries);
 			const agentService = createMockAgentService();
 			agentService.getForRepo.mockReturnValue([
-				{ agentName: "idle-agent", repoPath: "/repo", status: "finished", createdAt: "2026-01-01T00:00:00Z" },
+				{
+					agentName: "idle-agent",
+					repoPath: "/repo",
+					status: "finished",
+					createdAt: "2026-01-01T00:00:00Z",
+				},
 			]);
 
 			window.showWarningMessage.mockResolvedValueOnce("Delete a Worktree");
@@ -170,7 +189,11 @@ describe("handleWorktreeLimitError", () => {
 			});
 			worktreeService.removeWorktree.mockResolvedValueOnce(undefined);
 
-			const result = await handleWorktreeLimitError(error as any, worktreeService as any, agentService as any);
+			const result = await handleWorktreeLimitError(
+				error as any,
+				worktreeService as any,
+				agentService as any,
+			);
 
 			expect(result).toBe(true);
 			expect(window.showQuickPick).toHaveBeenCalled();

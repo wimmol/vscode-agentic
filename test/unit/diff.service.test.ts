@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { RepoConfig } from "../../src/models/repo.js";
 import { DiffService } from "../../src/services/diff.service.js";
 import type { GitService } from "../../src/services/git.service.js";
 import type { RepoConfigService } from "../../src/services/repo-config.service.js";
-import type { RepoConfig } from "../../src/models/repo.js";
 
 function createMockGitService(): {
 	exec: ReturnType<typeof vi.fn>;

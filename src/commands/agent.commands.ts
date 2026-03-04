@@ -1,10 +1,10 @@
 import * as vscode from "vscode";
-import { isValidBranchName } from "../utils/branch-validation.js";
-import { AgentLimitError } from "../services/agent.service.js";
 import type { AgentService } from "../services/agent.service.js";
-import type { TerminalService } from "../services/terminal.service.js";
-import type { RepoConfigService } from "../services/repo-config.service.js";
+import { AgentLimitError } from "../services/agent.service.js";
 import type { DiffService } from "../services/diff.service.js";
+import type { RepoConfigService } from "../services/repo-config.service.js";
+import type { TerminalService } from "../services/terminal.service.js";
+import { isValidBranchName } from "../utils/branch-validation.js";
 
 interface AgentPickItem extends vscode.QuickPickItem {
 	_repoPath: string;
@@ -33,16 +33,13 @@ export function registerAgentCommands(
 			// 1. Pick repo (skip if pre-selected from sidebar inline button)
 			const repos = repoConfigService.getAll();
 			if (repos.length === 0) {
-				vscode.window.showErrorMessage(
-					"No repositories configured. Run 'Add Repository' first.",
-				);
+				vscode.window.showErrorMessage("No repositories configured. Run 'Add Repository' first.");
 				return;
 			}
 
 			let repoPath: string;
 			const matchedPreSelected =
-				preSelectedRepoPath &&
-				repos.find((r) => r.path === preSelectedRepoPath);
+				preSelectedRepoPath && repos.find((r) => r.path === preSelectedRepoPath);
 			if (matchedPreSelected) {
 				repoPath = matchedPreSelected.path;
 			} else if (repos.length === 1) {
@@ -64,7 +61,7 @@ export function registerAgentCommands(
 			}
 
 			// 2. Get agent name (with collision handling loop)
-			let agentName = await promptForAgentName(agentService, repoPath);
+			const agentName = await promptForAgentName(agentService, repoPath);
 			if (agentName === undefined) {
 				return;
 			}
@@ -182,10 +179,7 @@ export function registerAgentCommands(
 		async (preSelectedRepoPath?: string, preSelectedAgentName?: string) => {
 			// If both parameters provided (programmatic call), skip the picker
 			if (preSelectedRepoPath && preSelectedAgentName) {
-				await agentService.focusAgent(
-					preSelectedRepoPath,
-					preSelectedAgentName,
-				);
+				await agentService.focusAgent(preSelectedRepoPath, preSelectedAgentName);
 				return;
 			}
 
@@ -219,9 +213,7 @@ export function registerAgentCommands(
 		"vscode-agentic.suspendAgent",
 		async () => {
 			const agents = agentService.getAll();
-			const suspendable = agents.filter(
-				(a) => a.status !== "running" && a.status !== "suspended",
-			);
+			const suspendable = agents.filter((a) => a.status !== "running" && a.status !== "suspended");
 
 			if (suspendable.length === 0) {
 				vscode.window.showInformationMessage("No agents available to suspend.");
@@ -244,9 +236,7 @@ export function registerAgentCommands(
 			}
 
 			await agentService.suspendAgent(selected._repoPath, selected._agentName);
-			vscode.window.showInformationMessage(
-				`Agent '${selected._agentName}' suspended.`,
-			);
+			vscode.window.showInformationMessage(`Agent '${selected._agentName}' suspended.`);
 		},
 	);
 
@@ -287,9 +277,7 @@ async function handleAgentLimitError(
 		.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 
 	if (candidates.length === 0) {
-		vscode.window.showWarningMessage(
-			`${error.message} No idle agents available to suspend.`,
-		);
+		vscode.window.showWarningMessage(`${error.message} No idle agents available to suspend.`);
 		return false;
 	}
 
@@ -344,10 +332,7 @@ async function promptForAgentName(
 	const existing = agentService.getAgent(repoPath, name);
 	if (existing) {
 		const choice = await vscode.window.showQuickPick(
-			[
-				{ label: `Reuse existing agent '${name}'` },
-				{ label: "Pick a different name" },
-			],
+			[{ label: `Reuse existing agent '${name}'` }, { label: "Pick a different name" }],
 			{
 				placeHolder: `Agent '${name}' already exists`,
 				title: "Agent Already Exists",

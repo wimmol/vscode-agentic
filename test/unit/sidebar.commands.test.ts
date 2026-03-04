@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { commands, env, window } from "../__mocks__/vscode.js";
 import { registerSidebarCommands } from "../../src/commands/sidebar.commands.js";
+import { commands, env, window } from "../__mocks__/vscode.js";
 
 function createMockAgentService() {
 	return {
@@ -176,10 +176,7 @@ describe("Sidebar Commands", () => {
 			const handler = registeredHandlers.get("vscode-agentic.createAgentInRepo")!;
 			await handler("/repo");
 
-			expect(commands.executeCommand).toHaveBeenCalledWith(
-				"vscode-agentic.createAgent",
-				"/repo",
-			);
+			expect(commands.executeCommand).toHaveBeenCalledWith("vscode-agentic.createAgent", "/repo");
 		});
 	});
 });

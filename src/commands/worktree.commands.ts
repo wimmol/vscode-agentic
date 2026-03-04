@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
-import type { WorktreeLimitError, WorktreeService } from "../services/worktree.service.js";
 import type { AgentService } from "../services/agent.service.js";
+import type { WorktreeLimitError, WorktreeService } from "../services/worktree.service.js";
 
 interface WorktreePickItem extends vscode.QuickPickItem {
 	_agentName: string;

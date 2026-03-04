@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { commands, window } from "../__mocks__/vscode.js";
 import { registerAgentCommands } from "../../src/commands/agent.commands.js";
 import { AgentLimitError } from "../../src/services/agent.service.js";
+import { commands, window } from "../__mocks__/vscode.js";
 
 // Mock services
 function createMockAgentService() {
@@ -115,9 +115,7 @@ describe("Agent Commands", () => {
 		});
 
 		it("auto-skips repo picker when only one repo configured", async () => {
-			repoConfigService.getAll.mockReturnValue([
-				{ path: "/repo", stagingBranch: "staging" },
-			]);
+			repoConfigService.getAll.mockReturnValue([{ path: "/repo", stagingBranch: "staging" }]);
 			window.showInputBox.mockResolvedValueOnce("my-agent"); // agent name
 			window.showInputBox.mockResolvedValueOnce(""); // initial prompt (empty)
 
@@ -162,9 +160,7 @@ describe("Agent Commands", () => {
 		});
 
 		it("shows InputBox for agent name with branch validation", async () => {
-			repoConfigService.getAll.mockReturnValue([
-				{ path: "/repo", stagingBranch: "staging" },
-			]);
+			repoConfigService.getAll.mockReturnValue([{ path: "/repo", stagingBranch: "staging" }]);
 			window.showInputBox.mockResolvedValueOnce("valid-name");
 			window.showInputBox.mockResolvedValueOnce(""); // prompt
 
@@ -181,9 +177,7 @@ describe("Agent Commands", () => {
 		});
 
 		it("returns early when user cancels name input", async () => {
-			repoConfigService.getAll.mockReturnValue([
-				{ path: "/repo", stagingBranch: "staging" },
-			]);
+			repoConfigService.getAll.mockReturnValue([{ path: "/repo", stagingBranch: "staging" }]);
 			window.showInputBox.mockResolvedValueOnce(undefined); // user cancels
 
 			const handler = registeredHandlers.get("vscode-agentic.createAgent")!;
@@ -193,9 +187,7 @@ describe("Agent Commands", () => {
 		});
 
 		it("shows InputBox for optional initial prompt", async () => {
-			repoConfigService.getAll.mockReturnValue([
-				{ path: "/repo", stagingBranch: "staging" },
-			]);
+			repoConfigService.getAll.mockReturnValue([{ path: "/repo", stagingBranch: "staging" }]);
 			window.showInputBox.mockResolvedValueOnce("my-agent"); // name
 			window.showInputBox.mockResolvedValueOnce("Fix the auth module"); // prompt
 
@@ -210,9 +202,7 @@ describe("Agent Commands", () => {
 		});
 
 		it("returns early when user cancels prompt input", async () => {
-			repoConfigService.getAll.mockReturnValue([
-				{ path: "/repo", stagingBranch: "staging" },
-			]);
+			repoConfigService.getAll.mockReturnValue([{ path: "/repo", stagingBranch: "staging" }]);
 			window.showInputBox.mockResolvedValueOnce("my-agent"); // name
 			window.showInputBox.mockResolvedValueOnce(undefined); // user cancels prompt
 
@@ -223,9 +213,7 @@ describe("Agent Commands", () => {
 		});
 
 		it("passes undefined prompt when empty string provided", async () => {
-			repoConfigService.getAll.mockReturnValue([
-				{ path: "/repo", stagingBranch: "staging" },
-			]);
+			repoConfigService.getAll.mockReturnValue([{ path: "/repo", stagingBranch: "staging" }]);
 			window.showInputBox.mockResolvedValueOnce("my-agent"); // name
 			window.showInputBox.mockResolvedValueOnce(""); // empty prompt
 
@@ -236,9 +224,7 @@ describe("Agent Commands", () => {
 		});
 
 		it("shows info message on successful creation", async () => {
-			repoConfigService.getAll.mockReturnValue([
-				{ path: "/repo", stagingBranch: "staging" },
-			]);
+			repoConfigService.getAll.mockReturnValue([{ path: "/repo", stagingBranch: "staging" }]);
 			window.showInputBox.mockResolvedValueOnce("my-agent");
 			window.showInputBox.mockResolvedValueOnce("");
 
@@ -251,9 +237,7 @@ describe("Agent Commands", () => {
 		});
 
 		it("shows QuickPick for name collision with reuse or rename options", async () => {
-			repoConfigService.getAll.mockReturnValue([
-				{ path: "/repo", stagingBranch: "staging" },
-			]);
+			repoConfigService.getAll.mockReturnValue([{ path: "/repo", stagingBranch: "staging" }]);
 			agentService.getAgent.mockReturnValue({
 				agentName: "existing-agent",
 				repoPath: "/repo",
@@ -274,9 +258,7 @@ describe("Agent Commands", () => {
 		});
 
 		it("shows new name InputBox when user picks rename on collision", async () => {
-			repoConfigService.getAll.mockReturnValue([
-				{ path: "/repo", stagingBranch: "staging" },
-			]);
+			repoConfigService.getAll.mockReturnValue([{ path: "/repo", stagingBranch: "staging" }]);
 			// First call: name collides
 			agentService.getAgent
 				.mockReturnValueOnce({
@@ -473,9 +455,24 @@ describe("Agent Commands", () => {
 	describe("suspendAgent command", () => {
 		it("shows QuickPick of suspendable agents and calls agentService.suspendAgent", async () => {
 			agentService.getAll.mockReturnValue([
-				{ agentName: "idle-agent", repoPath: "/repo", status: "finished", createdAt: new Date().toISOString() },
-				{ agentName: "running-agent", repoPath: "/repo", status: "running", createdAt: new Date().toISOString() },
-				{ agentName: "suspended-agent", repoPath: "/repo", status: "suspended", createdAt: new Date().toISOString() },
+				{
+					agentName: "idle-agent",
+					repoPath: "/repo",
+					status: "finished",
+					createdAt: new Date().toISOString(),
+				},
+				{
+					agentName: "running-agent",
+					repoPath: "/repo",
+					status: "running",
+					createdAt: new Date().toISOString(),
+				},
+				{
+					agentName: "suspended-agent",
+					repoPath: "/repo",
+					status: "suspended",
+					createdAt: new Date().toISOString(),
+				},
 			]);
 			agentService.suspendAgent = vi.fn().mockResolvedValue(undefined);
 			window.showQuickPick.mockResolvedValueOnce({
@@ -490,9 +487,7 @@ describe("Agent Commands", () => {
 
 			// QuickPick should only show non-running, non-suspended agents
 			expect(window.showQuickPick).toHaveBeenCalledWith(
-				expect.arrayContaining([
-					expect.objectContaining({ label: "idle-agent" }),
-				]),
+				expect.arrayContaining([expect.objectContaining({ label: "idle-agent" })]),
 				expect.any(Object),
 			);
 			// Should NOT include running or suspended agents
@@ -504,8 +499,18 @@ describe("Agent Commands", () => {
 
 		it("shows info message when no suspendable agents", async () => {
 			agentService.getAll.mockReturnValue([
-				{ agentName: "running-agent", repoPath: "/repo", status: "running", createdAt: new Date().toISOString() },
-				{ agentName: "suspended-agent", repoPath: "/repo", status: "suspended", createdAt: new Date().toISOString() },
+				{
+					agentName: "running-agent",
+					repoPath: "/repo",
+					status: "running",
+					createdAt: new Date().toISOString(),
+				},
+				{
+					agentName: "suspended-agent",
+					repoPath: "/repo",
+					status: "suspended",
+					createdAt: new Date().toISOString(),
+				},
 			]);
 
 			const handler = registeredHandlers.get("vscode-agentic.suspendAgent")!;
@@ -516,7 +521,12 @@ describe("Agent Commands", () => {
 
 		it("returns early when user cancels QuickPick", async () => {
 			agentService.getAll.mockReturnValue([
-				{ agentName: "idle-agent", repoPath: "/repo", status: "finished", createdAt: new Date().toISOString() },
+				{
+					agentName: "idle-agent",
+					repoPath: "/repo",
+					status: "finished",
+					createdAt: new Date().toISOString(),
+				},
 			]);
 			agentService.suspendAgent = vi.fn().mockResolvedValue(undefined);
 			window.showQuickPick.mockResolvedValueOnce(undefined);
@@ -603,16 +613,29 @@ describe("Agent Commands", () => {
 
 	describe("agent limit error handling", () => {
 		it("offers to suspend oldest idle agent when per-repo limit reached", async () => {
-			repoConfigService.getAll.mockReturnValue([
-				{ path: "/repo", stagingBranch: "staging" },
-			]);
+			repoConfigService.getAll.mockReturnValue([{ path: "/repo", stagingBranch: "staging" }]);
 			window.showInputBox.mockResolvedValueOnce("new-agent"); // name
 			window.showInputBox.mockResolvedValueOnce(""); // prompt
 
 			const existingAgents = [
-				{ agentName: "oldest-idle", repoPath: "/repo", status: "finished", createdAt: "2026-01-01T00:00:00Z" },
-				{ agentName: "newer-idle", repoPath: "/repo", status: "created", createdAt: "2026-02-01T00:00:00Z" },
-				{ agentName: "running-one", repoPath: "/repo", status: "running", createdAt: "2026-01-15T00:00:00Z" },
+				{
+					agentName: "oldest-idle",
+					repoPath: "/repo",
+					status: "finished",
+					createdAt: "2026-01-01T00:00:00Z",
+				},
+				{
+					agentName: "newer-idle",
+					repoPath: "/repo",
+					status: "created",
+					createdAt: "2026-02-01T00:00:00Z",
+				},
+				{
+					agentName: "running-one",
+					repoPath: "/repo",
+					status: "running",
+					createdAt: "2026-01-15T00:00:00Z",
+				},
 			];
 
 			// First call throws AgentLimitError, second succeeds
@@ -636,20 +659,34 @@ describe("Agent Commands", () => {
 		});
 
 		it("shows no-idle-agents message when all agents are running", async () => {
-			repoConfigService.getAll.mockReturnValue([
-				{ path: "/repo", stagingBranch: "staging" },
-			]);
+			repoConfigService.getAll.mockReturnValue([{ path: "/repo", stagingBranch: "staging" }]);
 			window.showInputBox.mockResolvedValueOnce("new-agent");
 			window.showInputBox.mockResolvedValueOnce("");
 
 			const existingAgents = [
-				{ agentName: "running-1", repoPath: "/repo", status: "running", createdAt: "2026-01-01T00:00:00Z" },
-				{ agentName: "running-2", repoPath: "/repo", status: "running", createdAt: "2026-02-01T00:00:00Z" },
-				{ agentName: "suspended-1", repoPath: "/repo", status: "suspended", createdAt: "2026-01-15T00:00:00Z" },
+				{
+					agentName: "running-1",
+					repoPath: "/repo",
+					status: "running",
+					createdAt: "2026-01-01T00:00:00Z",
+				},
+				{
+					agentName: "running-2",
+					repoPath: "/repo",
+					status: "running",
+					createdAt: "2026-02-01T00:00:00Z",
+				},
+				{
+					agentName: "suspended-1",
+					repoPath: "/repo",
+					status: "suspended",
+					createdAt: "2026-01-15T00:00:00Z",
+				},
 			];
 
-			agentService.createAgent
-				.mockRejectedValueOnce(new AgentLimitError("/repo", 3, "per-repo", existingAgents as any));
+			agentService.createAgent.mockRejectedValueOnce(
+				new AgentLimitError("/repo", 3, "per-repo", existingAgents as any),
+			);
 
 			const handler = registeredHandlers.get("vscode-agentic.createAgent")!;
 			await handler();
@@ -661,18 +698,22 @@ describe("Agent Commands", () => {
 		});
 
 		it("does not retry when user cancels", async () => {
-			repoConfigService.getAll.mockReturnValue([
-				{ path: "/repo", stagingBranch: "staging" },
-			]);
+			repoConfigService.getAll.mockReturnValue([{ path: "/repo", stagingBranch: "staging" }]);
 			window.showInputBox.mockResolvedValueOnce("new-agent");
 			window.showInputBox.mockResolvedValueOnce("");
 
 			const existingAgents = [
-				{ agentName: "oldest-idle", repoPath: "/repo", status: "finished", createdAt: "2026-01-01T00:00:00Z" },
+				{
+					agentName: "oldest-idle",
+					repoPath: "/repo",
+					status: "finished",
+					createdAt: "2026-01-01T00:00:00Z",
+				},
 			];
 
-			agentService.createAgent
-				.mockRejectedValueOnce(new AgentLimitError("/repo", 3, "per-repo", existingAgents as any));
+			agentService.createAgent.mockRejectedValueOnce(
+				new AgentLimitError("/repo", 3, "per-repo", existingAgents as any),
+			);
 
 			// User selects "Cancel"
 			window.showWarningMessage.mockResolvedValueOnce("Cancel");

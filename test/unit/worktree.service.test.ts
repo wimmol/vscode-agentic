@@ -4,7 +4,7 @@ import { WORKTREE_DIR_NAME, WORKTREE_MANIFEST_KEY } from "../../src/models/workt
 import type { GitService } from "../../src/services/git.service.js";
 import type { ReconciliationResult } from "../../src/services/worktree.service.js";
 import { WorktreeLimitError, WorktreeService } from "../../src/services/worktree.service.js";
-import { createMockMemento, _setConfigValue, _clearConfig } from "../__mocks__/vscode.js";
+import { _clearConfig, _setConfigValue, createMockMemento } from "../__mocks__/vscode.js";
 
 function createMockGitService(): GitService {
 	return {

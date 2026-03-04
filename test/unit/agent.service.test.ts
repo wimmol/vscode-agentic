@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createMockMemento, _setConfigValue, _clearConfig } from "../__mocks__/vscode.js";
-import { AgentService, AgentLimitError } from "../../src/services/agent.service.js";
-import { AGENT_REGISTRY_KEY, LAST_FOCUSED_KEY } from "../../src/models/agent.js";
 import type { AgentEntry } from "../../src/models/agent.js";
+import { AGENT_REGISTRY_KEY, LAST_FOCUSED_KEY } from "../../src/models/agent.js";
+import { AgentLimitError, AgentService } from "../../src/services/agent.service.js";
+import { _clearConfig, _setConfigValue, createMockMemento } from "../__mocks__/vscode.js";
 
 // Mock WorktreeService
 function createMockWorktreeService() {
@@ -423,8 +423,20 @@ describe("AgentService", () => {
 
 			// Both agents have matching worktrees
 			worktreeService.getManifest.mockReturnValue([
-				{ path: "/repo/.worktrees/agent-1", branch: "agent-1", agentName: "agent-1", repoPath: "/repo", createdAt: new Date().toISOString() },
-				{ path: "/repo/.worktrees/agent-2", branch: "agent-2", agentName: "agent-2", repoPath: "/repo", createdAt: new Date().toISOString() },
+				{
+					path: "/repo/.worktrees/agent-1",
+					branch: "agent-1",
+					agentName: "agent-1",
+					repoPath: "/repo",
+					createdAt: new Date().toISOString(),
+				},
+				{
+					path: "/repo/.worktrees/agent-2",
+					branch: "agent-2",
+					agentName: "agent-2",
+					repoPath: "/repo",
+					createdAt: new Date().toISOString(),
+				},
 			]);
 
 			await service.reconcileOnActivation();
@@ -442,9 +454,27 @@ describe("AgentService", () => {
 
 			// All agents have matching worktrees
 			worktreeService.getManifest.mockReturnValue([
-				{ path: "/repo/.worktrees/created-agent", branch: "created-agent", agentName: "created-agent", repoPath: "/repo", createdAt: new Date().toISOString() },
-				{ path: "/repo/.worktrees/finished-agent", branch: "finished-agent", agentName: "finished-agent", repoPath: "/repo", createdAt: new Date().toISOString() },
-				{ path: "/repo/.worktrees/error-agent", branch: "error-agent", agentName: "error-agent", repoPath: "/repo", createdAt: new Date().toISOString() },
+				{
+					path: "/repo/.worktrees/created-agent",
+					branch: "created-agent",
+					agentName: "created-agent",
+					repoPath: "/repo",
+					createdAt: new Date().toISOString(),
+				},
+				{
+					path: "/repo/.worktrees/finished-agent",
+					branch: "finished-agent",
+					agentName: "finished-agent",
+					repoPath: "/repo",
+					createdAt: new Date().toISOString(),
+				},
+				{
+					path: "/repo/.worktrees/error-agent",
+					branch: "error-agent",
+					agentName: "error-agent",
+					repoPath: "/repo",
+					createdAt: new Date().toISOString(),
+				},
 			]);
 
 			await service.reconcileOnActivation();
@@ -464,7 +494,13 @@ describe("AgentService", () => {
 
 			// Agent has matching worktree
 			worktreeService.getManifest.mockReturnValue([
-				{ path: "/repo/.worktrees/agent-1", branch: "agent-1", agentName: "agent-1", repoPath: "/repo", createdAt: new Date().toISOString() },
+				{
+					path: "/repo/.worktrees/agent-1",
+					branch: "agent-1",
+					agentName: "agent-1",
+					repoPath: "/repo",
+					createdAt: new Date().toISOString(),
+				},
 			]);
 
 			await service.reconcileOnActivation();
@@ -480,7 +516,13 @@ describe("AgentService", () => {
 
 			// Agent has matching worktree
 			worktreeService.getManifest.mockReturnValue([
-				{ path: "/repo/.worktrees/running-agent", branch: "running-agent", agentName: "running-agent", repoPath: "/repo", createdAt: new Date().toISOString() },
+				{
+					path: "/repo/.worktrees/running-agent",
+					branch: "running-agent",
+					agentName: "running-agent",
+					repoPath: "/repo",
+					createdAt: new Date().toISOString(),
+				},
 			]);
 
 			const result = await service.reconcileOnActivation();
@@ -886,7 +928,13 @@ describe("AgentService", () => {
 
 			// Agent has matching worktree
 			worktreeService.getManifest.mockReturnValue([
-				{ path: "/repo/.worktrees/agent-1", branch: "agent-1", agentName: "agent-1", repoPath: "/repo", createdAt: new Date().toISOString() },
+				{
+					path: "/repo/.worktrees/agent-1",
+					branch: "agent-1",
+					agentName: "agent-1",
+					repoPath: "/repo",
+					createdAt: new Date().toISOString(),
+				},
 			]);
 
 			const listener = vi.fn();

@@ -2,8 +2,8 @@ import * as vscode from "vscode";
 import type { AgentService } from "../services/agent.service.js";
 import type { DiffService } from "../services/diff.service.js";
 import type { WorkspaceSwitchService } from "../services/workspace-switch.service.js";
-import type { AgentTreeProvider } from "../views/agent-tree-provider.js";
 import { AgentTreeItem } from "../views/agent-tree-items.js";
+import type { AgentTreeProvider } from "../views/agent-tree-provider.js";
 
 /**
  * Registers sidebar-specific commands:
@@ -28,11 +28,7 @@ export function registerSidebarCommands(
 
 			// Reveal the agent in the TreeView for active highlighting.
 			// TreeView matches by id -- status doesn't matter for id construction.
-			const agentItem = new AgentTreeItem(
-				agentName,
-				repoPath,
-				"created",
-			);
+			const agentItem = new AgentTreeItem(agentName, repoPath, "created");
 			treeView.reveal(agentItem, { select: true, focus: false });
 		},
 	);
@@ -71,9 +67,7 @@ export function registerSidebarCommands(
 			}
 
 			await agentService.deleteAgent(repoPath, agentName);
-			vscode.window.showInformationMessage(
-				`Agent '${agentName}' deleted.`,
-			);
+			vscode.window.showInformationMessage(`Agent '${agentName}' deleted.`);
 		},
 	);
 
@@ -82,9 +76,7 @@ export function registerSidebarCommands(
 		"vscode-agentic.copyBranchName",
 		async (_repoPath: string, agentName: string) => {
 			await vscode.env.clipboard.writeText(agentName);
-			vscode.window.showInformationMessage(
-				`Copied branch name: ${agentName}`,
-			);
+			vscode.window.showInformationMessage(`Copied branch name: ${agentName}`);
 		},
 	);
 
@@ -92,10 +84,7 @@ export function registerSidebarCommands(
 	const createInRepo = vscode.commands.registerCommand(
 		"vscode-agentic.createAgentInRepo",
 		async (repoPath: string) => {
-			await vscode.commands.executeCommand(
-				"vscode-agentic.createAgent",
-				repoPath,
-			);
+			await vscode.commands.executeCommand("vscode-agentic.createAgent", repoPath);
 		},
 	);
 
@@ -104,9 +93,7 @@ export function registerSidebarCommands(
 		"vscode-agentic.suspendAgentFromTile",
 		async (repoPath: string, agentName: string) => {
 			await agentService.suspendAgent(repoPath, agentName);
-			vscode.window.showInformationMessage(
-				`Agent '${agentName}' suspended.`,
-			);
+			vscode.window.showInformationMessage(`Agent '${agentName}' suspended.`);
 		},
 	);
 
@@ -116,16 +103,10 @@ export function registerSidebarCommands(
 		async (repoPath: string, agentName: string) => {
 			await workspaceSwitchService.switchToAgent(repoPath, agentName);
 
-			const agentItem = new AgentTreeItem(
-				agentName,
-				repoPath,
-				"created",
-			);
+			const agentItem = new AgentTreeItem(agentName, repoPath, "created");
 			treeView.reveal(agentItem, { select: true, focus: false });
 
-			vscode.window.showInformationMessage(
-				`Agent '${agentName}' restored.`,
-			);
+			vscode.window.showInformationMessage(`Agent '${agentName}' restored.`);
 		},
 	);
 

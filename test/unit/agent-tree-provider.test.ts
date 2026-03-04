@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { EventEmitter, TreeItemCollapsibleState } from "../__mocks__/vscode.js";
-import { AgentTreeProvider } from "../../src/views/agent-tree-provider.js";
-import { AgentTreeItem, RepoGroupItem } from "../../src/views/agent-tree-items.js";
 import type { AgentEntry } from "../../src/models/agent.js";
+import { AgentTreeItem, RepoGroupItem } from "../../src/views/agent-tree-items.js";
+import { AgentTreeProvider } from "../../src/views/agent-tree-provider.js";
+import { EventEmitter, TreeItemCollapsibleState } from "../__mocks__/vscode.js";
 
 function createMockAgentService() {
 	const emitter = new EventEmitter<void>();
@@ -210,7 +210,9 @@ describe("AgentTreeProvider", () => {
 		beforeEach(() => {
 			vi.useFakeTimers();
 			diffService = {
-				hasUnmergedChanges: vi.fn<(repoPath: string, agentName: string) => Promise<boolean>>().mockResolvedValue(false),
+				hasUnmergedChanges: vi
+					.fn<(repoPath: string, agentName: string) => Promise<boolean>>()
+					.mockResolvedValue(false),
 			};
 			providerWithDiff = new AgentTreeProvider(agentService as never, diffService as never);
 		});

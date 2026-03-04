@@ -43,11 +43,7 @@ export function activate(context: vscode.ExtensionContext): void {
 				"Show Agent",
 			);
 			if (action === "Show Agent") {
-				await vscode.commands.executeCommand(
-					"vscode-agentic.focusAgent",
-					repoPath,
-					agentName,
-				);
+				await vscode.commands.executeCommand("vscode-agentic.focusAgent", repoPath, agentName);
 			}
 		},
 	);
@@ -67,7 +63,14 @@ export function activate(context: vscode.ExtensionContext): void {
 	// 3. Register commands
 	registerRepoCommands(context, repoConfigService);
 	registerAgentCommands(context, agentService, terminalService, repoConfigService, diffService);
-	registerSidebarCommands(context, agentService, workspaceSwitchService, treeView, agentTreeProvider, diffService);
+	registerSidebarCommands(
+		context,
+		agentService,
+		workspaceSwitchService,
+		treeView,
+		agentTreeProvider,
+		diffService,
+	);
 	registerDiffCommands(context, diffService, repoConfigService, agentService);
 
 	// 4. Register content provider and dispose services on deactivation
@@ -112,8 +115,7 @@ export function activate(context: vscode.ExtensionContext): void {
 			let worktreeOrphanCount = 0;
 			for (const repo of repos) {
 				const result = await worktreeService.reconcile(repo.path);
-				worktreeOrphanCount +=
-					result.orphanedInManifest.length + result.orphanedOnDisk.length;
+				worktreeOrphanCount += result.orphanedInManifest.length + result.orphanedOnDisk.length;
 			}
 			if (worktreeOrphanCount > 0) {
 				vscode.window.showInformationMessage(
@@ -122,8 +124,7 @@ export function activate(context: vscode.ExtensionContext): void {
 			}
 
 			// Step 2: Agent-worktree cross-reference + reset running to created
-			const { orphanedAgentCount } =
-				await agentService.reconcileOnActivation();
+			const { orphanedAgentCount } = await agentService.reconcileOnActivation();
 
 			// Step 3: Orphan process cleanup
 			const killedCount = await agentService.cleanupOrphanProcesses();
@@ -158,9 +159,7 @@ export function activate(context: vscode.ExtensionContext): void {
 			}
 		} catch (err) {
 			if (err instanceof Error) {
-				vscode.window.showErrorMessage(
-					`Agentic: Reconciliation failed: ${err.message}`,
-				);
+				vscode.window.showErrorMessage(`Agentic: Reconciliation failed: ${err.message}`);
 			}
 		}
 	})();

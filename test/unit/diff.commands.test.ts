@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { commands, window, Uri } from "../__mocks__/vscode.js";
 import { registerDiffCommands } from "../../src/commands/diff.commands.js";
+import { commands, Uri, window } from "../__mocks__/vscode.js";
 
 function createMockDiffService() {
 	return {
@@ -105,10 +105,7 @@ describe("Diff Commands", () => {
 		});
 
 		it("shows QuickPick with changed files", async () => {
-			diffService.getChangedFiles.mockResolvedValue([
-				"src/index.ts",
-				"src/utils/helper.ts",
-			]);
+			diffService.getChangedFiles.mockResolvedValue(["src/index.ts", "src/utils/helper.ts"]);
 			window.showQuickPick.mockResolvedValueOnce(undefined); // user cancels picker
 
 			const handler = registeredHandlers.get("vscode-agentic.reviewChanges")!;

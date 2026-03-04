@@ -1,9 +1,6 @@
 import * as vscode from "vscode";
 import type { RepoConfig } from "../models/repo.js";
-import {
-	DEFAULT_STAGING_BRANCH,
-	REPO_CONFIGS_KEY,
-} from "../models/repo.js";
+import { DEFAULT_STAGING_BRANCH, REPO_CONFIGS_KEY } from "../models/repo.js";
 import { ensureGitignoreEntry } from "../utils/gitignore.js";
 import type { GitService } from "./git.service.js";
 
