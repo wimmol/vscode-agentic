@@ -2,7 +2,6 @@ import * as vscode from "vscode";
 import type { RepoConfig } from "../models/repo.js";
 import {
 	DEFAULT_STAGING_BRANCH,
-	DEFAULT_WORKTREE_LIMIT,
 	REPO_CONFIGS_KEY,
 } from "../models/repo.js";
 import { ensureGitignoreEntry } from "../utils/gitignore.js";
@@ -112,7 +111,6 @@ export class RepoConfigService {
 		const config: RepoConfig = {
 			path: repoPath,
 			stagingBranch,
-			worktreeLimit: DEFAULT_WORKTREE_LIMIT,
 		};
 
 		const configs = this.getAll();

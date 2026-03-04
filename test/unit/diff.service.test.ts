@@ -31,7 +31,6 @@ const STAGING_BRANCH = "staging";
 const mockConfig: RepoConfig = {
 	path: REPO_PATH,
 	stagingBranch: STAGING_BRANCH,
-	worktreeLimit: 5,
 };
 
 describe("DiffService", () => {

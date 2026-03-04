@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockMemento, Uri, window, workspace } from "vscode";
 import {
 	DEFAULT_STAGING_BRANCH,
-	DEFAULT_WORKTREE_LIMIT,
 	REPO_CONFIGS_KEY,
 } from "../../src/models/repo.js";
 import { RepoConfigService } from "../../src/services/repo-config.service.js";
@@ -43,7 +42,7 @@ describe("RepoConfigService", () => {
 		});
 
 		it("returns stored configs", async () => {
-			const configs = [{ path: "/repo1", stagingBranch: "staging", worktreeLimit: 5 }];
+			const configs = [{ path: "/repo1", stagingBranch: "staging" }];
 			await memento.update(REPO_CONFIGS_KEY, configs);
 
 			const result = service.getAll();
@@ -58,7 +57,7 @@ describe("RepoConfigService", () => {
 		});
 
 		it("returns config for known repo", async () => {
-			const config = { path: "/repo1", stagingBranch: "staging", worktreeLimit: 5 };
+			const config = { path: "/repo1", stagingBranch: "staging" };
 			await memento.update(REPO_CONFIGS_KEY, [config]);
 
 			const result = service.getForRepo("/repo1");
@@ -92,7 +91,6 @@ describe("RepoConfigService", () => {
 			expect(result).toBeDefined();
 			expect(result!.path).toBe("/my-repo");
 			expect(result!.stagingBranch).toBe("staging");
-			expect(result!.worktreeLimit).toBe(DEFAULT_WORKTREE_LIMIT);
 
 			// Should persist to memento
 			const stored = memento.get(REPO_CONFIGS_KEY, []);
@@ -175,7 +173,7 @@ describe("RepoConfigService", () => {
 
 		it("shows info message and returns existing config for duplicate repo", async () => {
 			// Pre-populate with existing config
-			const existing = { path: "/my-repo", stagingBranch: "staging", worktreeLimit: 5 };
+			const existing = { path: "/my-repo", stagingBranch: "staging" };
 			await memento.update(REPO_CONFIGS_KEY, [existing]);
 
 			workspace.workspaceFolders = [{ uri: { fsPath: "/my-repo" }, name: "my-repo", index: 0 }];
@@ -199,8 +197,8 @@ describe("RepoConfigService", () => {
 	describe("removeRepo", () => {
 		it("removes config from state", async () => {
 			const configs = [
-				{ path: "/repo1", stagingBranch: "staging", worktreeLimit: 5 },
-				{ path: "/repo2", stagingBranch: "develop", worktreeLimit: 3 },
+				{ path: "/repo1", stagingBranch: "staging" },
+				{ path: "/repo2", stagingBranch: "develop" },
 			];
 			await memento.update(REPO_CONFIGS_KEY, configs);
 

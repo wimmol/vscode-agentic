@@ -69,13 +69,25 @@ export const window = {
 	activeTerminal: undefined as any,
 };
 
+// Configuration mock with configurable settings
+const _configStore = new Map<string, unknown>();
+export function _setConfigValue(key: string, value: unknown) {
+	_configStore.set(key, value);
+}
+export function _clearConfig() {
+	_configStore.clear();
+}
+
 // Workspace API mocks
 export const workspace = {
 	workspaceFolders: undefined as unknown[] | undefined,
 	updateWorkspaceFolders: vi.fn(),
 	openTextDocument: vi.fn().mockResolvedValue({ uri: { fsPath: "/mock-doc" } }),
-	getConfiguration: vi.fn(() => ({
-		get: vi.fn(),
+	getConfiguration: vi.fn((_section?: string, _resource?: unknown) => ({
+		get: vi.fn((key: string, defaultValue?: unknown) => {
+			const fullKey = _section ? `${_section}.${key}` : key;
+			return _configStore.has(fullKey) ? _configStore.get(fullKey) : defaultValue;
+		}),
 		update: vi.fn(),
 	})),
 	fs: {
@@ -188,6 +200,7 @@ export const env = {
 		writeText: vi.fn(),
 		readText: vi.fn(),
 	},
+	remoteName: undefined as string | undefined,
 };
 
 // Extensions mock

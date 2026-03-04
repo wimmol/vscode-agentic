@@ -1,6 +1,5 @@
 import * as path from "node:path";
-import type * as vscode from "vscode";
-import { DEFAULT_WORKTREE_LIMIT } from "../models/repo.js";
+import * as vscode from "vscode";
 import type { WorktreeEntry, WorktreeOnDisk } from "../models/worktree.js";
 import { WORKTREE_DIR_NAME, WORKTREE_MANIFEST_KEY } from "../models/worktree.js";
 import { parseWorktreeList } from "../utils/worktree-parser.js";
@@ -63,15 +62,17 @@ export class WorktreeService {
 	/**
 	 * Creates a new worktree for the given agent.
 	 * Throws WorktreeLimitError if the per-repo hard limit is reached.
+	 * Limit is read from VS Code settings (maxWorktreesPerRepo).
 	 */
 	async addWorktree(
 		repoPath: string,
 		agentName: string,
 		startPoint?: string,
-		limit?: number,
 	): Promise<WorktreeEntry> {
 		return this.withLock(repoPath, async () => {
-			const effectiveLimit = limit ?? DEFAULT_WORKTREE_LIMIT;
+			const effectiveLimit = vscode.workspace
+				.getConfiguration("vscode-agentic", vscode.Uri.file(repoPath))
+				.get<number>("maxWorktreesPerRepo", 5);
 			const repoEntries = this.getManifest(repoPath);
 
 			if (repoEntries.length >= effectiveLimit) {

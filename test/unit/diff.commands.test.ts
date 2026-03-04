@@ -15,7 +15,6 @@ function createMockRepoConfigService() {
 		getForRepo: vi.fn().mockReturnValue({
 			path: "/repo",
 			stagingBranch: "staging",
-			worktreeLimit: 5,
 		}),
 		addRepo: vi.fn(),
 		removeRepo: vi.fn(),

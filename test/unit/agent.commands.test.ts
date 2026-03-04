@@ -115,7 +115,7 @@ describe("Agent Commands", () => {
 
 		it("auto-skips repo picker when only one repo configured", async () => {
 			repoConfigService.getAll.mockReturnValue([
-				{ path: "/repo", stagingBranch: "staging", worktreeLimit: 5 },
+				{ path: "/repo", stagingBranch: "staging" },
 			]);
 			window.showInputBox.mockResolvedValueOnce("my-agent"); // agent name
 			window.showInputBox.mockResolvedValueOnce(""); // initial prompt (empty)
@@ -130,8 +130,8 @@ describe("Agent Commands", () => {
 
 		it("shows repo QuickPick when multiple repos configured", async () => {
 			repoConfigService.getAll.mockReturnValue([
-				{ path: "/repo1", stagingBranch: "staging", worktreeLimit: 5 },
-				{ path: "/repo2", stagingBranch: "main", worktreeLimit: 5 },
+				{ path: "/repo1", stagingBranch: "staging" },
+				{ path: "/repo2", stagingBranch: "main" },
 			]);
 			window.showQuickPick.mockResolvedValueOnce({
 				label: "/repo1",
@@ -149,8 +149,8 @@ describe("Agent Commands", () => {
 
 		it("returns early when user cancels repo picker", async () => {
 			repoConfigService.getAll.mockReturnValue([
-				{ path: "/repo1", stagingBranch: "staging", worktreeLimit: 5 },
-				{ path: "/repo2", stagingBranch: "main", worktreeLimit: 5 },
+				{ path: "/repo1", stagingBranch: "staging" },
+				{ path: "/repo2", stagingBranch: "main" },
 			]);
 			window.showQuickPick.mockResolvedValueOnce(undefined); // user cancels
 
@@ -162,7 +162,7 @@ describe("Agent Commands", () => {
 
 		it("shows InputBox for agent name with branch validation", async () => {
 			repoConfigService.getAll.mockReturnValue([
-				{ path: "/repo", stagingBranch: "staging", worktreeLimit: 5 },
+				{ path: "/repo", stagingBranch: "staging" },
 			]);
 			window.showInputBox.mockResolvedValueOnce("valid-name");
 			window.showInputBox.mockResolvedValueOnce(""); // prompt
@@ -181,7 +181,7 @@ describe("Agent Commands", () => {
 
 		it("returns early when user cancels name input", async () => {
 			repoConfigService.getAll.mockReturnValue([
-				{ path: "/repo", stagingBranch: "staging", worktreeLimit: 5 },
+				{ path: "/repo", stagingBranch: "staging" },
 			]);
 			window.showInputBox.mockResolvedValueOnce(undefined); // user cancels
 
@@ -193,7 +193,7 @@ describe("Agent Commands", () => {
 
 		it("shows InputBox for optional initial prompt", async () => {
 			repoConfigService.getAll.mockReturnValue([
-				{ path: "/repo", stagingBranch: "staging", worktreeLimit: 5 },
+				{ path: "/repo", stagingBranch: "staging" },
 			]);
 			window.showInputBox.mockResolvedValueOnce("my-agent"); // name
 			window.showInputBox.mockResolvedValueOnce("Fix the auth module"); // prompt
@@ -210,7 +210,7 @@ describe("Agent Commands", () => {
 
 		it("returns early when user cancels prompt input", async () => {
 			repoConfigService.getAll.mockReturnValue([
-				{ path: "/repo", stagingBranch: "staging", worktreeLimit: 5 },
+				{ path: "/repo", stagingBranch: "staging" },
 			]);
 			window.showInputBox.mockResolvedValueOnce("my-agent"); // name
 			window.showInputBox.mockResolvedValueOnce(undefined); // user cancels prompt
@@ -223,7 +223,7 @@ describe("Agent Commands", () => {
 
 		it("passes undefined prompt when empty string provided", async () => {
 			repoConfigService.getAll.mockReturnValue([
-				{ path: "/repo", stagingBranch: "staging", worktreeLimit: 5 },
+				{ path: "/repo", stagingBranch: "staging" },
 			]);
 			window.showInputBox.mockResolvedValueOnce("my-agent"); // name
 			window.showInputBox.mockResolvedValueOnce(""); // empty prompt
@@ -236,7 +236,7 @@ describe("Agent Commands", () => {
 
 		it("shows info message on successful creation", async () => {
 			repoConfigService.getAll.mockReturnValue([
-				{ path: "/repo", stagingBranch: "staging", worktreeLimit: 5 },
+				{ path: "/repo", stagingBranch: "staging" },
 			]);
 			window.showInputBox.mockResolvedValueOnce("my-agent");
 			window.showInputBox.mockResolvedValueOnce("");
@@ -251,7 +251,7 @@ describe("Agent Commands", () => {
 
 		it("shows QuickPick for name collision with reuse or rename options", async () => {
 			repoConfigService.getAll.mockReturnValue([
-				{ path: "/repo", stagingBranch: "staging", worktreeLimit: 5 },
+				{ path: "/repo", stagingBranch: "staging" },
 			]);
 			agentService.getAgent.mockReturnValue({
 				agentName: "existing-agent",
@@ -274,7 +274,7 @@ describe("Agent Commands", () => {
 
 		it("shows new name InputBox when user picks rename on collision", async () => {
 			repoConfigService.getAll.mockReturnValue([
-				{ path: "/repo", stagingBranch: "staging", worktreeLimit: 5 },
+				{ path: "/repo", stagingBranch: "staging" },
 			]);
 			// First call: name collides
 			agentService.getAgent

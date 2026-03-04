@@ -1,11 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { DEFAULT_WORKTREE_LIMIT } from "../../src/models/repo.js";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { WorktreeEntry } from "../../src/models/worktree.js";
 import { WORKTREE_DIR_NAME, WORKTREE_MANIFEST_KEY } from "../../src/models/worktree.js";
 import type { GitService } from "../../src/services/git.service.js";
 import type { ReconciliationResult } from "../../src/services/worktree.service.js";
 import { WorktreeLimitError, WorktreeService } from "../../src/services/worktree.service.js";
-import { createMockMemento } from "../__mocks__/vscode.js";
+import { createMockMemento, _setConfigValue, _clearConfig } from "../__mocks__/vscode.js";
 
 function createMockGitService(): GitService {
 	return {
@@ -35,6 +34,10 @@ describe("WorktreeService", () => {
 		git = createMockGitService();
 		memento = createMockMemento();
 		service = new WorktreeService(git, memento);
+	});
+
+	afterEach(() => {
+		_clearConfig();
 	});
 
 	describe("addWorktree", () => {
@@ -78,6 +81,9 @@ describe("WorktreeService", () => {
 		});
 
 		it("throws WorktreeLimitError (not generic Error) when limit reached", async () => {
+			// Set config-based limit to 2
+			_setConfigValue("vscode-agentic.maxWorktreesPerRepo", 2);
+
 			// Pre-populate manifest with entries at the limit
 			const existing: WorktreeEntry[] = [
 				makeEntry({ agentName: "agent-1", path: "/repo/.worktrees/agent-1" }),
@@ -86,7 +92,7 @@ describe("WorktreeService", () => {
 			await memento.update(WORKTREE_MANIFEST_KEY, existing);
 
 			try {
-				await service.addWorktree("/repo", "agent-3", undefined, 2);
+				await service.addWorktree("/repo", "agent-3");
 				// Should not reach here
 				expect.unreachable("Expected WorktreeLimitError to be thrown");
 			} catch (err) {
@@ -100,6 +106,9 @@ describe("WorktreeService", () => {
 		});
 
 		it("WorktreeLimitError.existingEntries contains entries for that repo only", async () => {
+			// Set config-based limit to 1
+			_setConfigValue("vscode-agentic.maxWorktreesPerRepo", 1);
+
 			const existing: WorktreeEntry[] = [
 				makeEntry({
 					agentName: "agent-1",
@@ -115,7 +124,7 @@ describe("WorktreeService", () => {
 			await memento.update(WORKTREE_MANIFEST_KEY, existing);
 
 			try {
-				await service.addWorktree("/repo", "agent-2", undefined, 1);
+				await service.addWorktree("/repo", "agent-2");
 				expect.unreachable("Expected WorktreeLimitError");
 			} catch (err) {
 				const limitErr = err as WorktreeLimitError;
@@ -125,19 +134,43 @@ describe("WorktreeService", () => {
 		});
 
 		it("allows adding when under limit (does not throw)", async () => {
+			_setConfigValue("vscode-agentic.maxWorktreesPerRepo", 5);
+
 			const existing: WorktreeEntry[] = [
 				makeEntry({ agentName: "agent-1", path: "/repo/.worktrees/agent-1" }),
 			];
 			await memento.update(WORKTREE_MANIFEST_KEY, existing);
 
-			const entry = await service.addWorktree("/repo", "agent-2", undefined, 5);
+			const entry = await service.addWorktree("/repo", "agent-2");
 			expect(entry.agentName).toBe("agent-2");
 		});
 
-		it("uses DEFAULT_WORKTREE_LIMIT when no limit specified", async () => {
-			// Fill up to default limit
+		it("uses maxWorktreesPerRepo from VS Code settings", async () => {
+			// Default is 5 -- fill up to default limit
+			_setConfigValue("vscode-agentic.maxWorktreesPerRepo", 5);
+
 			const existing: WorktreeEntry[] = [];
-			for (let i = 0; i < DEFAULT_WORKTREE_LIMIT; i++) {
+			for (let i = 0; i < 5; i++) {
+				existing.push(
+					makeEntry({
+						agentName: `agent-${i}`,
+						path: `/repo/.worktrees/agent-${i}`,
+					}),
+				);
+			}
+			await memento.update(WORKTREE_MANIFEST_KEY, existing);
+
+			await expect(service.addWorktree("/repo", "agent-overflow")).rejects.toThrow(
+				WorktreeLimitError,
+			);
+		});
+
+		it("respects custom limit values from settings", async () => {
+			// Set a custom limit of 3
+			_setConfigValue("vscode-agentic.maxWorktreesPerRepo", 3);
+
+			const existing: WorktreeEntry[] = [];
+			for (let i = 0; i < 3; i++) {
 				existing.push(
 					makeEntry({
 						agentName: `agent-${i}`,
