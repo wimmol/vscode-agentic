@@ -82,9 +82,7 @@ export class AgentService {
 	 * Returns the agent entry for a given repoPath+agentName, or undefined.
 	 */
 	getAgent(repoPath: string, agentName: string): AgentEntry | undefined {
-		return this.getRegistry().find(
-			(e) => e.repoPath === repoPath && e.agentName === agentName,
-		);
+		return this.getRegistry().find((e) => e.repoPath === repoPath && e.agentName === agentName);
 	}
 
 	/**
@@ -146,10 +144,7 @@ export class AgentService {
 	async suspendAllIdle(): Promise<number> {
 		const registry = this.getRegistry();
 		const eligible = registry.filter(
-			(e) =>
-				e.status === "created" ||
-				e.status === "finished" ||
-				e.status === "error",
+			(e) => e.status === "created" || e.status === "finished" || e.status === "error",
 		);
 
 		if (eligible.length === 0) {
@@ -164,9 +159,7 @@ export class AgentService {
 		// Single registry read-modify-write: update all eligible entries
 		for (const entry of eligible) {
 			const agent = registry.find(
-				(e) =>
-					e.repoPath === entry.repoPath &&
-					e.agentName === entry.agentName,
+				(e) => e.repoPath === entry.repoPath && e.agentName === entry.agentName,
 			);
 			if (agent) {
 				agent.status = "suspended";
@@ -245,9 +238,7 @@ export class AgentService {
 		exitCode?: number,
 	): Promise<void> {
 		const registry = this.getRegistry();
-		const agent = registry.find(
-			(e) => e.repoPath === repoPath && e.agentName === agentName,
-		);
+		const agent = registry.find((e) => e.repoPath === repoPath && e.agentName === agentName);
 		if (!agent) {
 			return;
 		}
@@ -280,9 +271,7 @@ export class AgentService {
 		for (let i = 0; i < registry.length; i++) {
 			const agent = registry[i];
 			const manifest = this.worktreeService.getManifest(agent.repoPath);
-			const hasWorktree = manifest.some(
-				(w) => w.agentName === agent.agentName,
-			);
+			const hasWorktree = manifest.some((w) => w.agentName === agent.agentName);
 			if (!hasWorktree) {
 				orphanedIndices.add(i);
 			}
@@ -346,10 +335,7 @@ export class AgentService {
 	/**
 	 * Stores the last-focused agent compound key in Memento.
 	 */
-	async setLastFocused(
-		repoPath: string,
-		agentName: string,
-	): Promise<void> {
+	async setLastFocused(repoPath: string, agentName: string): Promise<void> {
 		await this.state.update(LAST_FOCUSED_KEY, `${repoPath}::${agentName}`);
 	}
 

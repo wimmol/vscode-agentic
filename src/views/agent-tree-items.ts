@@ -7,30 +7,15 @@ import type { AgentStatus } from "../models/agent.js";
 export function getStatusIcon(status: AgentStatus): vscode.ThemeIcon {
 	switch (status) {
 		case "running":
-			return new vscode.ThemeIcon(
-				"circle-filled",
-				new vscode.ThemeColor("testing.iconPassed"),
-			);
+			return new vscode.ThemeIcon("circle-filled", new vscode.ThemeColor("testing.iconPassed"));
 		case "created":
-			return new vscode.ThemeIcon(
-				"circle-outline",
-				new vscode.ThemeColor("disabledForeground"),
-			);
+			return new vscode.ThemeIcon("circle-outline", new vscode.ThemeColor("disabledForeground"));
 		case "finished":
-			return new vscode.ThemeIcon(
-				"check",
-				new vscode.ThemeColor("testing.iconPassed"),
-			);
+			return new vscode.ThemeIcon("check", new vscode.ThemeColor("testing.iconPassed"));
 		case "error":
-			return new vscode.ThemeIcon(
-				"warning",
-				new vscode.ThemeColor("testing.iconFailed"),
-			);
+			return new vscode.ThemeIcon("warning", new vscode.ThemeColor("testing.iconFailed"));
 		case "suspended":
-			return new vscode.ThemeIcon(
-				"debug-pause",
-				new vscode.ThemeColor("disabledForeground"),
-			);
+			return new vscode.ThemeIcon("debug-pause", new vscode.ThemeColor("disabledForeground"));
 	}
 }
 
@@ -83,10 +68,14 @@ export class AgentTreeItem extends vscode.TreeItem {
 		this.agentName = agentName;
 		this.repoPath = repoPath;
 		this.id = `agent:${repoPath}::${agentName}`;
-		this.contextValue = hasDiffs ? "agentItemWithDiffs" : "agentItem";
-		this.description = initialPrompt
-			? truncate(initialPrompt, 40)
-			: "Interactive session";
+		if (status === "suspended") {
+			this.contextValue = hasDiffs ? "agentItemSuspendedWithDiffs" : "agentItemSuspended";
+		} else if (status === "running") {
+			this.contextValue = hasDiffs ? "agentItemRunningWithDiffs" : "agentItemRunning";
+		} else {
+			this.contextValue = hasDiffs ? "agentItemWithDiffs" : "agentItem";
+		}
+		this.description = initialPrompt ? truncate(initialPrompt, 40) : "Interactive session";
 		this.iconPath = getStatusIcon(status);
 		this.tooltip = `${agentName} (${status})\n${repoPath}`;
 		this.command = {

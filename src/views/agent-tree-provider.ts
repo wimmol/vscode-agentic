@@ -8,8 +8,9 @@ import { AgentTreeItem, RepoGroupItem } from "./agent-tree-items.js";
 const STATUS_PRIORITY: Record<string, number> = {
 	running: 0,
 	created: 1,
-	finished: 2,
-	error: 3,
+	suspended: 2,
+	finished: 3,
+	error: 4,
 };
 
 /**
@@ -21,9 +22,7 @@ const STATUS_PRIORITY: Record<string, number> = {
  *
  * Auto-refreshes when AgentService fires onDidChangeAgents (debounced).
  */
-export class AgentTreeProvider
-	implements vscode.TreeDataProvider<RepoGroupItem | AgentTreeItem>
-{
+export class AgentTreeProvider implements vscode.TreeDataProvider<RepoGroupItem | AgentTreeItem> {
 	private readonly _onDidChangeTreeData = new vscode.EventEmitter<void>();
 	readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
@@ -36,12 +35,10 @@ export class AgentTreeProvider
 		private readonly agentService: AgentService,
 		private readonly diffService?: DiffService,
 	) {
-		this.agentChangeSubscription = this.agentService.onDidChangeAgents(
-			() => {
-				this.debouncedRefresh();
-				this.debouncedDiffUpdate();
-			},
-		);
+		this.agentChangeSubscription = this.agentService.onDidChangeAgents(() => {
+			this.debouncedRefresh();
+			this.debouncedDiffUpdate();
+		});
 	}
 
 	/**
@@ -61,15 +58,11 @@ export class AgentTreeProvider
 		}, 150);
 	}
 
-	getTreeItem(
-		element: RepoGroupItem | AgentTreeItem,
-	): RepoGroupItem | AgentTreeItem {
+	getTreeItem(element: RepoGroupItem | AgentTreeItem): RepoGroupItem | AgentTreeItem {
 		return element;
 	}
 
-	getChildren(
-		element?: RepoGroupItem | AgentTreeItem,
-	): (RepoGroupItem | AgentTreeItem)[] {
+	getChildren(element?: RepoGroupItem | AgentTreeItem): (RepoGroupItem | AgentTreeItem)[] {
 		// Root level: return repo group items
 		if (!element) {
 			const agents = this.agentService.getAll();
@@ -77,9 +70,7 @@ export class AgentTreeProvider
 			for (const agent of agents) {
 				repoMap.set(agent.repoPath, true);
 			}
-			return [...repoMap.keys()].map(
-				(repoPath) => new RepoGroupItem(repoPath),
-			);
+			return [...repoMap.keys()].map((repoPath) => new RepoGroupItem(repoPath));
 		}
 
 		// Agent item level: leaf nodes have no children
@@ -101,9 +92,7 @@ export class AgentTreeProvider
 		);
 	}
 
-	getParent(
-		element: RepoGroupItem | AgentTreeItem,
-	): RepoGroupItem | undefined {
+	getParent(element: RepoGroupItem | AgentTreeItem): RepoGroupItem | undefined {
 		if (element instanceof AgentTreeItem) {
 			return new RepoGroupItem(element.repoPath);
 		}
@@ -121,14 +110,8 @@ export class AgentTreeProvider
 
 		const agents = this.agentService.getAll();
 		for (const agent of agents) {
-			const hasDiffs = await this.diffService.hasUnmergedChanges(
-				agent.repoPath,
-				agent.agentName,
-			);
-			this.diffStatusCache.set(
-				`${agent.repoPath}::${agent.agentName}`,
-				hasDiffs,
-			);
+			const hasDiffs = await this.diffService.hasUnmergedChanges(agent.repoPath, agent.agentName);
+			this.diffStatusCache.set(`${agent.repoPath}::${agent.agentName}`, hasDiffs);
 		}
 
 		this.refresh();

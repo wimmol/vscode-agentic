@@ -143,10 +143,7 @@ export class TerminalService {
 	 * Tracks the terminal PID in Memento for orphan detection.
 	 * Fire-and-forget -- awaits processId with best-effort error handling.
 	 */
-	private async trackPid(
-		key: string,
-		terminal: vscode.Terminal,
-	): Promise<void> {
+	private async trackPid(key: string, terminal: vscode.Terminal): Promise<void> {
 		try {
 			const pid = await terminal.processId;
 			if (pid !== undefined) {
@@ -187,8 +184,7 @@ export class TerminalService {
 
 				const [repoPath, agentName] = key.split("::");
 				const exitCode = terminal.exitStatus?.code;
-				const status: AgentStatus =
-					exitCode !== undefined && exitCode !== 0 ? "error" : "finished";
+				const status: AgentStatus = exitCode !== undefined && exitCode !== 0 ? "error" : "finished";
 
 				this.onStatusChange(agentName, repoPath, status, exitCode);
 

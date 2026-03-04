@@ -30,6 +30,12 @@ describe("getStatusIcon", () => {
 		expect(icon.id).toBe("warning");
 		expect(icon.color?.id).toBe("testing.iconFailed");
 	});
+
+	it("returns debug-pause with disabledForeground color for suspended", () => {
+		const icon = getStatusIcon("suspended");
+		expect(icon.id).toBe("debug-pause");
+		expect(icon.color?.id).toBe("disabledForeground");
+	});
 });
 
 describe("RepoGroupItem", () => {
@@ -70,9 +76,9 @@ describe("AgentTreeItem", () => {
 		expect(item.id).toBe("agent:/repo::fix-bug");
 	});
 
-	it("has contextValue set to agentItem", () => {
+	it("has contextValue set to agentItemRunning for running agent", () => {
 		const item = new AgentTreeItem("fix-bug", "/repo", "running");
-		expect(item.contextValue).toBe("agentItem");
+		expect(item.contextValue).toBe("agentItemRunning");
 	});
 
 	it("has label set to agentName", () => {
@@ -125,18 +131,38 @@ describe("AgentTreeItem", () => {
 		expect(item.agentName).toBe("fix-bug");
 	});
 
-	it("sets contextValue to 'agentItemWithDiffs' when hasDiffs is true", () => {
-		const item = new AgentTreeItem("fix-bug", "/repo", "running", undefined, true);
+	it("sets contextValue to 'agentItemWithDiffs' when hasDiffs is true (non-running/non-suspended)", () => {
+		const item = new AgentTreeItem("fix-bug", "/repo", "finished", undefined, true);
 		expect(item.contextValue).toBe("agentItemWithDiffs");
 	});
 
-	it("sets contextValue to 'agentItem' when hasDiffs is false", () => {
-		const item = new AgentTreeItem("fix-bug", "/repo", "running", undefined, false);
+	it("sets contextValue to 'agentItem' when hasDiffs is false (non-running/non-suspended)", () => {
+		const item = new AgentTreeItem("fix-bug", "/repo", "finished", undefined, false);
 		expect(item.contextValue).toBe("agentItem");
 	});
 
 	it("sets contextValue to 'agentItem' when hasDiffs is undefined", () => {
-		const item = new AgentTreeItem("fix-bug", "/repo", "running");
+		const item = new AgentTreeItem("fix-bug", "/repo", "finished");
 		expect(item.contextValue).toBe("agentItem");
+	});
+
+	it("sets contextValue to 'agentItemSuspended' for suspended agent without diffs", () => {
+		const item = new AgentTreeItem("fix-bug", "/repo", "suspended", undefined, false);
+		expect(item.contextValue).toBe("agentItemSuspended");
+	});
+
+	it("sets contextValue to 'agentItemSuspendedWithDiffs' for suspended agent with diffs", () => {
+		const item = new AgentTreeItem("fix-bug", "/repo", "suspended", undefined, true);
+		expect(item.contextValue).toBe("agentItemSuspendedWithDiffs");
+	});
+
+	it("sets contextValue to 'agentItemRunning' for running agent without diffs", () => {
+		const item = new AgentTreeItem("fix-bug", "/repo", "running", undefined, false);
+		expect(item.contextValue).toBe("agentItemRunning");
+	});
+
+	it("sets contextValue to 'agentItemRunningWithDiffs' for running agent with diffs", () => {
+		const item = new AgentTreeItem("fix-bug", "/repo", "running", undefined, true);
+		expect(item.contextValue).toBe("agentItemRunningWithDiffs");
 	});
 });

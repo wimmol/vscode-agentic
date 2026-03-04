@@ -109,6 +109,25 @@ describe("AgentTreeProvider", () => {
 			expect((children[2] as AgentTreeItem).agentName).toBe("done-agent");
 			expect((children[3] as AgentTreeItem).agentName).toBe("err-agent");
 		});
+
+		it("sorts suspended between created and finished", async () => {
+			const repoGroup = new RepoGroupItem("/repo");
+			agentService.getForRepo.mockReturnValue([
+				makeAgent("err-agent", "/repo", "error"),
+				makeAgent("done-agent", "/repo", "finished"),
+				makeAgent("paused-agent", "/repo", "suspended"),
+				makeAgent("new-agent", "/repo", "created"),
+				makeAgent("active-agent", "/repo", "running"),
+			]);
+
+			const children = await provider.getChildren(repoGroup);
+
+			expect((children[0] as AgentTreeItem).agentName).toBe("active-agent");
+			expect((children[1] as AgentTreeItem).agentName).toBe("new-agent");
+			expect((children[2] as AgentTreeItem).agentName).toBe("paused-agent");
+			expect((children[3] as AgentTreeItem).agentName).toBe("done-agent");
+			expect((children[4] as AgentTreeItem).agentName).toBe("err-agent");
+		});
 	});
 
 	describe("getChildren(agentItem) - leaf level", () => {
