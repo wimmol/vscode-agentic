@@ -56,6 +56,18 @@
 				"title": "Create Agent in Repo",
 				"category": "Agentic",
 				"icon": "$(add)"
+			},
+			{
+				"command": "vscode-agentic.reviewChanges",
+				"title": "Review Changes",
+				"category": "Agentic",
+				"icon": "$(git-compare)"
+			},
+			{
+				"command": "vscode-agentic.createPR",
+				"title": "Create PR",
+				"category": "Agentic",
+				"icon": "$(git-pull-request)"
 			}
 		],
 		"viewsContainers": {
@@ -90,18 +102,33 @@
 			],
 			"view/item/context": [
 				{
-					"command": "vscode-agentic.deleteAgentFromTile",
-					"when": "view == vscode-agentic.agents && viewItem == agentItem",
+					"command": "vscode-agentic.reviewChanges",
+					"when": "view == vscode-agentic.agents && viewItem == agentItemWithDiffs",
 					"group": "inline"
 				},
 				{
 					"command": "vscode-agentic.deleteAgentFromTile",
-					"when": "view == vscode-agentic.agents && viewItem == agentItem",
+					"when": "view == vscode-agentic.agents && viewItem =~ /^agentItem/",
+					"group": "inline"
+				},
+				{
+					"command": "vscode-agentic.reviewChanges",
+					"when": "view == vscode-agentic.agents && viewItem == agentItemWithDiffs",
+					"group": "navigation"
+				},
+				{
+					"command": "vscode-agentic.createPR",
+					"when": "view == vscode-agentic.agents && viewItem == agentItemWithDiffs",
+					"group": "navigation"
+				},
+				{
+					"command": "vscode-agentic.deleteAgentFromTile",
+					"when": "view == vscode-agentic.agents && viewItem =~ /^agentItem/",
 					"group": "destructive"
 				},
 				{
 					"command": "vscode-agentic.copyBranchName",
-					"when": "view == vscode-agentic.agents && viewItem == agentItem",
+					"when": "view == vscode-agentic.agents && viewItem =~ /^agentItem/",
 					"group": "other"
 				},
 				{

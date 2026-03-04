@@ -1,8 +1,11 @@
 import * as vscode from "vscode";
 import { registerAgentCommands } from "./commands/agent.commands.js";
+import { registerDiffCommands } from "./commands/diff.commands.js";
 import { registerRepoCommands } from "./commands/repo.commands.js";
 import { registerSidebarCommands } from "./commands/sidebar.commands.js";
+import { GitContentProvider } from "./providers/git-content.provider.js";
 import { AgentService } from "./services/agent.service.js";
+import { DiffService } from "./services/diff.service.js";
 import { GitService } from "./services/git.service.js";
 import { RepoConfigService } from "./services/repo-config.service.js";
 import { TerminalService } from "./services/terminal.service.js";
@@ -15,6 +18,9 @@ export function activate(context: vscode.ExtensionContext): void {
 	const gitService = new GitService();
 	const worktreeService = new WorktreeService(gitService, context.workspaceState);
 	const repoConfigService = new RepoConfigService(context.workspaceState, gitService);
+
+	const diffService = new DiffService(gitService, repoConfigService);
+	const gitContentProvider = new GitContentProvider(gitService);
 
 	// AgentService and TerminalService have a circular dependency:
 	// - TerminalService needs a status change callback that calls agentService.updateStatus
@@ -29,7 +35,7 @@ export function activate(context: vscode.ExtensionContext): void {
 	agentService.setTerminalService(terminalService);
 
 	// 2. Create TreeView and workspace switch service
-	const agentTreeProvider = new AgentTreeProvider(agentService);
+	const agentTreeProvider = new AgentTreeProvider(agentService, diffService);
 	const treeView = vscode.window.createTreeView("vscode-agentic.agents", {
 		treeDataProvider: agentTreeProvider,
 	});
@@ -41,12 +47,19 @@ export function activate(context: vscode.ExtensionContext): void {
 
 	// 3. Register commands
 	registerRepoCommands(context, repoConfigService);
-	registerAgentCommands(context, agentService, terminalService, repoConfigService);
-	registerSidebarCommands(context, agentService, workspaceSwitchService, treeView, agentTreeProvider);
+	registerAgentCommands(context, agentService, terminalService, repoConfigService, diffService);
+	registerSidebarCommands(context, agentService, workspaceSwitchService, treeView, agentTreeProvider, diffService);
+	registerDiffCommands(context, diffService, repoConfigService, agentService);
 
-	// 4. Dispose services on deactivation
+	// 4. Register content provider and dispose services on deactivation
+	const contentProviderReg = vscode.workspace.registerTextDocumentContentProvider(
+		GitContentProvider.SCHEME,
+		gitContentProvider,
+	);
+
 	context.subscriptions.push(
 		treeView,
+		contentProviderReg,
 		{ dispose: () => agentTreeProvider.dispose() },
 		{ dispose: () => agentService.dispose() },
 		{ dispose: () => terminalService.dispose() },
