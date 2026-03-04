@@ -688,6 +688,154 @@ describe("AgentService", () => {
 		});
 	});
 
+	describe("suspendAgent", () => {
+		it("suspends a finished agent (status becomes 'suspended', disposeTerminal called)", async () => {
+			await service.createAgent("/repo", "test-agent");
+			await service.updateStatus("/repo", "test-agent", "finished", 0);
+
+			await service.suspendAgent("/repo", "test-agent");
+
+			expect(terminalService.disposeTerminal).toHaveBeenCalledWith("/repo", "test-agent");
+			expect(service.getAgent("/repo", "test-agent")!.status).toBe("suspended");
+		});
+
+		it("suspends a created agent (status becomes 'suspended')", async () => {
+			await service.createAgent("/repo", "test-agent");
+
+			await service.suspendAgent("/repo", "test-agent");
+
+			expect(terminalService.disposeTerminal).toHaveBeenCalledWith("/repo", "test-agent");
+			expect(service.getAgent("/repo", "test-agent")!.status).toBe("suspended");
+		});
+
+		it("is a no-op for running agent (status unchanged)", async () => {
+			await service.createAgent("/repo", "test-agent");
+			await service.updateStatus("/repo", "test-agent", "running");
+
+			await service.suspendAgent("/repo", "test-agent");
+
+			expect(service.getAgent("/repo", "test-agent")!.status).toBe("running");
+			expect(terminalService.disposeTerminal).not.toHaveBeenCalled();
+		});
+
+		it("is a no-op for already suspended agent", async () => {
+			await service.createAgent("/repo", "test-agent");
+			await service.updateStatus("/repo", "test-agent", "suspended");
+
+			await service.suspendAgent("/repo", "test-agent");
+
+			expect(service.getAgent("/repo", "test-agent")!.status).toBe("suspended");
+			expect(terminalService.disposeTerminal).not.toHaveBeenCalled();
+		});
+
+		it("is a no-op for nonexistent agent", async () => {
+			await service.suspendAgent("/repo", "nonexistent");
+
+			expect(terminalService.disposeTerminal).not.toHaveBeenCalled();
+		});
+	});
+
+	describe("suspendAllIdle", () => {
+		it("suspends all created/finished/error agents, skips running and suspended", async () => {
+			await service.createAgent("/repo", "created-agent");
+			await service.createAgent("/repo", "finished-agent");
+			await service.updateStatus("/repo", "finished-agent", "finished", 0);
+			await service.createAgent("/repo", "error-agent");
+			await service.updateStatus("/repo", "error-agent", "error", 1);
+			await service.createAgent("/repo", "running-agent");
+			await service.updateStatus("/repo", "running-agent", "running");
+			await service.createAgent("/repo", "suspended-agent");
+			await service.updateStatus("/repo", "suspended-agent", "suspended");
+
+			await service.suspendAllIdle();
+
+			expect(service.getAgent("/repo", "created-agent")!.status).toBe("suspended");
+			expect(service.getAgent("/repo", "finished-agent")!.status).toBe("suspended");
+			expect(service.getAgent("/repo", "error-agent")!.status).toBe("suspended");
+			expect(service.getAgent("/repo", "running-agent")!.status).toBe("running");
+			expect(service.getAgent("/repo", "suspended-agent")!.status).toBe("suspended");
+		});
+
+		it("returns count of suspended agents", async () => {
+			await service.createAgent("/repo", "agent-1");
+			await service.createAgent("/repo", "agent-2");
+			await service.updateStatus("/repo", "agent-2", "finished", 0);
+
+			const count = await service.suspendAllIdle();
+
+			expect(count).toBe(2);
+		});
+
+		it("returns 0 when no eligible agents", async () => {
+			await service.createAgent("/repo", "running-agent");
+			await service.updateStatus("/repo", "running-agent", "running");
+
+			const count = await service.suspendAllIdle();
+
+			expect(count).toBe(0);
+		});
+	});
+
+	describe("focusAgent on suspended agent", () => {
+		it("creates terminal with continueSession=true when suspended agent has hasBeenRun=true", async () => {
+			await service.createAgent("/repo", "test-agent", "Fix auth");
+			// First focus sets hasBeenRun=true
+			await service.focusAgent("/repo", "test-agent");
+			// Simulate terminal close -> finished
+			await service.updateStatus("/repo", "test-agent", "finished", 0);
+			// Suspend the agent
+			await service.updateStatus("/repo", "test-agent", "suspended");
+
+			terminalService.createTerminal.mockClear();
+
+			// Focus suspended agent -- should restore with --continue
+			await service.focusAgent("/repo", "test-agent");
+
+			expect(terminalService.createTerminal).toHaveBeenCalledWith(
+				"/repo",
+				"test-agent",
+				"/repo/.worktrees/test-agent",
+				undefined,
+				true,
+			);
+			expect(service.getAgent("/repo", "test-agent")!.status).toBe("running");
+		});
+	});
+
+	describe("reconcileOnActivation with suspended agents", () => {
+		it("suspended agent with valid worktree survives unchanged", async () => {
+			await service.createAgent("/repo", "suspended-agent");
+			await service.updateStatus("/repo", "suspended-agent", "suspended");
+
+			worktreeService.getManifest.mockReturnValue([
+				{
+					path: "/repo/.worktrees/suspended-agent",
+					branch: "suspended-agent",
+					agentName: "suspended-agent",
+					repoPath: "/repo",
+					createdAt: new Date().toISOString(),
+				},
+			]);
+
+			await service.reconcileOnActivation();
+
+			expect(service.getAgent("/repo", "suspended-agent")!.status).toBe("suspended");
+		});
+
+		it("suspended agent with missing worktree is removed as orphan", async () => {
+			await service.createAgent("/repo", "suspended-orphan");
+			await service.updateStatus("/repo", "suspended-orphan", "suspended");
+
+			// No worktrees in manifest
+			worktreeService.getManifest.mockReturnValue([]);
+
+			const result = await service.reconcileOnActivation();
+
+			expect(service.getAgent("/repo", "suspended-orphan")).toBeUndefined();
+			expect(result.orphanedAgentCount).toBe(1);
+		});
+	});
+
 	describe("setTerminalService", () => {
 		it("allows setting terminalService after construction", () => {
 			const svc = new AgentService(state, worktreeService as never);

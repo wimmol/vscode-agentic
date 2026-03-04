@@ -66,6 +66,7 @@ export const window = {
 	onDidCloseTerminal: vi.fn(),
 	onDidChangeActiveTerminal: vi.fn(),
 	terminals: [] as ReturnType<typeof createMockTerminal>[],
+	activeTerminal: undefined as any,
 };
 
 // Workspace API mocks

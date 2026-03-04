@@ -26,6 +26,11 @@ export function getStatusIcon(status: AgentStatus): vscode.ThemeIcon {
 				"warning",
 				new vscode.ThemeColor("testing.iconFailed"),
 			);
+		case "suspended":
+			return new vscode.ThemeIcon(
+				"debug-pause",
+				new vscode.ThemeColor("disabledForeground"),
+			);
 	}
 }
 

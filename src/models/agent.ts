@@ -4,7 +4,7 @@
  */
 
 /** Agent lifecycle status */
-export type AgentStatus = "created" | "running" | "finished" | "error";
+export type AgentStatus = "created" | "running" | "finished" | "error" | "suspended";
 
 /** Persistent agent metadata stored per repo */
 export interface AgentEntry {

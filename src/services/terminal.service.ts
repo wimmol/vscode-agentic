@@ -25,6 +25,11 @@ export class TerminalService {
 			exitCode?: number,
 		) => void,
 		private readonly state: vscode.Memento,
+		private readonly onBackgroundExit?: (
+			agentName: string,
+			repoPath: string,
+			status: AgentStatus,
+		) => void,
 	) {
 		// Subscribe to terminal close events
 		this.disposables.push(
@@ -186,6 +191,11 @@ export class TerminalService {
 					exitCode !== undefined && exitCode !== 0 ? "error" : "finished";
 
 				this.onStatusChange(agentName, repoPath, status, exitCode);
+
+				// Notify if this terminal was NOT the active terminal (user was elsewhere)
+				if (this.onBackgroundExit && vscode.window.activeTerminal !== terminal) {
+					this.onBackgroundExit(agentName, repoPath, status);
+				}
 				break;
 			}
 		}

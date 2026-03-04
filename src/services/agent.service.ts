@@ -122,9 +122,68 @@ export class AgentService {
 	}
 
 	/**
+	 * Suspends an agent: disposes terminal and sets status to "suspended".
+	 * Only idle agents (created/finished/error) can be suspended.
+	 * Running or already-suspended agents are no-ops.
+	 */
+	async suspendAgent(repoPath: string, agentName: string): Promise<void> {
+		const agent = this.getAgent(repoPath, agentName);
+		if (!agent) {
+			return;
+		}
+		if (agent.status === "running" || agent.status === "suspended") {
+			return;
+		}
+		this.requireTerminalService().disposeTerminal(repoPath, agentName);
+		await this.updateStatus(repoPath, agentName, "suspended");
+	}
+
+	/**
+	 * Suspends all idle agents (created/finished/error) in a single batch.
+	 * Skips running and already-suspended agents.
+	 * Returns the count of agents suspended.
+	 */
+	async suspendAllIdle(): Promise<number> {
+		const registry = this.getRegistry();
+		const eligible = registry.filter(
+			(e) =>
+				e.status === "created" ||
+				e.status === "finished" ||
+				e.status === "error",
+		);
+
+		if (eligible.length === 0) {
+			return 0;
+		}
+
+		const ts = this.requireTerminalService();
+		for (const entry of eligible) {
+			ts.disposeTerminal(entry.repoPath, entry.agentName);
+		}
+
+		// Single registry read-modify-write: update all eligible entries
+		for (const entry of eligible) {
+			const agent = registry.find(
+				(e) =>
+					e.repoPath === entry.repoPath &&
+					e.agentName === entry.agentName,
+			);
+			if (agent) {
+				agent.status = "suspended";
+			}
+		}
+		await this.saveRegistry(registry);
+		this._onDidChangeAgents.fire();
+
+		return eligible.length;
+	}
+
+	/**
 	 * Focuses an agent: lazily creates a terminal (or shows existing one).
-	 * - Status "created"/"finished"/"error": create terminal, update to "running"
+	 * - Status "created"/"finished"/"error"/"suspended": create terminal, update to "running"
 	 * - Status "running": show existing terminal
+	 *
+	 * "suspended" falls through to else branch -- handled identically to "created"/"finished"/"error"
 	 *
 	 * Restart detection: if the agent has been run before (hasBeenRun=true),
 	 * passes continueSession=true to createTerminal which uses --continue flag.

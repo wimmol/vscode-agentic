@@ -406,6 +406,87 @@ describe("TerminalService", () => {
 		});
 	});
 
+	describe("background exit notification", () => {
+		let onBackgroundExit: ReturnType<typeof vi.fn>;
+		let bgService: TerminalService;
+
+		beforeEach(() => {
+			onBackgroundExit = vi.fn();
+			bgService = new TerminalService(onStatusChange, mockState, onBackgroundExit);
+		});
+
+		it("fires onBackgroundExit when activeTerminal !== closed terminal", () => {
+			const mockTerminal = createMockTerminal("Agent: test-agent");
+			window.createTerminal.mockReturnValue(mockTerminal);
+
+			bgService.createTerminal("/repo", "test-agent", "/repo/.worktrees/test-agent");
+
+			// Set activeTerminal to something else (user is focused elsewhere)
+			const otherTerminal = createMockTerminal("bash");
+			window.activeTerminal = otherTerminal;
+
+			mockTerminal._setExitStatus(0, 2);
+			closeListener(mockTerminal);
+
+			expect(onBackgroundExit).toHaveBeenCalledWith("test-agent", "/repo", "finished");
+		});
+
+		it("does NOT fire onBackgroundExit when activeTerminal === closed terminal", () => {
+			const mockTerminal = createMockTerminal("Agent: test-agent");
+			window.createTerminal.mockReturnValue(mockTerminal);
+
+			bgService.createTerminal("/repo", "test-agent", "/repo/.worktrees/test-agent");
+
+			// Set activeTerminal to the same terminal (user was watching)
+			window.activeTerminal = mockTerminal;
+
+			mockTerminal._setExitStatus(0, 2);
+			closeListener(mockTerminal);
+
+			expect(onBackgroundExit).not.toHaveBeenCalled();
+		});
+
+		it("does NOT fire onBackgroundExit when callback not provided", () => {
+			// Create a service without onBackgroundExit
+			const statusCb = vi.fn();
+			let noCallbackCloseListener: (terminal: ReturnType<typeof createMockTerminal>) => void;
+			window.onDidCloseTerminal.mockImplementation(
+				(listener: (terminal: ReturnType<typeof createMockTerminal>) => void) => {
+					noCallbackCloseListener = listener;
+					return { dispose: vi.fn() };
+				},
+			);
+			const noCallbackService = new TerminalService(statusCb, mockState);
+
+			const mockTerminal = createMockTerminal("Agent: test-agent");
+			window.createTerminal.mockReturnValue(mockTerminal);
+
+			noCallbackService.createTerminal("/repo", "test-agent", "/repo/.worktrees/test-agent");
+
+			window.activeTerminal = createMockTerminal("bash");
+
+			mockTerminal._setExitStatus(0, 2);
+			noCallbackCloseListener!(mockTerminal);
+
+			// Should not throw, onStatusChange still fires
+			expect(statusCb).toHaveBeenCalled();
+		});
+
+		it("passes correct agentName, repoPath, status to callback", () => {
+			const mockTerminal = createMockTerminal("Agent: my-agent");
+			window.createTerminal.mockReturnValue(mockTerminal);
+
+			bgService.createTerminal("/my-repo", "my-agent", "/my-repo/.worktrees/my-agent");
+
+			window.activeTerminal = createMockTerminal("other");
+
+			mockTerminal._setExitStatus(1, 2);
+			closeListener(mockTerminal);
+
+			expect(onBackgroundExit).toHaveBeenCalledWith("my-agent", "/my-repo", "error");
+		});
+	});
+
 	describe("dispose", () => {
 		it("cleans up event subscriptions", () => {
 			const disposeFn = vi.fn();
