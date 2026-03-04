@@ -129,4 +129,68 @@ describe("handleWorktreeLimitError", () => {
 			expect.stringContaining("agent-alpha"),
 		);
 	});
+
+	describe("with agentService (suspend option)", () => {
+		function createMockAgentService() {
+			return {
+				getForRepo: vi.fn().mockReturnValue([]),
+				suspendAgent: vi.fn().mockResolvedValue(undefined),
+			};
+		}
+
+		it("offers suspend option when agentService provided and idle agents exist", async () => {
+			const error = createMockWorktreeLimitError("/repo", 3, sampleEntries);
+			const agentService = createMockAgentService();
+			agentService.getForRepo.mockReturnValue([
+				{ agentName: "oldest-idle", repoPath: "/repo", status: "finished", createdAt: "2026-01-01T00:00:00Z" },
+				{ agentName: "running-one", repoPath: "/repo", status: "running", createdAt: "2026-02-01T00:00:00Z" },
+			]);
+
+			window.showWarningMessage.mockResolvedValueOnce("Suspend & Continue");
+
+			const result = await handleWorktreeLimitError(error as any, worktreeService as any, agentService as any);
+
+			expect(result).toBe(true);
+			expect(agentService.suspendAgent).toHaveBeenCalledWith("/repo", "oldest-idle");
+		});
+
+		it("falls through to delete picker when user selects Delete a Worktree", async () => {
+			const error = createMockWorktreeLimitError("/repo", 3, sampleEntries);
+			const agentService = createMockAgentService();
+			agentService.getForRepo.mockReturnValue([
+				{ agentName: "idle-agent", repoPath: "/repo", status: "finished", createdAt: "2026-01-01T00:00:00Z" },
+			]);
+
+			window.showWarningMessage.mockResolvedValueOnce("Delete a Worktree");
+			window.showQuickPick.mockResolvedValueOnce({
+				label: "agent-alpha",
+				description: "created 2026-03-01T10:00:00.000Z",
+				detail: "/repo/.worktrees/agent-alpha",
+				_agentName: "agent-alpha",
+			});
+			worktreeService.removeWorktree.mockResolvedValueOnce(undefined);
+
+			const result = await handleWorktreeLimitError(error as any, worktreeService as any, agentService as any);
+
+			expect(result).toBe(true);
+			expect(window.showQuickPick).toHaveBeenCalled();
+			expect(worktreeService.removeWorktree).toHaveBeenCalledWith("/repo", "agent-alpha");
+		});
+
+		it("works without agentService (backward compatible)", async () => {
+			const error = createMockWorktreeLimitError("/repo", 3, sampleEntries);
+			window.showQuickPick.mockResolvedValueOnce({
+				label: "agent-beta",
+				description: "created 2026-03-02T14:30:00.000Z",
+				detail: "/repo/.worktrees/agent-beta",
+				_agentName: "agent-beta",
+			});
+			worktreeService.removeWorktree.mockResolvedValueOnce(undefined);
+
+			const result = await handleWorktreeLimitError(error as any, worktreeService as any);
+
+			expect(result).toBe(true);
+			expect(window.showQuickPick).toHaveBeenCalled();
+		});
+	});
 });

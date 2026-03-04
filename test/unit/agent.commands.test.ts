@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { commands, window } from "../__mocks__/vscode.js";
 import { registerAgentCommands } from "../../src/commands/agent.commands.js";
+import { AgentLimitError } from "../../src/services/agent.service.js";
 
 // Mock services
 function createMockAgentService() {
@@ -597,6 +598,90 @@ describe("Agent Commands", () => {
 			await handler();
 
 			expect(agentService.focusAgent).not.toHaveBeenCalled();
+		});
+	});
+
+	describe("agent limit error handling", () => {
+		it("offers to suspend oldest idle agent when per-repo limit reached", async () => {
+			repoConfigService.getAll.mockReturnValue([
+				{ path: "/repo", stagingBranch: "staging" },
+			]);
+			window.showInputBox.mockResolvedValueOnce("new-agent"); // name
+			window.showInputBox.mockResolvedValueOnce(""); // prompt
+
+			const existingAgents = [
+				{ agentName: "oldest-idle", repoPath: "/repo", status: "finished", createdAt: "2026-01-01T00:00:00Z" },
+				{ agentName: "newer-idle", repoPath: "/repo", status: "created", createdAt: "2026-02-01T00:00:00Z" },
+				{ agentName: "running-one", repoPath: "/repo", status: "running", createdAt: "2026-01-15T00:00:00Z" },
+			];
+
+			// First call throws AgentLimitError, second succeeds
+			agentService.createAgent
+				.mockRejectedValueOnce(new AgentLimitError("/repo", 3, "per-repo", existingAgents as any))
+				.mockResolvedValueOnce({
+					agentName: "new-agent",
+					repoPath: "/repo",
+					status: "created",
+					createdAt: new Date().toISOString(),
+				});
+
+			// User selects "Suspend & Create"
+			window.showWarningMessage.mockResolvedValueOnce("Suspend & Create");
+
+			const handler = registeredHandlers.get("vscode-agentic.createAgent")!;
+			await handler();
+
+			expect(agentService.suspendAgent).toHaveBeenCalledWith("/repo", "oldest-idle");
+			expect(agentService.createAgent).toHaveBeenCalledTimes(2); // initial + retry
+		});
+
+		it("shows no-idle-agents message when all agents are running", async () => {
+			repoConfigService.getAll.mockReturnValue([
+				{ path: "/repo", stagingBranch: "staging" },
+			]);
+			window.showInputBox.mockResolvedValueOnce("new-agent");
+			window.showInputBox.mockResolvedValueOnce("");
+
+			const existingAgents = [
+				{ agentName: "running-1", repoPath: "/repo", status: "running", createdAt: "2026-01-01T00:00:00Z" },
+				{ agentName: "running-2", repoPath: "/repo", status: "running", createdAt: "2026-02-01T00:00:00Z" },
+				{ agentName: "suspended-1", repoPath: "/repo", status: "suspended", createdAt: "2026-01-15T00:00:00Z" },
+			];
+
+			agentService.createAgent
+				.mockRejectedValueOnce(new AgentLimitError("/repo", 3, "per-repo", existingAgents as any));
+
+			const handler = registeredHandlers.get("vscode-agentic.createAgent")!;
+			await handler();
+
+			expect(window.showWarningMessage).toHaveBeenCalledWith(
+				expect.stringContaining("No idle agents"),
+			);
+			expect(agentService.createAgent).toHaveBeenCalledTimes(1); // no retry
+		});
+
+		it("does not retry when user cancels", async () => {
+			repoConfigService.getAll.mockReturnValue([
+				{ path: "/repo", stagingBranch: "staging" },
+			]);
+			window.showInputBox.mockResolvedValueOnce("new-agent");
+			window.showInputBox.mockResolvedValueOnce("");
+
+			const existingAgents = [
+				{ agentName: "oldest-idle", repoPath: "/repo", status: "finished", createdAt: "2026-01-01T00:00:00Z" },
+			];
+
+			agentService.createAgent
+				.mockRejectedValueOnce(new AgentLimitError("/repo", 3, "per-repo", existingAgents as any));
+
+			// User selects "Cancel"
+			window.showWarningMessage.mockResolvedValueOnce("Cancel");
+
+			const handler = registeredHandlers.get("vscode-agentic.createAgent")!;
+			await handler();
+
+			expect(agentService.suspendAgent).not.toHaveBeenCalled();
+			expect(agentService.createAgent).toHaveBeenCalledTimes(1); // no retry
 		});
 	});
 });

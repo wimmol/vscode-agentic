@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { isValidBranchName } from "../utils/branch-validation.js";
+import { AgentLimitError } from "../services/agent.service.js";
 import type { AgentService } from "../services/agent.service.js";
 import type { TerminalService } from "../services/terminal.service.js";
 import type { RepoConfigService } from "../services/repo-config.service.js";
@@ -82,9 +83,23 @@ export function registerAgentCommands(
 				return;
 			}
 
-			// 4. Create agent
+			// 4. Create agent (with auto-suspend offer on limit error)
 			const initialPrompt = promptInput || undefined;
-			await agentService.createAgent(repoPath, agentName, initialPrompt);
+			try {
+				await agentService.createAgent(repoPath, agentName, initialPrompt);
+			} catch (err) {
+				if (err instanceof AgentLimitError) {
+					const handled = await handleAgentLimitError(err, agentService);
+					if (handled) {
+						// Retry after suspend
+						await agentService.createAgent(repoPath, agentName, initialPrompt);
+					} else {
+						return; // User cancelled
+					}
+				} else {
+					throw err;
+				}
+			}
 
 			vscode.window.showInformationMessage(
 				`Agent '${agentName}' created. Focus it to start Claude Code.`,
@@ -255,6 +270,46 @@ export function registerAgentCommands(
 		suspendDisposable,
 		suspendAllDisposable,
 	);
+}
+
+/**
+ * Handles an AgentLimitError by offering to suspend the oldest idle agent.
+ * Returns true if an agent was suspended (caller should retry creation),
+ * false if the user cancelled or no idle agents are available.
+ */
+async function handleAgentLimitError(
+	error: AgentLimitError,
+	agentService: AgentService,
+): Promise<boolean> {
+	// Find oldest idle agent (not running, not suspended) to offer for suspension
+	const candidates = error.existingAgents
+		.filter((a) => a.status !== "running" && a.status !== "suspended")
+		.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+
+	if (candidates.length === 0) {
+		vscode.window.showWarningMessage(
+			`${error.message} No idle agents available to suspend.`,
+		);
+		return false;
+	}
+
+	const oldest = candidates[0];
+	const scopeLabel =
+		error.limitType === "per-repo"
+			? `Per-repo agent limit (${error.limit})`
+			: `Global agent limit (${error.limit})`;
+
+	const action = await vscode.window.showWarningMessage(
+		`${scopeLabel} reached. Suspend idle agent '${oldest.agentName}' to make room?`,
+		"Suspend & Create",
+		"Cancel",
+	);
+
+	if (action === "Suspend & Create") {
+		await agentService.suspendAgent(oldest.repoPath, oldest.agentName);
+		return true;
+	}
+	return false;
 }
 
 /**
