@@ -92,11 +92,11 @@ Plans:
   1. After closing and reopening VS Code, all agent metadata and terminal sessions are restored -- agents appear in the sidebar with correct status
   2. User can restart a previously finished agent, which relaunches Claude Code CLI in the agent's existing branch and worktree
   3. On extension activation, orphan agent processes (from previous sessions that did not shut down cleanly) are detected and cleaned up
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 05-01: TBD
-- [ ] 05-02: TBD
+- [ ] 05-01-PLAN.md -- AgentEntry model update, TerminalService --continue and PID tracking, AgentService restart detection and last-focused storage
+- [ ] 05-02-PLAN.md -- Enhanced reconciliation (agent-worktree cross-reference, orphan process cleanup), activation wiring, last-focused highlighting
 
 ### Phase 6: Suspend/Restore and Notifications
 **Goal**: User can suspend idle agents to reclaim RAM and get notified when background agents need attention
@@ -137,6 +137,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 | 2. Agent Lifecycle and Terminal Management | 0/2 | Planning complete | - |
 | 3. Sidebar UI and Agent Switching | 0/2 | Planning complete | - |
 | 4. Git Workflow and Merge Protection | 0/2 | Planning complete | - |
-| 5. Session Persistence and Agent Reuse | 0/? | Not started | - |
+| 5. Session Persistence and Agent Reuse | 0/2 | Planning complete | - |
 | 6. Suspend/Restore and Notifications | 0/? | Not started | - |
 | 7. Remote Support and Performance at Scale | 0/? | Not started | - |
