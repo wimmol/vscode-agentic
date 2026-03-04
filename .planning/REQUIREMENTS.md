@@ -12,7 +12,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **AGENT-01**: User can create an agent by naming it, which auto-creates a git branch with that name and a worktree, then launches Claude Code CLI in the worktree
 - [x] **AGENT-02**: User can delete an agent, which kills the process, removes the worktree, and deletes the branch
 - [ ] **AGENT-03**: User can restart a previously finished agent, reusing its existing branch and worktree
-- [ ] **AGENT-04**: User cannot delete an agent whose branch has unmerged changes vs staging (merge protection)
+- [x] **AGENT-04**: User cannot delete an agent whose branch has unmerged changes vs staging (merge protection)
 - [x] **AGENT-05**: Agent status is tracked and visible (running, idle, finished, error, suspended)
 
 ### Sidebar & UI
@@ -21,7 +21,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **UI-02**: Each agent tile displays name, repo, and current status indicator
 - [x] **UI-03**: Clicking an agent tile from the same repo switches only the agent CLI panel and code editor to that agent's worktree
 - [x] **UI-04**: Clicking an agent tile from a different repo switches the entire VS Code context -- file tree, code editor, bottom terminal, and agent CLI panel
-- [ ] **UI-05**: Agent tile shows a merge button when the agent's branch has diffs vs the staging branch
+- [x] **UI-05**: Agent tile shows a merge button when the agent's branch has diffs vs the staging branch
 
 ### Terminal & Sessions
 
@@ -36,7 +36,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [x] **GIT-01**: When a repo is first added, user configures a staging branch name (default: "staging")
 - [x] **GIT-02**: Each agent works in its own git worktree, isolated from other agents and the main working directory
-- [ ] **GIT-03**: User can open VS Code's native diff view to review changes between an agent's branch and the staging branch
+- [x] **GIT-03**: User can open VS Code's native diff view to review changes between an agent's branch and the staging branch
 - [ ] **GIT-04**: User can create a PR from an agent branch to the staging branch after reviewing diffs
 - [x] **GIT-05**: Worktree creation is capped with hard limits per repo to prevent disk explosion
 - [x] **GIT-06**: Extension tracks worktrees in a manifest and reconciles against actual state on activation
@@ -105,10 +105,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | UI-02 | Phase 3 | Complete |
 | UI-03 | Phase 3 | Complete |
 | UI-04 | Phase 3 | Complete |
-| GIT-03 | Phase 4 | Pending |
+| GIT-03 | Phase 4 | Complete |
 | GIT-04 | Phase 4 | Pending |
-| AGENT-04 | Phase 4 | Pending |
-| UI-05 | Phase 4 | Pending |
+| AGENT-04 | Phase 4 | Complete |
+| UI-05 | Phase 4 | Complete |
 | TERM-03 | Phase 5 | Pending |
 | AGENT-03 | Phase 5 | Pending |
 | PERF-03 | Phase 5 | Pending |

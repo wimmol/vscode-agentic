@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Phase 4 planned — 2 plans in 2 waves, verification passed
-last_updated: "2026-03-04T07:33:09.506Z"
-last_activity: 2026-03-04 -- Completed Plan 03-02 (Sidebar Wiring, Commands, Cross-Repo Switching)
+status: in-progress
+stopped_at: Completed 04-01-PLAN.md (Diff Infrastructure)
+last_updated: "2026-03-04T07:37:00Z"
+last_activity: 2026-03-04 -- Completed Plan 04-01 (DiffService and GitContentProvider)
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 9
-  completed_plans: 7
-  percent: 100
+  completed_plans: 8
+  percent: 89
 ---
 
 # Project State
@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** Fast, isolated multi-agent development -- switch between AI coding agents and repos instantly, with each agent working in its own worktree so nothing conflicts.
-**Current focus:** Phase 3: Sidebar UI and Agent Switching
+**Current focus:** Phase 4: Git Workflow and Merge Protection
 
 ## Current Position
 
-Phase: 3 of 7 (Sidebar UI and Agent Switching)
-Plan: 2 of 2 in current phase
-Status: Phase 03 Complete
-Last activity: 2026-03-04 -- Completed Plan 03-02 (Sidebar Wiring, Commands, Cross-Repo Switching)
+Phase: 4 of 7 (Git Workflow and Merge Protection)
+Plan: 1 of 2 in current phase
+Status: Plan 04-01 Complete
+Last activity: 2026-03-04 -- Completed Plan 04-01 (DiffService and GitContentProvider)
 
-Progress: [██████████] 100% (Overall: 7/7 plans)
+Progress: [█████████░] 89% (Overall: 8/9 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 7
+- Total plans completed: 8
 - Average duration: 4min
-- Total execution time: 29min
+- Total execution time: 31min
 
 **By Phase:**
 
@@ -50,9 +50,10 @@ Progress: [██████████] 100% (Overall: 7/7 plans)
 | 02 | P02 | 4min | 2 | 8 |
 | 03 | P01 | 4min | 2 | 7 |
 | 03 | P02 | 4min | 3 | 10 |
+| 04 | P01 | 2min | 2 | 5 |
 
 **Recent Trend:**
-- Last 5 plans: 4min, 3min, 4min, 4min, 4min
+- Last 5 plans: 3min, 4min, 4min, 4min, 2min
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -89,6 +90,8 @@ Recent decisions affecting current work:
 - [Phase 03]: Separate focusAgentFromTile (sidebar click with workspace switch) from focusAgent (command palette with picker)
 - [Phase 03]: Cross-repo switch opens README.md in preview tab with preserveFocus to avoid stealing sidebar focus
 - [Phase 03]: createAgentInRepo delegates to existing createAgent with preSelectedRepoPath to avoid duplication
+- [Phase 04]: Enhanced vscode mock Uri.parse to properly parse URI strings with scheme, query, path for GitContentProvider tests
+- [Phase 04]: GitContentProvider uses URLSearchParams for query parsing and encodeURIComponent for building URIs
 
 ### Pending Todos
 
@@ -102,6 +105,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-04T07:33:09.493Z
-Stopped at: Phase 4 planned — 2 plans in 2 waves, verification passed
-Resume file: .planning/phases/04-git-workflow-and-merge-protection/04-01-PLAN.md
+Last session: 2026-03-04T07:37:00Z
+Stopped at: Completed 04-01-PLAN.md (Diff Infrastructure)
+Resume file: .planning/phases/04-git-workflow-and-merge-protection/04-02-PLAN.md
