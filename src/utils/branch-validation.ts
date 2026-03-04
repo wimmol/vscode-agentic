@@ -20,6 +20,7 @@ export function isValidBranchName(name: string): boolean {
 	}
 
 	// Cannot contain: space, ~, ^, :, ?, *, [, \, or ASCII control characters
+	// biome-ignore lint/suspicious/noControlCharactersInRegex: intentional - git ref validation requires checking for ASCII control characters
 	if (/[\s~^:?*[\\\x00-\x1f\x7f]/.test(name)) {
 		return false;
 	}
