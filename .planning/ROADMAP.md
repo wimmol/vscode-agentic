@@ -78,11 +78,11 @@ Plans:
   2. User can open VS Code's native diff view showing changes between the agent branch and the staging branch
   3. User can create a PR from the agent branch to the staging branch after reviewing diffs
   4. User cannot delete an agent whose branch has unmerged changes vs staging -- the extension blocks deletion with a clear explanation
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 04-01: TBD
-- [ ] 04-02: TBD
+- [ ] 04-01-PLAN.md -- DiffService (git diff detection, changed file listing) and GitContentProvider (file content at git refs)
+- [ ] 04-02-PLAN.md -- Diff review commands, PR creation, merge guard on deletion, TreeView conditional UI, extension wiring
 
 ### Phase 5: Session Persistence and Agent Reuse
 **Goal**: Agent sessions survive VS Code restarts and previously finished agents can be restarted in their existing context
@@ -136,7 +136,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 | 1. Extension Foundation and Git Infrastructure | 3/3 | Complete | 2026-03-04 |
 | 2. Agent Lifecycle and Terminal Management | 0/2 | Planning complete | - |
 | 3. Sidebar UI and Agent Switching | 0/2 | Planning complete | - |
-| 4. Git Workflow and Merge Protection | 0/? | Not started | - |
+| 4. Git Workflow and Merge Protection | 0/2 | Planning complete | - |
 | 5. Session Persistence and Agent Reuse | 0/? | Not started | - |
 | 6. Suspend/Restore and Notifications | 0/? | Not started | - |
 | 7. Remote Support and Performance at Scale | 0/? | Not started | - |
