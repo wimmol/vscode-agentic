@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: in-progress
-stopped_at: Completed 07-01-PLAN.md
-last_updated: "2026-03-04T09:54:24.000Z"
-last_activity: 2026-03-04 -- Completed Plan 07-01 (Resource Limits and CLI Health Check)
+status: complete
+stopped_at: Completed 07-02-PLAN.md -- All phases complete
+last_updated: "2026-03-04T10:01:24.000Z"
+last_activity: 2026-03-04 -- Completed Plan 07-02 (Diff TTL Cache and Auto-Suspend UX)
 progress:
   total_phases: 7
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 15
-  completed_plans: 14
-  percent: 93
+  completed_plans: 15
+  percent: 100
 ---
 
 # Project State
@@ -26,18 +26,18 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 ## Current Position
 
 Phase: 7 of 7 (Remote Support and Performance at Scale)
-Plan: 1 of 2 in current phase
-Status: Plan 07-01 Complete
-Last activity: 2026-03-04 -- Completed Plan 07-01 (Resource Limits and CLI Health Check)
+Plan: 2 of 2 in current phase
+Status: Plan 07-02 Complete -- Phase 7 Complete
+Last activity: 2026-03-04 -- Completed Plan 07-02 (Diff TTL Cache and Auto-Suspend UX)
 
-Progress: [█████████▒] 93% (Overall: 14/15 plans)
+Progress: [██████████] 100% (Overall: 15/15 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 14
+- Total plans completed: 15
 - Average duration: 4min
-- Total execution time: 55min
+- Total execution time: 59min
 
 **By Phase:**
 
@@ -57,9 +57,10 @@ Progress: [█████████▒] 93% (Overall: 14/15 plans)
 | 06 | P01 | 4min | 2 | 10 |
 | 06 | P02 | 3min | 2 | 6 |
 | 07 | P01 | 5min | 2 | 13 |
+| 07 | P02 | 4min | 2 | 6 |
 
 **Recent Trend:**
-- Last 5 plans: 4min, 3min, 4min, 3min, 5min
+- Last 5 plans: 3min, 4min, 3min, 5min, 4min
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -119,6 +120,10 @@ Recent decisions affecting current work:
 - [Phase 07]: AgentLimitError carries limitType (per-repo/global) and existingAgents for command layer error messaging
 - [Phase 07]: Claude CLI health check uses != false in when clauses so buttons are visible before check completes
 - [Phase 07]: Configurable test mock (_setConfigValue/_clearConfig) pattern for VS Code settings in unit tests
+- [Phase 07]: TTL cache uses parallel Map<string, number> timestamps alongside boolean cache for O(1) freshness check
+- [Phase 07]: handleAgentLimitError is private helper (not exported) -- tightly coupled to createAgent command flow
+- [Phase 07]: handleWorktreeLimitError accepts optional agentService third parameter for backward compatibility
+- [Phase 07]: Oldest idle agent selection uses createdAt string sort (ISO format sorts lexicographically)
 
 ### Pending Todos
 
@@ -132,6 +137,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-04T09:54:24.000Z
-Stopped at: Completed 07-01-PLAN.md
-Resume file: .planning/phases/07-remote-support-and-performance-at-scale/07-01-SUMMARY.md
+Last session: 2026-03-04T10:01:24.000Z
+Stopped at: Completed 07-02-PLAN.md -- All phases complete
+Resume file: .planning/phases/07-remote-support-and-performance-at-scale/07-02-SUMMARY.md
