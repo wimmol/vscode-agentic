@@ -14,7 +14,14 @@ export interface AgentEntry {
 	initialPrompt?: string; // optional task description provided at creation
 	createdAt: string; // ISO timestamp
 	exitCode?: number; // set when terminal exits (undefined while running or created)
+	hasBeenRun?: boolean; // true after first focusAgent -- drives restart detection
 }
 
 /** Memento key for the agent registry */
 export const AGENT_REGISTRY_KEY = "vscode-agentic.agentRegistry";
+
+/** Memento key for terminal PID tracking (orphan detection) */
+export const PID_REGISTRY_KEY = "vscode-agentic.pidRegistry";
+
+/** Memento key for last-focused agent compound key */
+export const LAST_FOCUSED_KEY = "vscode-agentic.lastFocusedAgent";

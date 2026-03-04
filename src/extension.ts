@@ -31,6 +31,7 @@ export function activate(context: vscode.ExtensionContext): void {
 		(agentName, repoPath, status, exitCode) => {
 			agentService.updateStatus(repoPath, agentName, status, exitCode);
 		},
+		context.workspaceState,
 	);
 	agentService.setTerminalService(terminalService);
 

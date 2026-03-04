@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createMockTerminal, window } from "../__mocks__/vscode.js";
+import { createMockMemento, createMockTerminal, window } from "../__mocks__/vscode.js";
 import { TerminalService } from "../../src/services/terminal.service.js";
+import { PID_REGISTRY_KEY } from "../../src/models/agent.js";
 
 describe("TerminalService", () => {
 	let service: TerminalService;
 	let onStatusChange: ReturnType<typeof vi.fn>;
+	let mockState: ReturnType<typeof createMockMemento>;
 	let closeListener: (terminal: ReturnType<typeof createMockTerminal>) => void;
 
 	beforeEach(() => {
@@ -19,7 +21,8 @@ describe("TerminalService", () => {
 		);
 
 		onStatusChange = vi.fn();
-		service = new TerminalService(onStatusChange);
+		mockState = createMockMemento();
+		service = new TerminalService(onStatusChange, mockState);
 	});
 
 	describe("createTerminal", () => {
@@ -288,6 +291,121 @@ describe("TerminalService", () => {
 		});
 	});
 
+	describe("continueSession flag", () => {
+		it("passes shellArgs=['--continue'] when continueSession is true", () => {
+			const mockTerminal = createMockTerminal("Agent: test-agent");
+			window.createTerminal.mockReturnValue(mockTerminal);
+
+			service.createTerminal("/repo", "test-agent", "/repo/.worktrees/test-agent", undefined, true);
+
+			expect(window.createTerminal).toHaveBeenCalledWith(
+				expect.objectContaining({
+					shellArgs: ["--continue"],
+				}),
+			);
+		});
+
+		it("passes initialPrompt as shellArgs when continueSession is false", () => {
+			const mockTerminal = createMockTerminal("Agent: test-agent");
+			window.createTerminal.mockReturnValue(mockTerminal);
+
+			service.createTerminal("/repo", "test-agent", "/repo/.worktrees/test-agent", "Fix the bug", false);
+
+			expect(window.createTerminal).toHaveBeenCalledWith(
+				expect.objectContaining({
+					shellArgs: ["Fix the bug"],
+				}),
+			);
+		});
+
+		it("passes empty shellArgs when continueSession is false and no initialPrompt", () => {
+			const mockTerminal = createMockTerminal("Agent: test-agent");
+			window.createTerminal.mockReturnValue(mockTerminal);
+
+			service.createTerminal("/repo", "test-agent", "/repo/.worktrees/test-agent", undefined, false);
+
+			expect(window.createTerminal).toHaveBeenCalledWith(
+				expect.objectContaining({
+					shellArgs: [],
+				}),
+			);
+		});
+	});
+
+	describe("PID tracking", () => {
+		it("stores terminal PID in Memento after createTerminal", async () => {
+			const mockTerminal = createMockTerminal("Agent: test-agent");
+			window.createTerminal.mockReturnValue(mockTerminal);
+
+			service.createTerminal("/repo", "test-agent", "/repo/.worktrees/test-agent");
+
+			// Wait for fire-and-forget PID tracking to complete
+			await vi.waitFor(() => {
+				const pidMap = mockState.get(PID_REGISTRY_KEY, {}) as Record<string, number>;
+				expect(pidMap["/repo::test-agent"]).toBe(12345);
+			});
+		});
+
+		it("skips PID storage when processId resolves to undefined", async () => {
+			const mockTerminal = createMockTerminal("Agent: test-agent");
+			mockTerminal._setPid(undefined);
+			window.createTerminal.mockReturnValue(mockTerminal);
+
+			service.createTerminal("/repo", "test-agent", "/repo/.worktrees/test-agent");
+
+			// Give the fire-and-forget async a tick to complete
+			await new Promise((r) => setTimeout(r, 10));
+
+			const pidMap = mockState.get(PID_REGISTRY_KEY, {}) as Record<string, number>;
+			expect(pidMap["/repo::test-agent"]).toBeUndefined();
+		});
+
+		it("clears PID from Memento on disposeTerminal", async () => {
+			const mockTerminal = createMockTerminal("Agent: test-agent");
+			window.createTerminal.mockReturnValue(mockTerminal);
+
+			service.createTerminal("/repo", "test-agent", "/repo/.worktrees/test-agent");
+
+			// Wait for PID to be stored
+			await vi.waitFor(() => {
+				const pidMap = mockState.get(PID_REGISTRY_KEY, {}) as Record<string, number>;
+				expect(pidMap["/repo::test-agent"]).toBe(12345);
+			});
+
+			service.disposeTerminal("/repo", "test-agent");
+
+			const pidMap = mockState.get(PID_REGISTRY_KEY, {}) as Record<string, number>;
+			expect(pidMap["/repo::test-agent"]).toBeUndefined();
+		});
+
+		it("getAllPids returns stored PID map from Memento", async () => {
+			const mockTerminal = createMockTerminal("Agent: agent-1");
+			window.createTerminal.mockReturnValue(mockTerminal);
+
+			service.createTerminal("/repo", "agent-1", "/repo/.worktrees/agent-1");
+
+			await vi.waitFor(() => {
+				const pids = service.getAllPids();
+				expect(pids).toEqual({ "/repo::agent-1": 12345 });
+			});
+		});
+
+		it("clearAllPids empties the PID registry", async () => {
+			const mockTerminal = createMockTerminal("Agent: agent-1");
+			window.createTerminal.mockReturnValue(mockTerminal);
+
+			service.createTerminal("/repo", "agent-1", "/repo/.worktrees/agent-1");
+
+			await vi.waitFor(() => {
+				expect(service.getAllPids()).toEqual({ "/repo::agent-1": 12345 });
+			});
+
+			await service.clearAllPids();
+
+			expect(service.getAllPids()).toEqual({});
+		});
+	});
+
 	describe("dispose", () => {
 		it("cleans up event subscriptions", () => {
 			const disposeFn = vi.fn();
@@ -298,7 +416,7 @@ describe("TerminalService", () => {
 				},
 			);
 
-			const svc = new TerminalService(onStatusChange);
+			const svc = new TerminalService(onStatusChange, mockState);
 			svc.dispose();
 
 			expect(disposeFn).toHaveBeenCalled();

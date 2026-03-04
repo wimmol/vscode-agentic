@@ -19,13 +19,20 @@ export function createMockMemento() {
 
 // Terminal mock factory -- creates mock terminal objects for tests
 export function createMockTerminal(name: string) {
+	let _pid: number | undefined = 12345;
 	return {
 		name,
 		show: vi.fn(),
 		dispose: vi.fn(),
 		exitStatus: undefined as { code: number | undefined; reason: number } | undefined,
+		get processId(): Promise<number | undefined> {
+			return Promise.resolve(_pid);
+		},
 		_setExitStatus(code: number | undefined, reason: number) {
 			this.exitStatus = { code, reason };
+		},
+		_setPid(pid: number | undefined) {
+			_pid = pid;
 		},
 	};
 }
