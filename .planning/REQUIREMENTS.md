@@ -28,9 +28,9 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **TERM-01**: Each agent runs as a Claude Code CLI session in a VS Code integrated terminal
 - [x] **TERM-02**: User can run 2-5 agent sessions concurrently without conflicts
 - [x] **TERM-03**: Agent sessions persist across VS Code restarts -- agent metadata and terminal sessions are restored
-- [ ] **TERM-04**: User can suspend an idle/finished agent to free RAM -- terminal state is saved and process is killed
-- [ ] **TERM-05**: User can restore a suspended agent -- process relaunches in the same worktree context
-- [ ] **TERM-06**: User receives OS notification when a background agent finishes work or needs input
+- [x] **TERM-04**: User can suspend an idle/finished agent to free RAM -- terminal state is saved and process is killed
+- [x] **TERM-05**: User can restore a suspended agent -- process relaunches in the same worktree context
+- [x] **TERM-06**: User receives OS notification when a background agent finishes work or needs input
 
 ### Git Workflow
 
@@ -112,9 +112,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TERM-03 | Phase 5 | Complete |
 | AGENT-03 | Phase 5 | Complete |
 | PERF-03 | Phase 5 | Complete |
-| TERM-04 | Phase 6 | Pending |
-| TERM-05 | Phase 6 | Pending |
-| TERM-06 | Phase 6 | Pending |
+| TERM-04 | Phase 6 | Complete |
+| TERM-05 | Phase 6 | Complete |
+| TERM-06 | Phase 6 | Complete |
 | REMOTE-01 | Phase 7 | Pending |
 | REMOTE-02 | Phase 7 | Pending |
 | PERF-02 | Phase 7 | Pending |

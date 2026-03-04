@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Phase 6 context gathered
-last_updated: "2026-03-04T08:58:50.729Z"
-last_activity: 2026-03-04 -- Completed Plan 05-02 (Activation Reconciliation)
+stopped_at: Completed 06-01-PLAN.md
+last_updated: "2026-03-04T09:18:28.796Z"
+last_activity: 2026-03-04 -- Completed Plan 06-01 (Suspend/Restore Core)
 progress:
   total_phases: 7
   completed_phases: 5
-  total_plans: 11
-  completed_plans: 11
-  percent: 100
+  total_plans: 13
+  completed_plans: 12
+  percent: 92
 ---
 
 # Project State
@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** Fast, isolated multi-agent development -- switch between AI coding agents and repos instantly, with each agent working in its own worktree so nothing conflicts.
-**Current focus:** Phase 5 complete -- Session Persistence and Agent Reuse
+**Current focus:** Phase 6 in progress -- Suspend/Restore and Notifications
 
 ## Current Position
 
-Phase: 5 of 7 (Session Persistence and Agent Reuse)
-Plan: 2 of 2 in current phase
-Status: Phase 05 Complete
-Last activity: 2026-03-04 -- Completed Plan 05-02 (Activation Reconciliation)
+Phase: 6 of 7 (Suspend/Restore and Notifications)
+Plan: 1 of 2 in current phase
+Status: Plan 06-01 Complete
+Last activity: 2026-03-04 -- Completed Plan 06-01 (Suspend/Restore Core)
 
-Progress: [██████████] 100% (Overall: 11/11 plans)
+Progress: [█████████░] 92% (Overall: 12/13 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 11
+- Total plans completed: 12
 - Average duration: 4min
-- Total execution time: 43min
+- Total execution time: 47min
 
 **By Phase:**
 
@@ -54,9 +54,10 @@ Progress: [██████████] 100% (Overall: 11/11 plans)
 | 04 | P02 | 5min | 2 | 9 |
 | 05 | P01 | 4min | 2 | 7 |
 | 05 | P02 | 3min | 2 | 3 |
+| 06 | P01 | 4min | 2 | 10 |
 
 **Recent Trend:**
-- Last 5 plans: 4min, 2min, 5min, 4min, 3min
+- Last 5 plans: 5min, 4min, 3min, 4min, 4min
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -106,6 +107,9 @@ Recent decisions affecting current work:
 - [Phase 05]: EPERM on SIGTERM counts as not-killed (process owned by another user)
 - [Phase 05]: Orphan agent removal runs before running->created reset
 - [Phase 05]: Single combined notification for agent + process orphan cleanup
+- [Phase 06]: Status-based contextValue encoding (agentItemSuspended/agentItemRunning) for conditional menus
+- [Phase 06]: onBackgroundExit as optional third TerminalService constructor parameter preserves backward compatibility
+- [Phase 06]: Suspended icon uses debug-pause with disabledForeground -- distinct from created while sharing muted color
 
 ### Pending Todos
 
@@ -119,6 +123,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-04T08:58:50.700Z
-Stopped at: Phase 6 context gathered
-Resume file: .planning/phases/06-suspend-restore-and-notifications/06-CONTEXT.md
+Last session: 2026-03-04T09:18:28.794Z
+Stopped at: Completed 06-01-PLAN.md
+Resume file: None
