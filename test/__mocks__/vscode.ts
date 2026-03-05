@@ -16,6 +16,19 @@ export function createMockMemento() {
 	};
 }
 
+// Terminal mock factory -- creates a mock terminal object tests can use
+export function createMockTerminal(name: string) {
+	return {
+		name,
+		show: vi.fn(),
+		dispose: vi.fn(),
+		exitStatus: undefined as { code: number | undefined; reason: number } | undefined,
+		_setExitStatus(code: number | undefined, reason: number) {
+			this.exitStatus = { code, reason };
+		},
+	};
+}
+
 // Window API mocks
 export const window = {
 	showInputBox: vi.fn(),
@@ -26,6 +39,10 @@ export const window = {
 	withProgress: vi.fn((_options: unknown, task: (progress: unknown) => Promise<unknown>) => {
 		return task({ report: vi.fn() });
 	}),
+	createTerminal: vi.fn(),
+	onDidCloseTerminal: vi.fn(),
+	onDidChangeActiveTerminal: vi.fn(),
+	terminals: [] as ReturnType<typeof createMockTerminal>[],
 };
 
 // Workspace API mocks
@@ -59,4 +76,13 @@ export const ProgressLocation = {
 	Notification: 15,
 	SourceControl: 1,
 	Window: 10,
+};
+
+// TerminalExitReason enum mock
+export const TerminalExitReason = {
+	Unknown: 0,
+	Shutdown: 1,
+	Process: 2,
+	User: 3,
+	Extension: 4,
 };
