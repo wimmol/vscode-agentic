@@ -2,8 +2,11 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-// Mock the child_process module BEFORE importing GitService
-const mockExecFile = vi.fn();
+// Use vi.hoisted so the mock fn is available when vi.mock factory runs (hoisted above imports)
+const { mockExecFile } = vi.hoisted(() => ({
+	mockExecFile: vi.fn(),
+}));
+
 vi.mock("node:child_process", () => ({
 	execFile: mockExecFile,
 }));
