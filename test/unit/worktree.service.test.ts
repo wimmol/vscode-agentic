@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockMemento } from "../__mocks__/vscode";
 
 // Mock GitService
@@ -9,13 +9,13 @@ function createMockGitService() {
 	};
 }
 
+import type { WorktreeEntry } from "../../src/models/worktree";
 // We need to import after defining mocks
 import {
-	WorktreeService,
-	WorktreeLimitError,
 	type ReconciliationResult,
+	WorktreeLimitError,
+	WorktreeService,
 } from "../../src/services/worktree.service";
-import type { WorktreeEntry } from "../../src/models/worktree";
 
 describe("WorktreeService", () => {
 	let git: ReturnType<typeof createMockGitService>;
@@ -201,12 +201,9 @@ describe("WorktreeService", () => {
 			await service.addWorktree("/repo", "agent-gone");
 
 			// Disk shows no worktrees under .worktrees/
-			const porcelainOutput = [
-				"worktree /repo",
-				"HEAD aaa111",
-				"branch refs/heads/main",
-				"",
-			].join("\n");
+			const porcelainOutput = ["worktree /repo", "HEAD aaa111", "branch refs/heads/main", ""].join(
+				"\n",
+			);
 
 			git.exec.mockImplementation(async (_repo: string, args: string[]) => {
 				if (args[0] === "worktree" && args[1] === "list") {

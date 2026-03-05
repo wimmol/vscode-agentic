@@ -1,14 +1,14 @@
 import * as path from "node:path";
 import type * as vscode from "vscode";
-import type { GitService } from "./git.service";
+import { DEFAULT_WORKTREE_LIMIT } from "../models/repo";
 import {
+	WORKTREE_DIR_NAME,
+	WORKTREE_MANIFEST_KEY,
 	type WorktreeEntry,
 	type WorktreeOnDisk,
-	WORKTREE_MANIFEST_KEY,
-	WORKTREE_DIR_NAME,
 } from "../models/worktree";
-import { DEFAULT_WORKTREE_LIMIT } from "../models/repo";
 import { parseWorktreeList } from "../utils/worktree-parser";
+import type { GitService } from "./git.service";
 
 export class WorktreeLimitError extends Error {
 	constructor(
@@ -110,19 +110,12 @@ export class WorktreeService {
 	async removeWorktree(repoPath: string, agentName: string): Promise<void> {
 		return this.withLock(repoPath, async () => {
 			const allEntries = this.getAllManifestEntries();
-			const entry = allEntries.find(
-				(e) => e.agentName === agentName && e.repoPath === repoPath,
-			);
+			const entry = allEntries.find((e) => e.agentName === agentName && e.repoPath === repoPath);
 
 			if (entry) {
 				// Try to remove the worktree from disk
 				try {
-					await this.git.exec(repoPath, [
-						"worktree",
-						"remove",
-						"--force",
-						entry.path,
-					]);
+					await this.git.exec(repoPath, ["worktree", "remove", "--force", entry.path]);
 				} catch {
 					// Worktree may already be gone -- that's fine
 				}

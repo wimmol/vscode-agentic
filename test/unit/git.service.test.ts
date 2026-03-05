@@ -1,6 +1,6 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Use vi.hoisted so the mock fn is available when vi.mock factory runs (hoisted above imports)
 const { mockExecFile } = vi.hoisted(() => ({
@@ -11,7 +11,7 @@ vi.mock("node:child_process", () => ({
 	execFile: mockExecFile,
 }));
 
-import { GitService, GitError } from "../../src/services/git.service";
+import { GitError, GitService } from "../../src/services/git.service";
 
 describe("GitService", () => {
 	let git: GitService;
@@ -56,9 +56,7 @@ describe("GitService", () => {
 			);
 
 			await expect(git.exec("/repo", ["status"])).rejects.toThrow(GitError);
-			await expect(git.exec("/repo", ["status"])).rejects.toThrow(
-				"fatal: not a git repository",
-			);
+			await expect(git.exec("/repo", ["status"])).rejects.toThrow("fatal: not a git repository");
 
 			try {
 				await git.exec("/repo", ["status"]);
@@ -128,10 +126,7 @@ describe("GitService", () => {
 
 	describe("PERF-04: no sync calls", () => {
 		it("module does NOT contain execFileSync or spawnSync", () => {
-			const source = readFileSync(
-				resolve(__dirname, "../../src/services/git.service.ts"),
-				"utf-8",
-			);
+			const source = readFileSync(resolve(__dirname, "../../src/services/git.service.ts"), "utf-8");
 			expect(source).not.toContain("execFileSync");
 			expect(source).not.toContain("spawnSync");
 		});
