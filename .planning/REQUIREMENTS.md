@@ -51,7 +51,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **PERF-01**: Terminals are created lazily (only when agent is focused) to minimize RAM usage
 - [ ] **PERF-02**: Extension remains responsive with 5 concurrent agents and large repositories
 - [ ] **PERF-03**: Orphan agent processes are detected and cleaned up on extension activation
-- [ ] **PERF-04**: All git operations are async -- no synchronous calls that block the VS Code UI
+- [x] **PERF-04**: All git operations are async -- no synchronous calls that block the VS Code UI
 
 ## v2 Requirements
 
