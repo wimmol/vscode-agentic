@@ -41,13 +41,14 @@ Plans:
 ### Phase 2: Agent Lifecycle and Terminal Management
 **Goal**: User can create named agents that run Claude Code CLI in isolated worktrees, run multiple agents concurrently, and delete agents cleanly
 **Depends on**: Phase 1
-**Requirements**: AGENT-01, AGENT-02, AGENT-05, TERM-01, TERM-02, PERF-01
+**Requirements**: AGENT-01, AGENT-02, AGENT-05, TERM-01, TERM-02, PERF-01, UI-06
 **Success Criteria** (what must be TRUE):
   1. User can create an agent by naming it, which creates a git branch and worktree and launches Claude Code CLI in a VS Code terminal
   2. User can delete an agent, which kills the terminal process, removes the worktree, and deletes the branch
   3. User can see each agent's current status (running, idle, finished, error) at a glance
   4. User can run 2-5 agents simultaneously across the same repo without conflicts or performance degradation
   5. Terminals are created only when an agent is focused (lazy creation), not on agent creation
+  6. All commands are hidden from the Command Palette -- interactions happen exclusively through the sidebar UI
 **Plans**: 2 plans
 
 Plans:

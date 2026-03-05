@@ -22,6 +22,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **UI-03**: Clicking any agent tile replaces the Explorer workspace folders with only that agent's worktree folder, so the file tree shows exclusively the selected agent's working directory
 - [ ] **UI-04**: Clicking an agent tile switches the full VS Code context -- Explorer shows only the agent's worktree, code editor opens a file from the worktree, and the agent CLI terminal is focused
 - [ ] **UI-05**: Agent tile shows a merge button when the agent's branch has diffs vs the staging branch
+- [ ] **UI-06**: All agent and repo interactions are accessed exclusively through the sidebar UI (toolbar buttons, inline actions, context menus, tree item clicks) -- no Command Palette entries
 
 ### Terminal & Sessions
 
@@ -109,6 +110,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | GIT-04 | Phase 4 | Planned |
 | AGENT-04 | Phase 4 | Planned |
 | UI-05 | Phase 4 | Planned |
+| UI-06 | Phase 2, 3 | Planned |
 | TERM-03 | Phase 5 | Planned |
 | AGENT-03 | Phase 5 | Planned |
 | PERF-03 | Phase 5 | Planned |
@@ -120,8 +122,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PERF-02 | Phase 7 | Planned |
 
 **Coverage:**
-- v1 requirements: 28 total
-- Mapped to phases: 28
+- v1 requirements: 29 total
+- Mapped to phases: 29
 - Unmapped: 0
 
 ---
