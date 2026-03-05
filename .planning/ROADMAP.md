@@ -61,8 +61,8 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. Right sidebar displays agent tiles in a TreeView, grouped by repository
   2. Each agent tile shows the agent's name, repository, and a visual status indicator (running, idle, finished, error, suspended)
-  3. Clicking an agent tile from the same repo switches the agent CLI panel and code editor to that agent's worktree without affecting the file explorer or bottom terminal
-  4. Clicking an agent tile from a different repo switches the entire VS Code context -- file tree, code editor, bottom terminal, and agent CLI panel all change to the new repo's worktree
+  3. Clicking any agent tile replaces the Explorer workspace folders with only that agent's worktree folder -- the file tree shows exclusively the selected agent's working directory
+  4. Clicking an agent tile switches the full VS Code context -- Explorer shows only the agent's worktree, code editor opens a file from the worktree, and the agent CLI terminal is focused
 **Plans**: 2 plans
 
 Plans:

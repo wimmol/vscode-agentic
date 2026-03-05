@@ -19,8 +19,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [ ] **UI-01**: Right sidebar shows agent tiles in a TreeView grouped by repository
 - [ ] **UI-02**: Each agent tile displays name, repo, and current status indicator
-- [ ] **UI-03**: Clicking an agent tile from the same repo switches only the agent CLI panel and code editor to that agent's worktree
-- [ ] **UI-04**: Clicking an agent tile from a different repo switches the entire VS Code context -- file tree, code editor, bottom terminal, and agent CLI panel
+- [ ] **UI-03**: Clicking any agent tile replaces the Explorer workspace folders with only that agent's worktree folder, so the file tree shows exclusively the selected agent's working directory
+- [ ] **UI-04**: Clicking an agent tile switches the full VS Code context -- Explorer shows only the agent's worktree, code editor opens a file from the worktree, and the agent CLI terminal is focused
 - [ ] **UI-05**: Agent tile shows a merge button when the agent's branch has diffs vs the staging branch
 
 ### Terminal & Sessions
