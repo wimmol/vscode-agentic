@@ -18,7 +18,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 4: Git Workflow and Merge Protection** - Diff review via VS Code native diff editor, PR creation from agent branch to staging, merge protection on deletion
 - [ ] **Phase 5: Session Persistence and Agent Reuse** - Agent sessions survive VS Code restarts, restart finished agents in existing worktrees, orphan process cleanup
 - [ ] **Phase 6: Suspend/Restore and Notifications** - Suspend idle agents to free RAM, restore on demand, OS notifications for background agent events
-- [x] **Phase 7: Remote Support and Performance at Scale** - Remote SSH agent management, configurable resource limits, responsive performance with 5 concurrent agents (completed 2026-03-04)
+- [ ] **Phase 7: Remote Support and Performance at Scale** - Remote SSH agent management, configurable resource limits, responsive performance with 5 concurrent agents
 
 ## Phase Details
 
@@ -34,9 +34,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 3 plans
 
 Plans:
-- [x] 01-01-PLAN.md -- Project scaffold, build pipeline, type definitions, and Vitest test infrastructure
-- [x] 01-02-PLAN.md -- GitService async wrapper, worktree parser, WorktreeService with limits and reconciliation
-- [x] 01-03-PLAN.md -- RepoConfigService, command handlers, gitignore utility, extension wiring
+- [ ] 01-01-PLAN.md -- Project scaffold, build pipeline, type definitions, and Vitest test infrastructure
+- [ ] 01-02-PLAN.md -- GitService async wrapper, worktree parser, WorktreeService with limits and reconciliation
+- [ ] 01-03-PLAN.md -- RepoConfigService, command handlers, gitignore utility, extension wiring
 
 ### Phase 2: Agent Lifecycle and Terminal Management
 **Goal**: User can create named agents that run Claude Code CLI in isolated worktrees, run multiple agents concurrently, and delete agents cleanly
@@ -133,10 +133,10 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Extension Foundation and Git Infrastructure | 3/3 | Complete | 2026-03-04 |
+| 1. Extension Foundation and Git Infrastructure | 0/3 | Planning complete | - |
 | 2. Agent Lifecycle and Terminal Management | 0/2 | Planning complete | - |
 | 3. Sidebar UI and Agent Switching | 0/2 | Planning complete | - |
 | 4. Git Workflow and Merge Protection | 0/2 | Planning complete | - |
 | 5. Session Persistence and Agent Reuse | 0/2 | Planning complete | - |
 | 6. Suspend/Restore and Notifications | 0/2 | Planning complete | - |
-| 7. Remote Support and Performance at Scale | 0/2 | Complete    | 2026-03-04 |
+| 7. Remote Support and Performance at Scale | 0/2 | Planning complete | - |
