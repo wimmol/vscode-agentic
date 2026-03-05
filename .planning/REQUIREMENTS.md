@@ -34,7 +34,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Git Workflow
 
-- [ ] **GIT-01**: When a repo is first added, user configures a staging branch name (default: "staging")
+- [x] **GIT-01**: When a repo is first added, user configures a staging branch name (default: "staging")
 - [x] **GIT-02**: Each agent works in its own git worktree, isolated from other agents and the main working directory
 - [ ] **GIT-03**: User can open VS Code's native diff view to review changes between an agent's branch and the staging branch
 - [ ] **GIT-04**: User can create a PR from an agent branch to the staging branch after reviewing diffs
