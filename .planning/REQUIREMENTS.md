@@ -9,11 +9,11 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Agent Lifecycle
 
-- [ ] **AGENT-01**: User can create an agent by naming it, which auto-creates a git branch with that name and a worktree, then launches Claude Code CLI in the worktree
-- [ ] **AGENT-02**: User can delete an agent, which kills the process, removes the worktree, and deletes the branch
+- [x] **AGENT-01**: User can create an agent by naming it, which auto-creates a git branch with that name and a worktree, then launches Claude Code CLI in the worktree
+- [x] **AGENT-02**: User can delete an agent, which kills the process, removes the worktree, and deletes the branch
 - [ ] **AGENT-03**: User can restart a previously finished agent, reusing its existing branch and worktree
 - [ ] **AGENT-04**: User cannot delete an agent whose branch has unmerged changes vs staging (merge protection)
-- [ ] **AGENT-05**: Agent status is tracked and visible (running, idle, finished, error, suspended)
+- [x] **AGENT-05**: Agent status is tracked and visible (running, idle, finished, error, suspended)
 
 ### Sidebar & UI
 
@@ -22,7 +22,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **UI-03**: Clicking any agent tile replaces the Explorer workspace folders with only that agent's worktree folder, so the file tree shows exclusively the selected agent's working directory
 - [ ] **UI-04**: Clicking an agent tile switches the full VS Code context -- Explorer shows only the agent's worktree, code editor opens a file from the worktree, and the agent CLI terminal is focused
 - [ ] **UI-05**: Agent tile shows a merge button when the agent's branch has diffs vs the staging branch
-- [ ] **UI-06**: All agent and repo interactions are accessed exclusively through the sidebar UI (toolbar buttons, inline actions, context menus, tree item clicks) -- no Command Palette entries
+- [x] **UI-06**: All agent and repo interactions are accessed exclusively through the sidebar UI (toolbar buttons, inline actions, context menus, tree item clicks) -- no Command Palette entries
 
 ### Terminal & Sessions
 
