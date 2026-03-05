@@ -4,6 +4,11 @@ import { RepoConfigService } from "../../src/services/repo-config.service";
 import { REPO_CONFIGS_KEY, DEFAULT_STAGING_BRANCH, DEFAULT_WORKTREE_LIMIT } from "../../src/models/repo";
 import type { GitService } from "../../src/services/git.service";
 
+// Mock the gitignore utility so RepoConfigService tests don't hit the filesystem
+vi.mock("../../src/utils/gitignore", () => ({
+	ensureGitignoreEntry: vi.fn().mockResolvedValue(undefined),
+}));
+
 function createMockGitService(): GitService {
 	return {
 		exec: vi.fn<(repoPath: string, args: string[]) => Promise<string>>().mockResolvedValue(""),
