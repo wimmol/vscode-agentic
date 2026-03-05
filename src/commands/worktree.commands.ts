@@ -1,6 +1,5 @@
 import * as vscode from "vscode";
-import type { WorktreeLimitError } from "../services/worktree.service";
-import type { WorktreeService } from "../services/worktree.service";
+import type { WorktreeLimitError, WorktreeService } from "../services/worktree.service";
 
 interface WorktreePickItem extends vscode.QuickPickItem {
 	agentName: string;
@@ -30,8 +29,7 @@ export async function handleWorktreeLimitError(
 
 	const selected = await vscode.window.showQuickPick(items, {
 		title: `Worktree limit reached (${error.limit}). Select an agent to delete:`,
-		placeHolder:
-			"Choose an agent worktree to remove, or press Escape to cancel",
+		placeHolder: "Choose an agent worktree to remove, or press Escape to cancel",
 	});
 
 	if (!selected) {

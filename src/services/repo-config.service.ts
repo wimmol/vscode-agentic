@@ -1,15 +1,15 @@
 import * as vscode from "vscode";
-import type { GitService } from "./git.service";
 import {
-	type RepoConfig,
-	REPO_CONFIGS_KEY,
 	DEFAULT_STAGING_BRANCH,
 	DEFAULT_WORKTREE_LIMIT,
+	REPO_CONFIGS_KEY,
+	type RepoConfig,
 } from "../models/repo";
 import { ensureGitignoreEntry } from "../utils/gitignore";
+import type { GitService } from "./git.service";
 
 interface RepoPickItem extends vscode.QuickPickItem {
-	_path?: string;
+	_path: string;
 }
 
 export class RepoConfigService {
@@ -53,7 +53,7 @@ export class RepoConfigService {
 				});
 			}
 		}
-		items.push({ label: "Browse...", description: "Select a folder from disk" });
+		items.push({ label: "Browse...", description: "Select a folder from disk", _path: "" });
 
 		// Step 2: Show picker for repo selection
 		const picked = await vscode.window.showQuickPick(items, {
@@ -79,16 +79,14 @@ export class RepoConfigService {
 			}
 			repoPath = result[0].fsPath;
 		} else {
-			repoPath = picked._path!;
+			repoPath = picked._path;
 		}
 
 		// Step 3: Validate it's a git repo
 		try {
 			await this.git.exec(repoPath, ["rev-parse", "--git-dir"]);
 		} catch {
-			vscode.window.showErrorMessage(
-				`"${repoPath}" is not a git repository.`,
-			);
+			vscode.window.showErrorMessage(`"${repoPath}" is not a git repository.`);
 			return undefined;
 		}
 
@@ -102,29 +100,27 @@ export class RepoConfigService {
 		}
 
 		// Step 5: Prompt for staging branch name (with loop for existing branch)
-		let stagingBranch: string | undefined;
+		let stagingBranch = "";
 		let branchConfirmed = false;
 
 		while (!branchConfirmed) {
-			stagingBranch = await vscode.window.showInputBox({
+			const input = await vscode.window.showInputBox({
 				prompt: "Enter staging branch name",
 				value: DEFAULT_STAGING_BRANCH,
 				placeHolder: "Enter staging branch name",
 			});
 
-			if (stagingBranch === undefined) {
+			if (input === undefined) {
 				return undefined;
 			}
+			stagingBranch = input;
 
 			// Check if branch already exists
 			const exists = await this.git.branchExists(repoPath, stagingBranch);
 
 			if (exists) {
 				const choice = await vscode.window.showQuickPick(
-					[
-						{ label: `Use existing branch '${stagingBranch}'` },
-						{ label: "Pick a different name" },
-					],
+					[{ label: `Use existing branch '${stagingBranch}'` }, { label: "Pick a different name" }],
 					{
 						placeHolder: `Branch '${stagingBranch}' already exists in this repository`,
 						title: "Branch exists",
@@ -147,7 +143,7 @@ export class RepoConfigService {
 		// Step 6: Create and save config
 		const config: RepoConfig = {
 			path: repoPath,
-			stagingBranch: stagingBranch!,
+			stagingBranch,
 			worktreeLimit: DEFAULT_WORKTREE_LIMIT,
 		};
 

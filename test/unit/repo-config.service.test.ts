@@ -1,8 +1,8 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
-import { createMockMemento, window, workspace } from "../__mocks__/vscode";
-import { RepoConfigService } from "../../src/services/repo-config.service";
-import { REPO_CONFIGS_KEY, DEFAULT_STAGING_BRANCH, DEFAULT_WORKTREE_LIMIT } from "../../src/models/repo";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { DEFAULT_WORKTREE_LIMIT, REPO_CONFIGS_KEY } from "../../src/models/repo";
 import type { GitService } from "../../src/services/git.service";
+import { RepoConfigService } from "../../src/services/repo-config.service";
+import { createMockMemento, window, workspace } from "../__mocks__/vscode";
 
 // Mock the gitignore utility so RepoConfigService tests don't hit the filesystem
 vi.mock("../../src/utils/gitignore", () => ({
@@ -12,7 +12,9 @@ vi.mock("../../src/utils/gitignore", () => ({
 function createMockGitService(): GitService {
 	return {
 		exec: vi.fn<(repoPath: string, args: string[]) => Promise<string>>().mockResolvedValue(""),
-		branchExists: vi.fn<(repoPath: string, branchName: string) => Promise<boolean>>().mockResolvedValue(false),
+		branchExists: vi
+			.fn<(repoPath: string, branchName: string) => Promise<boolean>>()
+			.mockResolvedValue(false),
 	} as unknown as GitService;
 }
 
@@ -55,12 +57,14 @@ describe("RepoConfigService", () => {
 	describe("addRepo", () => {
 		it("happy path: workspace folder selected, staging branch entered, config saved", async () => {
 			// Setup workspace folders
-			workspace.workspaceFolders = [
-				{ uri: { fsPath: "/my-repo" }, name: "my-repo", index: 0 },
-			];
+			workspace.workspaceFolders = [{ uri: { fsPath: "/my-repo" }, name: "my-repo", index: 0 }];
 
 			// User picks the workspace folder
-			window.showQuickPick.mockResolvedValueOnce({ label: "my-repo", description: "/my-repo", _path: "/my-repo" });
+			window.showQuickPick.mockResolvedValueOnce({
+				label: "my-repo",
+				description: "/my-repo",
+				_path: "/my-repo",
+			});
 
 			// Git validates it's a repo
 			(git.exec as ReturnType<typeof vi.fn>).mockResolvedValueOnce(".git");
@@ -85,9 +89,7 @@ describe("RepoConfigService", () => {
 		});
 
 		it("with existing branch: prompts user to confirm or pick different name", async () => {
-			workspace.workspaceFolders = [
-				{ uri: { fsPath: "/my-repo" }, name: "my-repo", index: 0 },
-			];
+			workspace.workspaceFolders = [{ uri: { fsPath: "/my-repo" }, name: "my-repo", index: 0 }];
 
 			window.showQuickPick
 				// First: pick workspace folder
@@ -106,9 +108,7 @@ describe("RepoConfigService", () => {
 		});
 
 		it("with existing branch: user picks different name", async () => {
-			workspace.workspaceFolders = [
-				{ uri: { fsPath: "/my-repo" }, name: "my-repo", index: 0 },
-			];
+			workspace.workspaceFolders = [{ uri: { fsPath: "/my-repo" }, name: "my-repo", index: 0 }];
 
 			window.showQuickPick
 				// First: pick workspace folder
@@ -133,9 +133,7 @@ describe("RepoConfigService", () => {
 		});
 
 		it("cancellation: user cancels at folder selection, returns undefined", async () => {
-			workspace.workspaceFolders = [
-				{ uri: { fsPath: "/my-repo" }, name: "my-repo", index: 0 },
-			];
+			workspace.workspaceFolders = [{ uri: { fsPath: "/my-repo" }, name: "my-repo", index: 0 }];
 
 			window.showQuickPick.mockResolvedValueOnce(undefined);
 
@@ -146,11 +144,13 @@ describe("RepoConfigService", () => {
 		});
 
 		it("cancellation: user cancels at branch name input, returns undefined", async () => {
-			workspace.workspaceFolders = [
-				{ uri: { fsPath: "/my-repo" }, name: "my-repo", index: 0 },
-			];
+			workspace.workspaceFolders = [{ uri: { fsPath: "/my-repo" }, name: "my-repo", index: 0 }];
 
-			window.showQuickPick.mockResolvedValueOnce({ label: "my-repo", description: "/my-repo", _path: "/my-repo" });
+			window.showQuickPick.mockResolvedValueOnce({
+				label: "my-repo",
+				description: "/my-repo",
+				_path: "/my-repo",
+			});
 			(git.exec as ReturnType<typeof vi.fn>).mockResolvedValueOnce(".git");
 			window.showInputBox.mockResolvedValueOnce(undefined);
 
@@ -163,11 +163,13 @@ describe("RepoConfigService", () => {
 			const existingConfig = { path: "/my-repo", stagingBranch: "staging", worktreeLimit: 5 };
 			memento.update(REPO_CONFIGS_KEY, [existingConfig]);
 
-			workspace.workspaceFolders = [
-				{ uri: { fsPath: "/my-repo" }, name: "my-repo", index: 0 },
-			];
+			workspace.workspaceFolders = [{ uri: { fsPath: "/my-repo" }, name: "my-repo", index: 0 }];
 
-			window.showQuickPick.mockResolvedValueOnce({ label: "my-repo", description: "/my-repo", _path: "/my-repo" });
+			window.showQuickPick.mockResolvedValueOnce({
+				label: "my-repo",
+				description: "/my-repo",
+				_path: "/my-repo",
+			});
 			(git.exec as ReturnType<typeof vi.fn>).mockResolvedValueOnce(".git");
 
 			const result = await service.addRepo();

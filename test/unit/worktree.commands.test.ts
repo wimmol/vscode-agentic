@@ -1,14 +1,16 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
-import { window } from "../__mocks__/vscode";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { handleWorktreeLimitError } from "../../src/commands/worktree.commands";
-import { WorktreeLimitError } from "../../src/services/worktree.service";
-import type { WorktreeService } from "../../src/services/worktree.service";
 import type { WorktreeEntry } from "../../src/models/worktree";
+import type { WorktreeService } from "../../src/services/worktree.service";
+import { WorktreeLimitError } from "../../src/services/worktree.service";
+import { window } from "../__mocks__/vscode";
 
 function createMockWorktreeService(): WorktreeService {
 	return {
 		addWorktree: vi.fn(),
-		removeWorktree: vi.fn<(repoPath: string, agentName: string) => Promise<void>>().mockResolvedValue(undefined),
+		removeWorktree: vi
+			.fn<(repoPath: string, agentName: string) => Promise<void>>()
+			.mockResolvedValue(undefined),
 		getManifest: vi.fn(),
 		reconcile: vi.fn(),
 	} as unknown as WorktreeService;

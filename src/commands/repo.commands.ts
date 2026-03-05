@@ -8,9 +8,8 @@ export function registerRepoCommands(
 	context: vscode.ExtensionContext,
 	repoConfigService: RepoConfigService,
 ): void {
-	const addRepo = vscode.commands.registerCommand(
-		"vscode-agentic.addRepo",
-		() => repoConfigService.addRepo(),
+	const addRepo = vscode.commands.registerCommand("vscode-agentic.addRepo", () =>
+		repoConfigService.addRepo(),
 	);
 
 	context.subscriptions.push(addRepo);
