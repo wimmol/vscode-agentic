@@ -17,8 +17,33 @@
 				"command": "vscode-agentic.addRepo",
 				"title": "Add Repository",
 				"category": "Agentic"
+			},
+			{
+				"command": "vscode-agentic.createAgent",
+				"title": "Create Agent",
+				"category": "Agentic",
+				"icon": "$(add)"
+			},
+			{
+				"command": "vscode-agentic.deleteAgent",
+				"title": "Delete Agent",
+				"category": "Agentic",
+				"icon": "$(trash)"
+			},
+			{
+				"command": "vscode-agentic.focusAgent",
+				"title": "Focus Agent",
+				"category": "Agentic"
 			}
 		],
+		"menus": {
+			"commandPalette": [
+				{ "command": "vscode-agentic.addRepo", "when": "false" },
+				{ "command": "vscode-agentic.createAgent", "when": "false" },
+				{ "command": "vscode-agentic.deleteAgent", "when": "false" },
+				{ "command": "vscode-agentic.focusAgent", "when": "false" }
+			]
+		},
 		"viewsContainers": {
 			"activitybar": [
 				{
