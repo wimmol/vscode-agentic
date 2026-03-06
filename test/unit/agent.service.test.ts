@@ -320,6 +320,109 @@ describe("AgentService", () => {
 		});
 	});
 
+	describe("onDidChange event", () => {
+		it("fires after createAgent", async () => {
+			const listener = vi.fn();
+			service.onDidChange(listener);
+
+			await service.createAgent("/repo", "my-agent");
+
+			expect(listener).toHaveBeenCalledTimes(1);
+		});
+
+		it("fires after deleteAgent", async () => {
+			await service.createAgent("/repo", "my-agent");
+			const listener = vi.fn();
+			service.onDidChange(listener);
+
+			await service.deleteAgent("/repo", "my-agent");
+
+			expect(listener).toHaveBeenCalledTimes(1);
+		});
+
+		it("fires after updateStatus", async () => {
+			await service.createAgent("/repo", "my-agent");
+			const listener = vi.fn();
+			service.onDidChange(listener);
+
+			await service.updateStatus("/repo", "my-agent", "running");
+
+			expect(listener).toHaveBeenCalledTimes(1);
+		});
+
+		it("fires after reconcileOnActivation when changes occur", async () => {
+			await service.createAgent("/repo", "my-agent");
+			await service.updateStatus("/repo", "my-agent", "running");
+			const listener = vi.fn();
+			service.onDidChange(listener);
+
+			await service.reconcileOnActivation();
+
+			expect(listener).toHaveBeenCalledTimes(1);
+		});
+
+		it("does NOT fire on reconcileOnActivation when no running agents exist", async () => {
+			await service.createAgent("/repo", "my-agent"); // status is "created"
+			const listener = vi.fn();
+			service.onDidChange(listener);
+
+			await service.reconcileOnActivation();
+
+			expect(listener).not.toHaveBeenCalled();
+		});
+	});
+
+	describe("finishedAt field", () => {
+		it("sets finishedAt when transitioning to 'finished'", async () => {
+			await service.createAgent("/repo", "my-agent");
+
+			await service.updateStatus("/repo", "my-agent", "finished", 0);
+
+			const entry = service.getAgent("/repo", "my-agent");
+			expect(entry?.finishedAt).toBeDefined();
+			expect(entry?.finishedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
+		});
+
+		it("sets finishedAt when transitioning to 'error'", async () => {
+			await service.createAgent("/repo", "my-agent");
+
+			await service.updateStatus("/repo", "my-agent", "error", 1);
+
+			const entry = service.getAgent("/repo", "my-agent");
+			expect(entry?.finishedAt).toBeDefined();
+			expect(entry?.finishedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
+		});
+
+		it("does NOT set finishedAt when transitioning to 'running'", async () => {
+			await service.createAgent("/repo", "my-agent");
+
+			await service.updateStatus("/repo", "my-agent", "running");
+
+			const entry = service.getAgent("/repo", "my-agent");
+			expect(entry?.finishedAt).toBeUndefined();
+		});
+
+		it("does NOT set finishedAt when transitioning to 'created'", async () => {
+			await service.createAgent("/repo", "my-agent");
+
+			await service.updateStatus("/repo", "my-agent", "created");
+
+			const entry = service.getAgent("/repo", "my-agent");
+			expect(entry?.finishedAt).toBeUndefined();
+		});
+
+		it("clears finishedAt when transitioning from finished back to running", async () => {
+			await service.createAgent("/repo", "my-agent");
+			await service.updateStatus("/repo", "my-agent", "finished", 0);
+			expect(service.getAgent("/repo", "my-agent")?.finishedAt).toBeDefined();
+
+			await service.updateStatus("/repo", "my-agent", "running");
+
+			const entry = service.getAgent("/repo", "my-agent");
+			expect(entry?.finishedAt).toBeUndefined();
+		});
+	});
+
 	describe("setTerminalService", () => {
 		it("throws in focusAgent if terminalService is not set", async () => {
 			const svc = new AgentService(state, worktreeService as never);

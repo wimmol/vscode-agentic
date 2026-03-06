@@ -1,5 +1,32 @@
 import { vi } from "vitest";
 
+// EventEmitter mock -- real listener-array implementation for subscription tests
+export class EventEmitter<T> {
+	private listeners: Array<(e: T) => void> = [];
+
+	event = (listener: (e: T) => void): { dispose: () => void } => {
+		this.listeners.push(listener);
+		return {
+			dispose: () => {
+				const idx = this.listeners.indexOf(listener);
+				if (idx >= 0) {
+					this.listeners.splice(idx, 1);
+				}
+			},
+		};
+	};
+
+	fire(data: T): void {
+		for (const listener of this.listeners) {
+			listener(data);
+		}
+	}
+
+	dispose(): void {
+		this.listeners = [];
+	}
+}
+
 // Memento mock -- the core persistence API used by services
 export function createMockMemento() {
 	const store = new Map<string, unknown>();
@@ -42,6 +69,7 @@ export const window = {
 	createTerminal: vi.fn(),
 	onDidCloseTerminal: vi.fn(),
 	onDidChangeActiveTerminal: vi.fn(),
+	registerWebviewViewProvider: vi.fn(),
 	terminals: [] as ReturnType<typeof createMockTerminal>[],
 };
 
@@ -52,6 +80,7 @@ export const workspace = {
 		get: vi.fn(),
 		update: vi.fn(),
 	})),
+	updateWorkspaceFolders: vi.fn(() => true),
 	fs: {
 		stat: vi.fn(),
 		readFile: vi.fn(),
@@ -69,6 +98,10 @@ export const commands = {
 export const Uri = {
 	file: vi.fn((path: string) => ({ fsPath: path, scheme: "file" })),
 	parse: vi.fn((str: string) => ({ fsPath: str, scheme: "file" })),
+	joinPath: vi.fn((...parts: Array<string | { fsPath: string }>) => ({
+		fsPath: parts.map((p) => (typeof p === "string" ? p : p.fsPath)).join("/"),
+		scheme: "file",
+	})),
 };
 
 // ProgressLocation enum mock
