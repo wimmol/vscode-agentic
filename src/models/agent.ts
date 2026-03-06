@@ -6,6 +6,7 @@ export interface AgentEntry {
 	status: AgentStatus;
 	initialPrompt?: string;
 	createdAt: string;
+	finishedAt?: string;
 	exitCode?: number;
 }
 

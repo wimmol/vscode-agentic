@@ -1,4 +1,4 @@
-import type * as vscode from "vscode";
+import * as vscode from "vscode";
 import type { AgentEntry, AgentStatus } from "../models/agent.js";
 import { AGENT_REGISTRY_KEY } from "../models/agent.js";
 import type { TerminalService } from "./terminal.service.js";
@@ -12,11 +12,20 @@ import type { WorktreeService } from "./worktree.service.js";
  */
 export class AgentService {
 	private terminalService: TerminalService | undefined;
+	private readonly _onDidChange = new vscode.EventEmitter<void>();
+	readonly onDidChange: vscode.Event<void> = this._onDidChange.event;
 
 	constructor(
 		private readonly state: vscode.Memento,
 		private readonly worktreeService: WorktreeService,
 	) {}
+
+	/**
+	 * Dispose resources held by this service (EventEmitter).
+	 */
+	dispose(): void {
+		this._onDidChange.dispose();
+	}
 
 	/**
 	 * Set the TerminalService reference.
@@ -60,6 +69,7 @@ export class AgentService {
 		registry.push(entry);
 		await this.saveRegistry(registry);
 
+		this._onDidChange.fire();
 		return entry;
 	}
 
@@ -102,6 +112,8 @@ export class AgentService {
 
 		const updated = registry.filter((_, i) => i !== index);
 		await this.saveRegistry(updated);
+
+		this._onDidChange.fire();
 	}
 
 	/**
@@ -144,7 +156,15 @@ export class AgentService {
 
 		entry.status = status;
 		entry.exitCode = exitCode;
+
+		if (status === "finished" || status === "error") {
+			entry.finishedAt = new Date().toISOString();
+		} else {
+			entry.finishedAt = undefined;
+		}
+
 		await this.saveRegistry(registry);
+		this._onDidChange.fire();
 	}
 
 	/**
@@ -164,6 +184,7 @@ export class AgentService {
 
 		if (changed) {
 			await this.saveRegistry(registry);
+			this._onDidChange.fire();
 		}
 	}
 }
