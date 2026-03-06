@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { commands, window } from "../__mocks__/vscode";
+import { commands, window, workspace } from "../__mocks__/vscode";
 import { registerAgentCommands } from "../../src/commands/agent.commands";
 
 // Mock services
@@ -32,6 +32,28 @@ function createMockTerminalService() {
 	};
 }
 
+function createMockWorktreeService() {
+	return {
+		addWorktree: vi.fn().mockResolvedValue({
+			path: "/repo/.worktrees/my-agent",
+			branch: "my-agent",
+			agentName: "my-agent",
+			repoPath: "/repo",
+			createdAt: "2026-01-01T00:00:00.000Z",
+		}),
+		removeWorktree: vi.fn().mockResolvedValue(undefined),
+		getManifest: vi.fn().mockReturnValue([
+			{
+				path: "/repo/.worktrees/my-agent",
+				branch: "my-agent",
+				agentName: "my-agent",
+				repoPath: "/repo",
+				createdAt: "2026-01-01T00:00:00.000Z",
+			},
+		]),
+	};
+}
+
 function createMockRepoConfigService() {
 	return {
 		getAll: vi.fn().mockReturnValue([{ path: "/repo", stagingBranch: "main", worktreeLimit: 5 }]),
@@ -54,6 +76,7 @@ function createMockContext() {
 describe("registerAgentCommands", () => {
 	let agentService: ReturnType<typeof createMockAgentService>;
 	let terminalService: ReturnType<typeof createMockTerminalService>;
+	let worktreeService: ReturnType<typeof createMockWorktreeService>;
 	let repoConfigService: ReturnType<typeof createMockRepoConfigService>;
 	let context: ReturnType<typeof createMockContext>;
 	let commandHandlers: Map<string, (...args: unknown[]) => unknown>;
@@ -62,6 +85,7 @@ describe("registerAgentCommands", () => {
 		vi.clearAllMocks();
 		agentService = createMockAgentService();
 		terminalService = createMockTerminalService();
+		worktreeService = createMockWorktreeService();
 		repoConfigService = createMockRepoConfigService();
 		context = createMockContext();
 		commandHandlers = new Map();
@@ -77,18 +101,20 @@ describe("registerAgentCommands", () => {
 			agentService as never,
 			terminalService as never,
 			repoConfigService as never,
+			worktreeService as never,
 		);
 	});
 
-	it("registers three commands", () => {
-		expect(commands.registerCommand).toHaveBeenCalledTimes(3);
+	it("registers four commands", () => {
+		expect(commands.registerCommand).toHaveBeenCalledTimes(4);
 		expect(commandHandlers.has("vscode-agentic.createAgent")).toBe(true);
 		expect(commandHandlers.has("vscode-agentic.deleteAgent")).toBe(true);
 		expect(commandHandlers.has("vscode-agentic.focusAgent")).toBe(true);
+		expect(commandHandlers.has("vscode-agentic.stopAgent")).toBe(true);
 	});
 
 	it("pushes all commands to context.subscriptions", () => {
-		expect(context.subscriptions.length).toBe(3);
+		expect(context.subscriptions.length).toBe(4);
 	});
 
 	describe("createAgent command", () => {
@@ -285,6 +311,76 @@ describe("registerAgentCommands", () => {
 			await handler("/repo", "my-agent");
 
 			expect(agentService.focusAgent).toHaveBeenCalledWith("/repo", "my-agent");
+		});
+
+		it("calls workspace.updateWorkspaceFolders with the worktree URI when agent is not running", async () => {
+			agentService.getAgent.mockReturnValue({
+				agentName: "my-agent",
+				repoPath: "/repo",
+				status: "created",
+				createdAt: "2026-01-01T00:00:00.000Z",
+			});
+
+			const handler = commandHandlers.get("vscode-agentic.focusAgent")!;
+			await handler("/repo", "my-agent");
+
+			expect(workspace.updateWorkspaceFolders).toHaveBeenCalled();
+		});
+
+		it("calls workspace.updateWorkspaceFolders when showing an existing running terminal", async () => {
+			agentService.getAgent.mockReturnValue({
+				agentName: "my-agent",
+				repoPath: "/repo",
+				status: "running",
+				createdAt: "2026-01-01T00:00:00.000Z",
+			});
+
+			const handler = commandHandlers.get("vscode-agentic.focusAgent")!;
+			await handler("/repo", "my-agent");
+
+			expect(workspace.updateWorkspaceFolders).toHaveBeenCalled();
+		});
+	});
+
+	describe("stopAgent command", () => {
+		it("calls terminalService.disposeTerminal and updates status to finished when agent is running", async () => {
+			agentService.getAgent.mockReturnValue({
+				agentName: "my-agent",
+				repoPath: "/repo",
+				status: "running",
+				createdAt: "2026-01-01T00:00:00.000Z",
+			});
+
+			const handler = commandHandlers.get("vscode-agentic.stopAgent")!;
+			await handler("/repo", "my-agent");
+
+			expect(terminalService.disposeTerminal).toHaveBeenCalledWith("/repo", "my-agent");
+			expect(agentService.updateStatus).toHaveBeenCalledWith("/repo", "my-agent", "finished");
+		});
+
+		it("is a no-op when agent status is not running", async () => {
+			agentService.getAgent.mockReturnValue({
+				agentName: "my-agent",
+				repoPath: "/repo",
+				status: "created",
+				createdAt: "2026-01-01T00:00:00.000Z",
+			});
+
+			const handler = commandHandlers.get("vscode-agentic.stopAgent")!;
+			await handler("/repo", "my-agent");
+
+			expect(terminalService.disposeTerminal).not.toHaveBeenCalled();
+			expect(agentService.updateStatus).not.toHaveBeenCalled();
+		});
+
+		it("is a no-op when agent does not exist", async () => {
+			agentService.getAgent.mockReturnValue(undefined);
+
+			const handler = commandHandlers.get("vscode-agentic.stopAgent")!;
+			await handler("/repo", "my-agent");
+
+			expect(terminalService.disposeTerminal).not.toHaveBeenCalled();
+			expect(agentService.updateStatus).not.toHaveBeenCalled();
 		});
 	});
 });
