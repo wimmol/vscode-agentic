@@ -49,3 +49,21 @@ Plans:
 Plans:
 - [ ] 02-01-PLAN.md -- Agent model, branch validation utility, TerminalService with terminal lifecycle management
 - [ ] 02-02-PLAN.md -- AgentService lifecycle orchestration, agent commands, extension wiring
+
+### Phase 3: Agent dashboard UI with tiles, buttons, and pickers
+
+**Goal:** User sees a Webview sidebar dashboard with agent tiles grouped by repository, each tile showing name, status, metrics, and action buttons, with auto-refresh on data changes and full workspace context switching on tile click
+**Requirements**: UI-01, UI-02, UI-03, UI-04, UI-06
+**Depends on:** Phase 2
+**Success Criteria** (what must be TRUE):
+  1. Right sidebar shows a Webview panel with agent tiles grouped by repository sections
+  2. Each agent tile displays name, animated status icon, repo, elapsed time, initial prompt, and placeholder metrics
+  3. Clicking an agent tile switches workspace folders to the agent's worktree and focuses the terminal
+  4. Tile action buttons (Stop, Reset Changes, Delete, Clear Context) have correct disabled states per agent status
+  5. Sidebar auto-refreshes when agents are created, deleted, or change status
+  6. All interactions happen through sidebar UI -- no Command Palette entries
+**Plans:** 2 plans
+
+Plans:
+- [ ] 03-01-PLAN.md -- Backend contracts: AgentService EventEmitter, finishedAt field, stopAgent/removeRepo commands, focusAgent workspace switching
+- [ ] 03-02-PLAN.md -- Webview sidebar: SidebarViewProvider, HTML generation with tiles and CSS, extension wiring, package.json updates
