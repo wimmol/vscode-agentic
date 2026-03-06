@@ -4,10 +4,10 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Completed 02-02-PLAN.md
-last_updated: "2026-03-05T14:53:45.986Z"
+last_updated: "2026-03-06T08:23:27.556Z"
 last_activity: 2026-03-05 - Completed 02-02-PLAN.md (AgentService lifecycle, agent commands, extension wiring)
 progress:
-  total_phases: 7
+  total_phases: 8
   completed_phases: 2
   total_plans: 15
   completed_plans: 5
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 
 ## Current Position
 
-Phase: 3 of 7 (Sidebar UI)
+Phase: 3 of 6 (Sidebar UI)
 Plan: 1 of 3 in current phase
 Status: Executing
 Last activity: 2026-03-05 - Completed 02-02-PLAN.md (AgentService lifecycle, agent commands, extension wiring)
@@ -86,6 +86,11 @@ Recent decisions affecting current work:
 ### Pending Todos
 
 None yet.
+
+### Roadmap Evolution
+
+- Phase 8 added: Agent dashboard UI with tiles, buttons, and pickers
+- Phase 2.1 inserted after Phase 2: Agent dashboard UI with tiles, buttons, and pickers (URGENT)
 
 ### Blockers/Concerns
 

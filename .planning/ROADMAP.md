@@ -55,6 +55,16 @@ Plans:
 - [ ] 02-01-PLAN.md -- Agent model, branch validation utility, TerminalService with terminal lifecycle management
 - [ ] 02-02-PLAN.md -- AgentService lifecycle orchestration, agent commands, extension wiring
 
+### Phase 02.1: Agent dashboard UI with tiles, buttons, and pickers (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 2
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 02.1 to break down)
+
 ### Phase 3: Sidebar UI and Agent Switching
 **Goal**: User can see all agents in a sidebar and instantly switch between them -- within the same repo or across different repos -- with the IDE context updating accordingly
 **Depends on**: Phase 2
