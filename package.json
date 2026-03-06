@@ -16,7 +16,8 @@
 			{
 				"command": "vscode-agentic.addRepo",
 				"title": "Add Repository",
-				"category": "Agentic"
+				"category": "Agentic",
+				"icon": "$(add)"
 			},
 			{
 				"command": "vscode-agentic.createAgent",
@@ -49,13 +50,38 @@
 			}
 		],
 		"menus": {
+			"view/title": [
+				{
+					"command": "vscode-agentic.addRepo",
+					"group": "navigation",
+					"when": "view == vscode-agentic.agents"
+				}
+			],
 			"commandPalette": [
-				{ "command": "vscode-agentic.addRepo", "when": "false" },
-				{ "command": "vscode-agentic.createAgent", "when": "false" },
-				{ "command": "vscode-agentic.deleteAgent", "when": "false" },
-				{ "command": "vscode-agentic.focusAgent", "when": "false" },
-				{ "command": "vscode-agentic.stopAgent", "when": "false" },
-				{ "command": "vscode-agentic.removeRepo", "when": "false" }
+				{
+					"command": "vscode-agentic.addRepo",
+					"when": "false"
+				},
+				{
+					"command": "vscode-agentic.createAgent",
+					"when": "false"
+				},
+				{
+					"command": "vscode-agentic.deleteAgent",
+					"when": "false"
+				},
+				{
+					"command": "vscode-agentic.focusAgent",
+					"when": "false"
+				},
+				{
+					"command": "vscode-agentic.stopAgent",
+					"when": "false"
+				},
+				{
+					"command": "vscode-agentic.removeRepo",
+					"when": "false"
+				}
 			]
 		},
 		"viewsContainers": {
@@ -70,6 +96,7 @@
 		"views": {
 			"vscode-agentic": [
 				{
+					"type": "webview",
 					"id": "vscode-agentic.agents",
 					"name": "Agents"
 				}
@@ -107,5 +134,8 @@
 		"npm-run-all2": "^8.0.4",
 		"typescript": "~5.8.0",
 		"vitest": "^4.0.18"
+	},
+	"dependencies": {
+		"@vscode/codicons": "^0.0.44"
 	}
 }

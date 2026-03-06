@@ -6,6 +6,7 @@ import { GitService } from "./services/git.service";
 import { RepoConfigService } from "./services/repo-config.service";
 import { TerminalService } from "./services/terminal.service";
 import { WorktreeService } from "./services/worktree.service";
+import { SidebarViewProvider } from "./views/sidebar-provider";
 
 export function activate(context: vscode.ExtensionContext): void {
 	// 1. Create service singletons (not at module level -- research anti-pattern warning)
@@ -20,21 +21,35 @@ export function activate(context: vscode.ExtensionContext): void {
 	});
 	agentService.setTerminalService(terminalService);
 
-	// 3. Register commands
+	// 3. Register sidebar webview provider
+	const sidebarProvider = new SidebarViewProvider(
+		context.extensionUri,
+		agentService,
+		repoConfigService,
+	);
+	context.subscriptions.push(
+		vscode.window.registerWebviewViewProvider(
+			SidebarViewProvider.viewType,
+			sidebarProvider,
+		),
+	);
+
+	// 4. Register commands
 	registerRepoCommands(context, repoConfigService);
-	registerAgentCommands(context, agentService, terminalService, repoConfigService);
+	registerAgentCommands(context, agentService, terminalService, repoConfigService, worktreeService);
 
-	// 4. Dispose terminal listeners on deactivation
+	// 5. Dispose terminal listeners and agent service on deactivation
 	context.subscriptions.push({ dispose: () => terminalService.dispose() });
+	context.subscriptions.push({ dispose: () => agentService.dispose() });
 
-	// 5. Git health check (non-blocking -- extension still activates, just warns)
+	// 6. Git health check (non-blocking -- extension still activates, just warns)
 	gitService.exec(".", ["--version"]).catch(() => {
 		vscode.window.showErrorMessage(
 			"VS Code Agentic: git is not installed or not in PATH. Worktree features are disabled.",
 		);
 	});
 
-	// 6. Reconcile all known repos on activation (GIT-06, non-blocking)
+	// 7. Reconcile all known repos on activation (GIT-06, non-blocking)
 	const repos = repoConfigService.getAll();
 	for (const repo of repos) {
 		worktreeService
@@ -54,7 +69,7 @@ export function activate(context: vscode.ExtensionContext): void {
 			});
 	}
 
-	// 7. Reconcile agent statuses on activation (terminals lost on restart)
+	// 8. Reconcile agent statuses on activation (terminals lost on restart)
 	agentService.reconcileOnActivation().catch((err: Error) => {
 		vscode.window.showErrorMessage(
 			`Agentic: Agent reconciliation failed: ${err.message}`,
