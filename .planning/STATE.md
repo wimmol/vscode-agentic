@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 3 context gathered
-last_updated: "2026-03-06T13:05:49.415Z"
-last_activity: 2026-03-05 - Completed 02-02-PLAN.md (AgentService lifecycle, agent commands, extension wiring)
+stopped_at: Completed 03-01-PLAN.md
+last_updated: "2026-03-06T14:06:05Z"
+last_activity: 2026-03-06 - Completed 03-01-PLAN.md (Backend contracts and commands for webview dashboard)
 progress:
   total_phases: 3
   completed_phases: 2
-  total_plans: 5
-  completed_plans: 5
-  percent: 33
+  total_plans: 7
+  completed_plans: 6
+  percent: 86
 ---
 
 # Project State
@@ -25,19 +25,19 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 
 ## Current Position
 
-Phase: 3 of 0 (Sidebar UI)
-Plan: 1 of 3 in current phase
+Phase: 3 of 3 (Sidebar UI)
+Plan: 2 of 2 in current phase
 Status: Executing
-Last activity: 2026-03-05 - Completed 02-02-PLAN.md (AgentService lifecycle, agent commands, extension wiring)
+Last activity: 2026-03-06 - Completed 03-01-PLAN.md (Backend contracts and commands for webview dashboard)
 
-Progress: [████░░░░░░] 33% (Overall: 5/15 plans)
+Progress: [████████░░] 86% (Overall: 6/7 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5
+- Total plans completed: 6
 - Average duration: 4min
-- Total execution time: 20min
+- Total execution time: 25min
 
 **By Phase:**
 
@@ -48,11 +48,12 @@ Progress: [████░░░░░░] 33% (Overall: 5/15 plans)
 | 01 | 03 | 5min | 3 | 8 |
 | 02 | 01 | 3min | 2 | 6 |
 | 02 | 02 | 4min | 2 | 6 |
+| 03 | 01 | 5min | 2 | 11 |
 
 **Recent Trend:**
-- 01-03: 5min (3 tasks, 8 files)
 - 02-01: 3min (2 tasks, 6 files)
 - 02-02: 4min (2 tasks, 6 files)
+- 03-01: 5min (2 tasks, 11 files)
 
 *Updated after each plan completion*
 
@@ -82,6 +83,10 @@ Recent decisions affecting current work:
 - [Phase 02-02]: Commands receive repoPath/agentName as arguments from sidebar UI -- no interactive pickers needed
 - [Phase 02-02]: All 4 commands hidden from Command Palette via menus.commandPalette when:false
 - [Phase 02-02]: createAgent falls back to first configured repo when no repoPath argument provided
+- [Phase 03-01]: EventEmitter fires void (no payload) -- subscribers re-fetch data via getAll/getForRepo
+- [Phase 03-01]: focusAgent replaces all workspace folders with agent worktree URI
+- [Phase 03-01]: stopAgent is a no-op for non-running agents (no error, no warning)
+- [Phase 03-01]: Expected TS error in extension.ts (missing worktreeService arg) deferred to Plan 02 wiring
 
 ### Pending Todos
 
@@ -105,6 +110,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-06T13:05:49.403Z
-Stopped at: Phase 3 context gathered
-Resume file: .planning/phases/03-agent-dashboard-ui-with-tiles-buttons-and-pickers/03-CONTEXT.md
+Last session: 2026-03-06T14:06:05Z
+Stopped at: Completed 03-01-PLAN.md
+Resume file: .planning/phases/03-agent-dashboard-ui-with-tiles-buttons-and-pickers/03-02-PLAN.md
