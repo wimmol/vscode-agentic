@@ -3,9 +3,10 @@ import { isValidBranchName } from "../utils/branch-validation";
 import type { AgentService } from "../services/agent.service";
 import type { TerminalService } from "../services/terminal.service";
 import type { RepoConfigService } from "../services/repo-config.service";
+import type { WorktreeService } from "../services/worktree.service";
 
 /**
- * Registers agent lifecycle commands: createAgent, deleteAgent, focusAgent.
+ * Registers agent lifecycle commands: createAgent, deleteAgent, focusAgent, stopAgent.
  *
  * All commands receive their arguments from sidebar UI (inline buttons, context menus, tree item clicks).
  * Commands are hidden from the Command Palette via package.json menus.commandPalette.
@@ -15,6 +16,7 @@ export function registerAgentCommands(
 	agentService: AgentService,
 	terminalService: TerminalService,
 	repoConfigService: RepoConfigService,
+	worktreeService: WorktreeService,
 ): void {
 	const createAgent = vscode.commands.registerCommand(
 		"vscode-agentic.createAgent",
@@ -127,8 +129,32 @@ export function registerAgentCommands(
 		"vscode-agentic.focusAgent",
 		async (repoPath: string, agentName: string) => {
 			await agentService.focusAgent(repoPath, agentName);
+
+			// Switch workspace folders to the agent's worktree directory
+			const manifest = worktreeService.getManifest(repoPath);
+			const worktreeEntry = manifest.find((w) => w.agentName === agentName);
+			if (worktreeEntry) {
+				vscode.workspace.updateWorkspaceFolders(
+					0,
+					vscode.workspace.workspaceFolders?.length ?? 0,
+					{ uri: vscode.Uri.file(worktreeEntry.path) },
+				);
+			}
 		},
 	);
 
-	context.subscriptions.push(createAgent, deleteAgent, focusAgent);
+	const stopAgent = vscode.commands.registerCommand(
+		"vscode-agentic.stopAgent",
+		async (repoPath: string, agentName: string) => {
+			const agent = agentService.getAgent(repoPath, agentName);
+			if (!agent || agent.status !== "running") {
+				return;
+			}
+
+			terminalService.disposeTerminal(repoPath, agentName);
+			await agentService.updateStatus(repoPath, agentName, "finished");
+		},
+	);
+
+	context.subscriptions.push(createAgent, deleteAgent, focusAgent, stopAgent);
 }

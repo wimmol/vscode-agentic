@@ -34,6 +34,18 @@
 				"command": "vscode-agentic.focusAgent",
 				"title": "Focus Agent",
 				"category": "Agentic"
+			},
+			{
+				"command": "vscode-agentic.stopAgent",
+				"title": "Stop Agent",
+				"category": "Agentic",
+				"icon": "$(debug-stop)"
+			},
+			{
+				"command": "vscode-agentic.removeRepo",
+				"title": "Remove Repository",
+				"category": "Agentic",
+				"icon": "$(close)"
 			}
 		],
 		"menus": {
@@ -41,7 +53,9 @@
 				{ "command": "vscode-agentic.addRepo", "when": "false" },
 				{ "command": "vscode-agentic.createAgent", "when": "false" },
 				{ "command": "vscode-agentic.deleteAgent", "when": "false" },
-				{ "command": "vscode-agentic.focusAgent", "when": "false" }
+				{ "command": "vscode-agentic.focusAgent", "when": "false" },
+				{ "command": "vscode-agentic.stopAgent", "when": "false" },
+				{ "command": "vscode-agentic.removeRepo", "when": "false" }
 			]
 		},
 		"viewsContainers": {
