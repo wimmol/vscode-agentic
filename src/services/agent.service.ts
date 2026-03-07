@@ -8,7 +8,7 @@ import type { WorktreeService } from "./worktree.service.js";
  * Orchestrates agent lifecycle: create, delete, focus, status management, and reconciliation.
  *
  * Delegates git operations to WorktreeService and terminal management to TerminalService.
- * Persists agent registry in VS Code Memento (workspaceState).
+ * Persists agent registry in VS Code Memento (globalState).
  */
 export class AgentService {
 	private terminalService: TerminalService | undefined;

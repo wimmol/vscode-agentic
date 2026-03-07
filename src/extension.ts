@@ -11,11 +11,11 @@ import { SidebarViewProvider } from "./views/sidebar-provider";
 export function activate(context: vscode.ExtensionContext): void {
 	// 1. Create service singletons (not at module level -- research anti-pattern warning)
 	const gitService = new GitService();
-	const worktreeService = new WorktreeService(gitService, context.workspaceState);
-	const repoConfigService = new RepoConfigService(context.workspaceState, gitService);
+	const worktreeService = new WorktreeService(gitService, context.globalState);
+	const repoConfigService = new RepoConfigService(context.globalState, gitService);
 
 	// 2. Create AgentService and TerminalService with status callback
-	const agentService = new AgentService(context.workspaceState, worktreeService);
+	const agentService = new AgentService(context.globalState, worktreeService);
 	const terminalService = new TerminalService((agentName, repoPath, status, exitCode) => {
 		agentService.updateStatus(repoPath, agentName, status, exitCode);
 	});
