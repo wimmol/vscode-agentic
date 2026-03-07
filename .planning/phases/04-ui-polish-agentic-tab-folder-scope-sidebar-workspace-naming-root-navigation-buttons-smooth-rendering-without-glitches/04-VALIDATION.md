@@ -42,13 +42,13 @@ created: 2026-03-07
 | 04-01-02 | 01 | 1 | WS-02 | unit | `npx vitest run test/unit/workspace.service.test.ts -t "syncs folders"` | No -- Wave 0 | ⬜ pending |
 | 04-01-03 | 01 | 1 | WS-03 | unit | `npx vitest run test/unit/workspace.service.test.ts -t "detects workspace"` | No -- Wave 0 | ⬜ pending |
 | 04-01-04 | 01 | 1 | WS-04 | unit | `npx vitest run test/unit/workspace.service.test.ts -t "prompt reopen"` | No -- Wave 0 | ⬜ pending |
-| 04-02-01 | 02 | 1 | ROOT-01 | unit | `npx vitest run test/unit/workspace.commands.test.ts -t "global root"` | No -- Wave 0 | ⬜ pending |
-| 04-02-02 | 02 | 1 | ROOT-02 | unit | `npx vitest run test/unit/workspace.commands.test.ts -t "repo root"` | No -- Wave 0 | ⬜ pending |
-| 04-02-03 | 02 | 1 | ROOT-03 | unit | `npx vitest run test/unit/sidebar-html.test.ts -t "root-folder"` | No -- Wave 0 | ⬜ pending |
-| 04-03-01 | 03 | 2 | RENDER-01 | unit | `npx vitest run test/unit/sidebar-provider.test.ts -t "postMessage"` | No -- Wave 0 | ⬜ pending |
-| 04-03-02 | 03 | 2 | RENDER-02 | unit | `npx vitest run test/unit/sidebar-provider.test.ts -t "initial render"` | Partial | ⬜ pending |
-| 04-04-01 | 04 | 2 | SCOPE-01 | unit | `npx vitest run test/unit/agent.commands.test.ts -t "updateWorkspaceFolders"` | Yes | ⬜ pending |
-| 04-04-02 | 04 | 2 | SCOPE-02 | unit | `npx vitest run test/unit/workspace.service.test.ts -t "scope sync"` | No -- Wave 0 | ⬜ pending |
+| 04-01-05 | 01 | 1 | ROOT-01 | unit | `npx vitest run test/unit/workspace.commands.test.ts -t "global root"` | No -- Wave 0 | ⬜ pending |
+| 04-01-06 | 01 | 1 | ROOT-02 | unit | `npx vitest run test/unit/workspace.commands.test.ts -t "repo root"` | No -- Wave 0 | ⬜ pending |
+| 04-02-01 | 02 | 1 | ROOT-03 | unit | `npx vitest run test/unit/sidebar-html.test.ts -t "root-folder"` | No -- Wave 0 | ⬜ pending |
+| 04-02-02 | 02 | 1 | RENDER-01 | unit | `npx vitest run test/unit/sidebar-provider.test.ts -t "postMessage"` | No -- Wave 0 | ⬜ pending |
+| 04-02-03 | 02 | 1 | RENDER-02 | unit | `npx vitest run test/unit/sidebar-provider.test.ts -t "initial render"` | Partial | ⬜ pending |
+| 04-03-01 | 03 | 2 | SCOPE-01 | unit | `npx vitest run test/unit/agent.commands.test.ts -t "updateWorkspaceFolders"` | Yes | ⬜ pending |
+| 04-03-02 | 03 | 2 | SCOPE-02 | unit | `npx vitest run test/unit/workspace.service.test.ts -t "scope sync"` | No -- Wave 0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
