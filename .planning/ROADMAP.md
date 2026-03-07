@@ -68,3 +68,23 @@ Plans:
 - [ ] 03-01-PLAN.md -- Backend contracts: AgentService EventEmitter, finishedAt field, stopAgent/removeRepo commands, focusAgent workspace switching
 - [ ] 03-02-PLAN.md -- Webview sidebar: SidebarViewProvider, HTML generation with tiles and CSS, extension wiring, package.json updates
 - [ ] 03-03-PLAN.md -- Gap closure: Fix workspace-scoped storage bug (workspaceState to globalState)
+
+### Phase 4: UI polish: Agentic tab, folder scope sidebar, workspace naming, root navigation buttons, smooth rendering without glitches
+
+**Goal:** User sees "Agentic" in the VS Code title bar via a managed .code-workspace file, can navigate Explorer scope with root buttons (global and per-repo), and the sidebar updates smoothly via DOM patching with animations instead of full HTML replacement
+**Requirements**: WS-01, WS-02, WS-03, WS-04, ROOT-01, ROOT-02, ROOT-03, RENDER-01, RENDER-02, SCOPE-01, SCOPE-02
+**Depends on:** Phase 3
+**Success Criteria** (what must be TRUE):
+  1. Extension creates and manages ~/.agentic/agentic.code-workspace, title bar shows "agentic (Workspace)"
+  2. Workspace file folders array stays in sync with configured repos
+  3. Global root button in toolbar shows all repo roots in Explorer
+  4. Per-repo root button in repo header shows single repo root in Explorer
+  5. Sidebar refresh uses postMessage + DOM patching (no full HTML replacement after initial render)
+  6. New/deleted tiles animate in/out with CSS transitions
+  7. All scope changes (global root, repo root, agent focus) update Explorer folders consistently
+**Plans:** 3 plans
+
+Plans:
+- [ ] 04-01-PLAN.md -- WorkspaceService (workspace file CRUD, mode detection, scope management) and root navigation commands
+- [ ] 04-02-PLAN.md -- Smooth rendering: postMessage-based refresh, DOM patcher, animation CSS, per-repo root buttons in webview
+- [ ] 04-03-PLAN.md -- Extension wiring: WorkspaceService integration, scope sync across all commands, human verification
