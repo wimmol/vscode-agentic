@@ -62,8 +62,9 @@ Plans:
   4. Tile action buttons (Stop, Reset Changes, Delete, Clear Context) have correct disabled states per agent status
   5. Sidebar auto-refreshes when agents are created, deleted, or change status
   6. All interactions happen through sidebar UI -- no Command Palette entries
-**Plans:** 2 plans
+**Plans:** 3 plans
 
 Plans:
 - [ ] 03-01-PLAN.md -- Backend contracts: AgentService EventEmitter, finishedAt field, stopAgent/removeRepo commands, focusAgent workspace switching
 - [ ] 03-02-PLAN.md -- Webview sidebar: SidebarViewProvider, HTML generation with tiles and CSS, extension wiring, package.json updates
+- [ ] 03-03-PLAN.md -- Gap closure: Fix workspace-scoped storage bug (workspaceState to globalState)
