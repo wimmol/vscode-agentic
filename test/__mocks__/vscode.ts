@@ -66,6 +66,7 @@ export const window = {
 	withProgress: vi.fn((_options: unknown, task: (progress: unknown) => Promise<unknown>) => {
 		return task({ report: vi.fn() });
 	}),
+	showOpenDialog: vi.fn(),
 	createTerminal: vi.fn(),
 	onDidCloseTerminal: vi.fn(),
 	onDidChangeActiveTerminal: vi.fn(),
@@ -86,6 +87,7 @@ export const workspace = {
 		stat: vi.fn(),
 		readFile: vi.fn(),
 		writeFile: vi.fn(),
+		createDirectory: vi.fn(),
 	},
 };
 

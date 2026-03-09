@@ -1,27 +1,35 @@
-import * as fs from "node:fs/promises";
-import * as path from "node:path";
+import * as vscode from "vscode";
 
 /**
- * Ensures that `.worktrees/` is listed in the repo's `.gitignore`.
+ * Ensures that the worktree directory is listed in the repo's `.gitignore`.
  * Creates `.gitignore` if it does not exist.
  * Does not duplicate the entry if already present.
+ *
+ * Uses vscode.workspace.fs instead of node:fs per CLAUDE.md.
  */
 export async function ensureGitignoreEntry(repoPath: string): Promise<void> {
-	const gitignorePath = path.join(repoPath, ".gitignore");
+	console.log("[gitignore.ensureGitignoreEntry]", { repoPath });
+
+	const worktreeDirName = vscode.workspace
+		.getConfiguration("vscode-agentic")
+		.get<string>("worktreeDirectoryName", ".worktrees");
+
+	const gitignoreUri = vscode.Uri.joinPath(vscode.Uri.file(repoPath), ".gitignore");
 
 	let content: string;
 	try {
-		content = await fs.readFile(gitignorePath, "utf-8");
+		const rawBytes = await vscode.workspace.fs.readFile(gitignoreUri);
+		content = new TextDecoder().decode(rawBytes);
 	} catch {
 		// File doesn't exist -- we'll create it
 		content = "";
 	}
 
-	// Check if .worktrees/ or .worktrees is already listed
+	// Check if worktree dir is already listed (with or without trailing /)
 	const lines = content.split("\n");
 	const alreadyPresent = lines.some((line) => {
 		const trimmed = line.trim();
-		return trimmed === ".worktrees/" || trimmed === ".worktrees";
+		return trimmed === `${worktreeDirName}/` || trimmed === worktreeDirName;
 	});
 
 	if (alreadyPresent) {
@@ -29,14 +37,15 @@ export async function ensureGitignoreEntry(repoPath: string): Promise<void> {
 	}
 
 	// Build the entry to append
-	const entry = "# VS Code Agentic worktrees\n.worktrees/\n";
+	const entry = `# VS Code Agentic worktrees\n${worktreeDirName}/\n`;
 
+	let newContent: string;
 	if (content.length === 0) {
-		// New file
-		await fs.writeFile(gitignorePath, entry);
+		newContent = entry;
 	} else {
-		// Append to existing file, ensuring proper newline separation
 		const separator = content.endsWith("\n") ? "\n" : "\n\n";
-		await fs.writeFile(gitignorePath, content + separator + entry);
+		newContent = content + separator + entry;
 	}
+
+	await vscode.workspace.fs.writeFile(gitignoreUri, new TextEncoder().encode(newContent));
 }

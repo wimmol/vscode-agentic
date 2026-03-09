@@ -1,8 +1,11 @@
-import * as path from "node:path";
-import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as vscode from "vscode";
-import type { RepoConfigService } from "./repo-config.service";
+import type { RepoConfig } from "../models/repo";
+
+/** Minimal interface for repo data source -- satisfied by both ReposStore and RepoConfigService. */
+interface RepoDataSource {
+	getAll(): RepoConfig[];
+}
 
 interface WorkspaceFolder {
 	path: string;
@@ -14,14 +17,22 @@ interface WorkspaceFileContent {
 	settings: Record<string, unknown>;
 }
 
+/** Extract the last segment of a path (like path.basename but without node:path). */
+function basename(p: string): string {
+	return p.split("/").pop() ?? p;
+}
+
 export class WorkspaceService {
-	private readonly workspaceDir: string;
+	private readonly workspaceDirUri: vscode.Uri;
+	private readonly workspaceFileUri: vscode.Uri;
 	private readonly workspaceFilePath: string;
 	private writeLock: Promise<void> = Promise.resolve();
 
-	constructor(private readonly repoConfigService: RepoConfigService) {
-		this.workspaceDir = path.join(os.homedir(), ".agentic");
-		this.workspaceFilePath = path.join(this.workspaceDir, "agentic.code-workspace");
+	constructor(private readonly reposStore: RepoDataSource) {
+		const homeUri = vscode.Uri.file(os.homedir());
+		this.workspaceDirUri = vscode.Uri.joinPath(homeUri, ".agentic");
+		this.workspaceFileUri = vscode.Uri.joinPath(this.workspaceDirUri, "agentic.code-workspace");
+		this.workspaceFilePath = this.workspaceFileUri.fsPath;
 	}
 
 	/**
@@ -52,14 +63,14 @@ export class WorkspaceService {
 	async ensureWorkspaceFile(): Promise<boolean> {
 		console.log("[WorkspaceService.ensureWorkspaceFile]");
 		return this.withWriteLock(async () => {
-			const repos = this.repoConfigService.getAll();
+			const repos = this.reposStore.getAll();
 			if (repos.length === 0) {
 				return false;
 			}
 
 			const desiredFolders = repos.map((r) => ({
 				path: r.path,
-				name: path.basename(r.path),
+				name: basename(r.path),
 			}));
 
 			const desiredContent: WorkspaceFileContent = {
@@ -70,7 +81,8 @@ export class WorkspaceService {
 			// Try to read existing file
 			let isNew = false;
 			try {
-				const existingRaw = await fs.readFile(this.workspaceFilePath, "utf-8");
+				const rawBytes = await vscode.workspace.fs.readFile(this.workspaceFileUri);
+				const existingRaw = new TextDecoder().decode(rawBytes);
 				const existing = JSON.parse(existingRaw) as WorkspaceFileContent;
 
 				// Compare folders to see if update needed
@@ -82,11 +94,10 @@ export class WorkspaceService {
 				isNew = true;
 			}
 
-			await fs.mkdir(this.workspaceDir, { recursive: true });
-			await fs.writeFile(
-				this.workspaceFilePath,
-				JSON.stringify(desiredContent, null, "\t"),
-				"utf-8",
+			await vscode.workspace.fs.createDirectory(this.workspaceDirUri);
+			await vscode.workspace.fs.writeFile(
+				this.workspaceFileUri,
+				new TextEncoder().encode(JSON.stringify(desiredContent, null, "\t")),
 			);
 
 			return isNew;
@@ -99,10 +110,10 @@ export class WorkspaceService {
 	async syncWorkspaceFile(): Promise<void> {
 		console.log("[WorkspaceService.syncWorkspaceFile]");
 		return this.withWriteLock(async () => {
-			const repos = this.repoConfigService.getAll();
+			const repos = this.reposStore.getAll();
 			const folders = repos.map((r) => ({
 				path: r.path,
-				name: path.basename(r.path),
+				name: basename(r.path),
 			}));
 
 			const content: WorkspaceFileContent = {
@@ -110,11 +121,10 @@ export class WorkspaceService {
 				settings: {},
 			};
 
-			await fs.mkdir(this.workspaceDir, { recursive: true });
-			await fs.writeFile(
-				this.workspaceFilePath,
-				JSON.stringify(content, null, "\t"),
-				"utf-8",
+			await vscode.workspace.fs.createDirectory(this.workspaceDirUri);
+			await vscode.workspace.fs.writeFile(
+				this.workspaceFileUri,
+				new TextEncoder().encode(JSON.stringify(content, null, "\t")),
 			);
 		});
 	}
@@ -130,8 +140,7 @@ export class WorkspaceService {
 		);
 
 		if (choice === "Reopen in Workspace") {
-			const wsUri = vscode.Uri.file(this.workspaceFilePath);
-			await vscode.commands.executeCommand("vscode.openFolder", wsUri);
+			await vscode.commands.executeCommand("vscode.openFolder", this.workspaceFileUri);
 		}
 	}
 
@@ -143,7 +152,7 @@ export class WorkspaceService {
 		const currentCount = vscode.workspace.workspaceFolders?.length ?? 0;
 		vscode.workspace.updateWorkspaceFolders(0, currentCount, {
 			uri: vscode.Uri.file(folderPath),
-			name: name ?? path.basename(folderPath),
+			name: name ?? basename(folderPath),
 		});
 	}
 
@@ -152,7 +161,7 @@ export class WorkspaceService {
 	 */
 	resetExplorerScope(): void {
 		console.log("[WorkspaceService.resetExplorerScope]");
-		const repos = this.repoConfigService.getAll();
+		const repos = this.reposStore.getAll();
 		if (repos.length === 0) return;
 		const currentCount = vscode.workspace.workspaceFolders?.length ?? 0;
 		vscode.workspace.updateWorkspaceFolders(
@@ -160,7 +169,7 @@ export class WorkspaceService {
 			currentCount,
 			...repos.map((r) => ({
 				uri: vscode.Uri.file(r.path),
-				name: path.basename(r.path),
+				name: basename(r.path),
 			})),
 		);
 	}

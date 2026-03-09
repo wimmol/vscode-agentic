@@ -1,35 +1,49 @@
-import * as fs from "node:fs/promises";
-import * as os from "node:os";
-import * as path from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import * as vscode from "vscode";
 import { ensureGitignoreEntry } from "../../src/utils/gitignore";
 
 describe("ensureGitignoreEntry", () => {
-	let tmpDir: string;
+	const encoder = new TextEncoder();
 
-	beforeEach(async () => {
-		tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "gitignore-test-"));
+	beforeEach(() => {
+		vi.clearAllMocks();
+		// Default: getConfiguration returns ".worktrees" for worktreeDirectoryName
+		(vscode.workspace.getConfiguration as ReturnType<typeof vi.fn>).mockReturnValue({
+			get: vi.fn((_key: string, defaultValue: unknown) => defaultValue),
+		});
 	});
 
-	afterEach(async () => {
-		await fs.rm(tmpDir, { recursive: true, force: true });
+	afterEach(() => {
+		vi.restoreAllMocks();
 	});
 
 	it("creates .gitignore if it does not exist", async () => {
-		await ensureGitignoreEntry(tmpDir);
+		// readFile throws (file not found)
+		(vscode.workspace.fs.readFile as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+			new Error("FileNotFound"),
+		);
+		(vscode.workspace.fs.writeFile as ReturnType<typeof vi.fn>).mockResolvedValueOnce(undefined);
 
-		const content = await fs.readFile(path.join(tmpDir, ".gitignore"), "utf-8");
+		await ensureGitignoreEntry("/repo");
+
+		expect(vscode.workspace.fs.writeFile).toHaveBeenCalledOnce();
+		const writtenBytes = (vscode.workspace.fs.writeFile as ReturnType<typeof vi.fn>).mock.calls[0][1];
+		const content = new TextDecoder().decode(writtenBytes);
 		expect(content).toContain("# VS Code Agentic worktrees");
 		expect(content).toContain(".worktrees/");
 	});
 
 	it("appends entry to existing .gitignore", async () => {
-		const gitignorePath = path.join(tmpDir, ".gitignore");
-		await fs.writeFile(gitignorePath, "node_modules/\ndist/\n");
+		const existing = "node_modules/\ndist/\n";
+		(vscode.workspace.fs.readFile as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+			encoder.encode(existing),
+		);
+		(vscode.workspace.fs.writeFile as ReturnType<typeof vi.fn>).mockResolvedValueOnce(undefined);
 
-		await ensureGitignoreEntry(tmpDir);
+		await ensureGitignoreEntry("/repo");
 
-		const content = await fs.readFile(gitignorePath, "utf-8");
+		const writtenBytes = (vscode.workspace.fs.writeFile as ReturnType<typeof vi.fn>).mock.calls[0][1];
+		const content = new TextDecoder().decode(writtenBytes);
 		expect(content).toContain("node_modules/");
 		expect(content).toContain("dist/");
 		expect(content).toContain("# VS Code Agentic worktrees");
@@ -37,39 +51,56 @@ describe("ensureGitignoreEntry", () => {
 	});
 
 	it("does not duplicate entry if already present", async () => {
-		const gitignorePath = path.join(tmpDir, ".gitignore");
-		await fs.writeFile(gitignorePath, "node_modules/\n.worktrees/\n");
+		const existing = "node_modules/\n.worktrees/\n";
+		(vscode.workspace.fs.readFile as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+			encoder.encode(existing),
+		);
 
-		await ensureGitignoreEntry(tmpDir);
+		await ensureGitignoreEntry("/repo");
 
-		const content = await fs.readFile(gitignorePath, "utf-8");
-		const matches = content.match(/\.worktrees\//g);
-		expect(matches).toHaveLength(1);
+		expect(vscode.workspace.fs.writeFile).not.toHaveBeenCalled();
 	});
 
 	it("handles file without trailing newline", async () => {
-		const gitignorePath = path.join(tmpDir, ".gitignore");
-		await fs.writeFile(gitignorePath, "node_modules/\ndist/");
+		const existing = "node_modules/\ndist/";
+		(vscode.workspace.fs.readFile as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+			encoder.encode(existing),
+		);
+		(vscode.workspace.fs.writeFile as ReturnType<typeof vi.fn>).mockResolvedValueOnce(undefined);
 
-		await ensureGitignoreEntry(tmpDir);
+		await ensureGitignoreEntry("/repo");
 
-		const content = await fs.readFile(gitignorePath, "utf-8");
+		const writtenBytes = (vscode.workspace.fs.writeFile as ReturnType<typeof vi.fn>).mock.calls[0][1];
+		const content = new TextDecoder().decode(writtenBytes);
 		expect(content).toContain(".worktrees/");
-		// Should not have the entry glued to the previous line
-		const lines = content.split("\n");
-		const worktreeLine = lines.find((l) => l.trim() === ".worktrees/");
-		expect(worktreeLine).toBeDefined();
+		// Should have double newline separator since file didn't end with \n
+		expect(content).toContain("dist/\n\n# VS Code Agentic worktrees");
 	});
 
 	it("handles file with .worktrees (no trailing slash) as already present", async () => {
-		const gitignorePath = path.join(tmpDir, ".gitignore");
-		await fs.writeFile(gitignorePath, "node_modules/\n.worktrees\n");
+		const existing = "node_modules/\n.worktrees\n";
+		(vscode.workspace.fs.readFile as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+			encoder.encode(existing),
+		);
 
-		await ensureGitignoreEntry(tmpDir);
+		await ensureGitignoreEntry("/repo");
 
-		const content = await fs.readFile(gitignorePath, "utf-8");
-		// Should not add a duplicate
-		const worktreeMatches = content.match(/\.worktrees/g);
-		expect(worktreeMatches).toHaveLength(1);
+		expect(vscode.workspace.fs.writeFile).not.toHaveBeenCalled();
+	});
+
+	it("uses configured worktree directory name from settings", async () => {
+		(vscode.workspace.getConfiguration as ReturnType<typeof vi.fn>).mockReturnValue({
+			get: vi.fn((_key: string, _defaultValue: unknown) => ".agents"),
+		});
+		(vscode.workspace.fs.readFile as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+			new Error("FileNotFound"),
+		);
+		(vscode.workspace.fs.writeFile as ReturnType<typeof vi.fn>).mockResolvedValueOnce(undefined);
+
+		await ensureGitignoreEntry("/repo");
+
+		const writtenBytes = (vscode.workspace.fs.writeFile as ReturnType<typeof vi.fn>).mock.calls[0][1];
+		const content = new TextDecoder().decode(writtenBytes);
+		expect(content).toContain(".agents/");
 	});
 });
