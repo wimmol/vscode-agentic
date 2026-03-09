@@ -88,3 +88,23 @@ Plans:
 - [ ] 04-01-PLAN.md -- WorkspaceService (workspace file CRUD, mode detection, scope management) and root navigation commands
 - [ ] 04-02-PLAN.md -- Smooth rendering: postMessage-based refresh, DOM patcher, animation CSS, per-repo root buttons in webview
 - [ ] 04-03-PLAN.md -- Extension wiring: WorkspaceService integration, scope sync across all commands, human verification
+
+### Phase 5: Refactor codebase to match CLAUDE.md conventions
+
+**Goal:** Codebase follows all CLAUDE.md conventions: React webview replaces HTML string generation, feature-based file organization replaces layer-based, vscode.workspace.fs replaces Node.js fs, configurable settings replace hardcoded values
+**Requirements**: REFACTOR-01, REFACTOR-02, REFACTOR-03, REFACTOR-04, REFACTOR-05, REFACTOR-06, REFACTOR-07
+**Depends on:** Phase 4
+**Success Criteria** (what must be TRUE):
+  1. Sidebar renders via React components (Dashboard, RepoSection, AgentTile, atoms) instead of 820-line HTML string generation
+  2. All user-facing commands live in self-contained feature files (src/features/) instead of commands/ + services/ split
+  3. vscode.workspace.fs and vscode.Uri used for all file operations (no node:fs/node:path except git.service.ts)
+  4. Three VS Code settings exposed (maxWorktreesPerRepo, defaultStagingBranch, worktreeDirectoryName)
+  5. Thin data stores (AgentsStore, ReposStore) replace business-logic-heavy service classes
+  6. All existing functionality preserved -- same behavior, cleaner structure
+**Plans:** 4 plans
+
+Plans:
+- [ ] 05-01-PLAN.md -- React build pipeline, tsconfig, VS Code settings, thin data stores (AgentsStore, ReposStore)
+- [ ] 05-02-PLAN.md -- React webview components (Dashboard, RepoSection, AgentTile, atoms, hooks, CSS, HTML shell)
+- [ ] 05-03-PLAN.md -- Feature files (8 commands), fs/path migration (gitignore, workspace.service)
+- [ ] 05-04-PLAN.md -- Extension.ts rewiring, sidebar-provider update, old file cleanup, test updates, human verification
