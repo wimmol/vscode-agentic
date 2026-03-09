@@ -126,14 +126,37 @@
 					"name": "Agents"
 				}
 			]
+		},
+		"configuration": {
+			"title": "VS Code Agentic",
+			"properties": {
+				"vscode-agentic.maxWorktreesPerRepo": {
+					"type": "number",
+					"default": 5,
+					"minimum": 1,
+					"maximum": 20,
+					"description": "Maximum number of agent worktrees allowed per repository."
+				},
+				"vscode-agentic.defaultStagingBranch": {
+					"type": "string",
+					"default": "staging",
+					"description": "Default staging branch name for new repositories. Per-repo overrides take precedence."
+				},
+				"vscode-agentic.worktreeDirectoryName": {
+					"type": "string",
+					"default": ".worktrees",
+					"description": "Name of the directory created inside repositories to hold agent worktrees."
+				}
+			}
 		}
 	},
 	"scripts": {
 		"compile": "npm run check-types && node esbuild.js",
-		"check-types": "tsc --noEmit",
+		"check-types": "tsc --noEmit && tsc --noEmit -p tsconfig.webview.json",
 		"watch": "npm-run-all -p watch:*",
 		"watch:esbuild": "node esbuild.js --watch",
 		"watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+		"watch:tsc-webview": "tsc --noEmit --watch -p tsconfig.webview.json",
 		"package": "npm run check-types && node esbuild.js --production",
 		"vscode:prepublish": "npm run package",
 		"test": "vitest run",
@@ -151,6 +174,8 @@
 	"devDependencies": {
 		"@biomejs/biome": "^2.4.5",
 		"@types/node": "^20.19.35",
+		"@types/react": "^19.2.14",
+		"@types/react-dom": "^19.2.3",
 		"@types/vscode": "^1.96.0",
 		"@vscode/test-cli": "^0.0.12",
 		"@vscode/test-electron": "^2.5.2",
@@ -161,6 +186,8 @@
 		"vitest": "^4.0.18"
 	},
 	"dependencies": {
-		"@vscode/codicons": "^0.0.44"
+		"@vscode/codicons": "^0.0.44",
+		"react": "^19.2.4",
+		"react-dom": "^19.2.4"
 	}
 }
