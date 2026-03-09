@@ -1,18 +1,16 @@
-import * as path from "node:path";
 import * as vscode from "vscode";
-import type { AgentEntry } from "../models/agent.js";
-import type { AgentService } from "../services/agent.service.js";
-import type { RepoConfigService } from "../services/repo-config.service.js";
-import { getHtmlForWebview } from "./sidebar-html.js";
+import type { AgentsStore } from "../services/agents-store.js";
+import type { ReposStore } from "../services/repos-store.js";
+import { getWebviewHtml } from "../ui/view.js";
 
 /**
- * Dashboard data sent to webview via postMessage for DOM patching.
+ * Dashboard data sent to webview via postMessage for React rendering.
  */
 export interface DashboardData {
 	repos: Array<{
 		path: string;
 		name: string;
-		agents: AgentEntry[];
+		agents: import("../models/agent.js").AgentEntry[];
 	}>;
 	scope: string;
 }
@@ -20,23 +18,22 @@ export interface DashboardData {
 /**
  * WebviewViewProvider for the sidebar dashboard.
  *
- * Uses full HTML render for initial load, then postMessage-based
- * DOM patching for all subsequent updates to avoid flicker,
- * lost scroll position, and lost focus.
+ * Sends the React HTML shell on initial load, then postMessage-based
+ * data updates for all subsequent changes.
  */
 export class SidebarViewProvider implements vscode.WebviewViewProvider {
 	public static readonly viewType = "vscode-agentic.agents";
 	private _view?: vscode.WebviewView;
-	private _initialRenderDone = false;
 	private _currentScope = "global";
 
 	constructor(
 		private readonly extensionUri: vscode.Uri,
-		private readonly agentService: AgentService,
-		private readonly repoConfigService: RepoConfigService,
+		private readonly agentsStore: AgentsStore,
+		private readonly reposStore: ReposStore,
 	) {
-		this.agentService.onDidChange(() => this.refresh());
-		this.repoConfigService.onDidChange(() => this.refresh());
+		console.log("[SidebarViewProvider] created");
+		this.agentsStore.onDidChange(() => this.refresh());
+		this.reposStore.onDidChange(() => this.refresh());
 	}
 
 	resolveWebviewView(
@@ -44,6 +41,7 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
 		_context: vscode.WebviewViewResolveContext,
 		_token: vscode.CancellationToken,
 	): void {
+		console.log("[SidebarViewProvider.resolveWebviewView]");
 		this._view = webviewView;
 
 		webviewView.webview.options = {
@@ -51,8 +49,11 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
 			localResourceRoots: [this.extensionUri],
 		};
 
-		webviewView.webview.html = this._getHtml(webviewView.webview);
-		this._initialRenderDone = true;
+		webviewView.webview.html = getWebviewHtml(webviewView.webview, this.extensionUri);
+
+		// Send initial data after setting HTML
+		const data = this._buildDashboardData();
+		webviewView.webview.postMessage({ type: "update", data });
 
 		webviewView.webview.onDidReceiveMessage((message) => {
 			this._handleMessage(message);
@@ -60,13 +61,11 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
 	}
 
 	/**
-	 * Update the sidebar. Uses postMessage for in-place DOM patching
-	 * after the initial full HTML render.
+	 * Update the sidebar with current data via postMessage.
 	 */
 	refresh(): void {
-		console.log("[SidebarProvider.refresh]");
+		console.log("[SidebarViewProvider.refresh]");
 		if (!this._view) return;
-		if (!this._initialRenderDone) return;
 		const data = this._buildDashboardData();
 		this._view.webview.postMessage({ type: "update", data });
 	}
@@ -75,7 +74,7 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
 	 * Update the scope mode and trigger a refresh.
 	 */
 	setScope(scope: string): void {
-		console.log("[SidebarProvider.setScope]", scope);
+		console.log("[SidebarViewProvider.setScope]", scope);
 		this._currentScope = scope;
 		this.refresh();
 	}
@@ -84,28 +83,19 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
 	 * Build the dashboard data payload for postMessage updates.
 	 */
 	private _buildDashboardData(): DashboardData {
-		const repos = this.repoConfigService.getAll();
+		const repos = this.reposStore.getAll();
 		return {
 			repos: repos.map((repo) => ({
 				path: repo.path,
-				name: path.basename(repo.path),
-				agents: this.agentService.getForRepo(repo.path),
+				name: repo.path.split("/").pop() ?? repo.path,
+				agents: this.agentsStore.getForRepo(repo.path),
 			})),
 			scope: this._currentScope,
 		};
 	}
 
-	private _getHtml(webview: vscode.Webview): string {
-		const repos = this.repoConfigService.getAll();
-		const agentsByRepo = new Map<string, AgentEntry[]>();
-		for (const repo of repos) {
-			agentsByRepo.set(repo.path, this.agentService.getForRepo(repo.path));
-		}
-		return getHtmlForWebview(webview, this.extensionUri, repos, agentsByRepo);
-	}
-
 	private _handleMessage(message: any): void {
-		console.log("[SidebarProvider._handleMessage]", message.command, message);
+		console.log("[SidebarViewProvider._handleMessage]", message.command, message);
 		switch (message.command) {
 			case "focusAgent":
 				vscode.commands.executeCommand(

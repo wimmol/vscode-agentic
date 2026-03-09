@@ -1,100 +1,97 @@
 import * as vscode from "vscode";
-import { registerAgentCommands } from "./commands/agent.commands";
-import { registerRepoCommands } from "./commands/repo.commands";
-import { registerWorkspaceCommands } from "./commands/workspace.commands";
-import { AgentService } from "./services/agent.service";
+import { AgentsStore } from "./services/agents-store";
+import { ReposStore } from "./services/repos-store";
 import { GitService } from "./services/git.service";
-import { RepoConfigService } from "./services/repo-config.service";
-import { TerminalService } from "./services/terminal.service";
 import { WorkspaceService } from "./services/workspace.service";
-import { WorktreeService } from "./services/worktree.service";
+import { initTerminals, disposeAllTerminals } from "./utils/terminal";
 import { SidebarViewProvider } from "./views/sidebar-provider";
+import { registerCreateAgent } from "./features/create-agent";
+import { registerDeleteAgent } from "./features/delete-agent";
+import { registerFocusAgent } from "./features/focus-agent";
+import { registerStopAgent } from "./features/stop-agent";
+import { registerAddRepo } from "./features/add-repo";
+import { registerRemoveRepo } from "./features/remove-repo";
+import { registerRootGlobal } from "./features/root-global";
+import { registerRootRepo } from "./features/root-repo";
 
 export function activate(context: vscode.ExtensionContext): void {
-	// 1. Create service singletons (not at module level -- research anti-pattern warning)
+	console.log("[extension.activate]");
+
+	// 1. Create shared services and thin stores
 	const gitService = new GitService();
-	const worktreeService = new WorktreeService(gitService, context.globalState);
-	const repoConfigService = new RepoConfigService(context.globalState, gitService);
+	const agentsStore = new AgentsStore(context.globalState);
+	const reposStore = new ReposStore(context.globalState);
+	const workspaceService = new WorkspaceService(reposStore);
 
-	// 2. Create WorkspaceService for workspace file management and Explorer scope
-	const workspaceService = new WorkspaceService(repoConfigService);
-
-	// 3. Create AgentService and TerminalService with status callback
-	const agentService = new AgentService(context.globalState, worktreeService);
-	const terminalService = new TerminalService((agentName, repoPath, status, exitCode) => {
-		agentService.updateStatus(repoPath, agentName, status, exitCode);
+	// 2. Initialize terminal management with status callback
+	initTerminals((agentName, repoPath, status, exitCode) => {
+		console.log("[extension] terminal status callback", { agentName, repoPath, status, exitCode });
+		const entries = agentsStore.getAll();
+		const entry = entries.find(e => e.repoPath === repoPath && e.agentName === agentName);
+		if (entry) {
+			entry.status = status;
+			entry.exitCode = exitCode;
+			if (status === "finished" || status === "error") {
+				entry.finishedAt = new Date().toISOString();
+			}
+			agentsStore.save(entries);
+		}
 	});
-	agentService.setTerminalService(terminalService);
 
-	// 4. Register sidebar webview provider
+	// 3. Register sidebar webview provider
 	const sidebarProvider = new SidebarViewProvider(
-		context.extensionUri,
-		agentService,
-		repoConfigService,
+		context.extensionUri, agentsStore, reposStore,
 	);
 	context.subscriptions.push(
-		vscode.window.registerWebviewViewProvider(
-			SidebarViewProvider.viewType,
-			sidebarProvider,
-		),
+		vscode.window.registerWebviewViewProvider(SidebarViewProvider.viewType, sidebarProvider),
 	);
 
-	// 5. Register commands
-	registerRepoCommands(context, repoConfigService, workspaceService);
-	registerAgentCommands(context, agentService, terminalService, repoConfigService, worktreeService, workspaceService);
-	registerWorkspaceCommands(context, workspaceService);
+	// 4. Register all feature commands
+	registerCreateAgent(context, agentsStore, reposStore, gitService);
+	registerDeleteAgent(context, agentsStore, gitService);
+	registerFocusAgent(context, agentsStore, workspaceService);
+	registerStopAgent(context, agentsStore);
+	registerAddRepo(context, reposStore, gitService, workspaceService);
+	registerRemoveRepo(context, reposStore, workspaceService);
+	registerRootGlobal(context, workspaceService);
+	registerRootRepo(context, workspaceService);
 
-	// 6. Dispose terminal listeners, agent service, and repo config service on deactivation
-	context.subscriptions.push({ dispose: () => terminalService.dispose() });
-	context.subscriptions.push({ dispose: () => agentService.dispose() });
-	context.subscriptions.push({ dispose: () => repoConfigService.dispose() });
+	// 5. Dispose stores and terminal listeners on deactivation
+	context.subscriptions.push({ dispose: () => agentsStore.dispose() });
+	context.subscriptions.push({ dispose: () => reposStore.dispose() });
+	context.subscriptions.push({ dispose: () => disposeAllTerminals() });
 
-	// 7. Git health check (non-blocking -- extension still activates, just warns)
+	// 6. Git health check (non-blocking)
 	gitService.exec(".", ["--version"]).catch(() => {
 		vscode.window.showErrorMessage(
 			"VS Code Agentic: git is not installed or not in PATH. Worktree features are disabled.",
 		);
 	});
 
-	// 8. Reconcile all known repos on activation (GIT-06, non-blocking)
-	const repos = repoConfigService.getAll();
-	for (const repo of repos) {
-		worktreeService
-			.reconcile(repo.path)
-			.then((result) => {
-				const orphanCount = result.orphanedInManifest.length + result.orphanedOnDisk.length;
-				if (orphanCount > 0) {
-					vscode.window.showInformationMessage(
-						`Agentic: Cleaned up ${orphanCount} orphaned worktree(s) in ${repo.path}`,
-					);
-				}
-			})
-			.catch((err: Error) => {
-				vscode.window.showErrorMessage(
-					`Agentic: Worktree reconciliation failed for ${repo.path}: ${err.message}`,
-				);
-			});
+	// 7. Reconcile agent statuses on activation (reset running -> created)
+	const entries = agentsStore.getAll();
+	let changed = false;
+	for (const entry of entries) {
+		if (entry.status === "running") {
+			entry.status = "created";
+			entry.exitCode = undefined;
+			changed = true;
+		}
+	}
+	if (changed) {
+		agentsStore.save(entries).catch((err: Error) => {
+			vscode.window.showErrorMessage(`Agentic: Agent reconciliation failed: ${err.message}`);
+		});
 	}
 
-	// 9. Reconcile agent statuses on activation (terminals lost on restart)
-	agentService.reconcileOnActivation().catch((err: Error) => {
-		vscode.window.showErrorMessage(
-			`Agentic: Agent reconciliation failed: ${err.message}`,
-		);
-	});
-
-	// 10. Initialize workspace file (non-blocking)
+	// 8. Initialize workspace file (non-blocking)
 	workspaceService.ensureWorkspaceFile().then((created) => {
 		if (created) {
 			workspaceService.promptReopenInWorkspace();
 		}
 	}).catch((err: Error) => {
-		vscode.window.showErrorMessage(
-			`Agentic: Failed to create workspace file: ${err.message}`,
-		);
+		vscode.window.showErrorMessage(`Agentic: Failed to create workspace file: ${err.message}`);
 	});
 }
 
-export function deactivate(): void {
-	// Cleanup handled by context.subscriptions
-}
+export function deactivate(): void {}
