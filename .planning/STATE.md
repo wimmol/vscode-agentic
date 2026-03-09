@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 05-03-PLAN.md
-last_updated: "2026-03-09T18:30:20.508Z"
-last_activity: 2026-03-10 - Completed 05-03-PLAN.md (Feature-based architecture, vscode API migration, feature tests)
+stopped_at: Completed 05-04-PLAN.md (checkpoint pending)
+last_updated: "2026-03-09T18:36:30.221Z"
+last_activity: 2026-03-10 - Completed 05-04-PLAN.md (Integration wiring, dead code removal, checkpoint pending)
 progress:
   total_phases: 5
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 15
-  completed_plans: 12
-  percent: 80
+  completed_plans: 13
+  percent: 87
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 ## Current Position
 
 Phase: 5 of 5 (Refactor Codebase to Match CLAUDE.md Conventions)
-Plan: 3 of 4 in current phase (COMPLETE)
+Plan: 4 of 4 in current phase (COMPLETE)
 Status: In Progress
-Last activity: 2026-03-10 - Completed 05-03-PLAN.md (Feature-based architecture, vscode API migration, feature tests)
+Last activity: 2026-03-10 - Completed 05-04-PLAN.md (Integration wiring, dead code removal, checkpoint pending)
 
-Progress: [████████░░] 80% (Overall: 12/15 plans)
+Progress: [█████████░] 87% (Overall: 13/15 plans)
 
 ## Performance Metrics
 
@@ -55,11 +55,12 @@ Progress: [████████░░] 80% (Overall: 12/15 plans)
 | 05 | 01 | 4min | 2 | 10 |
 | 05 | 02 | 3min | 2 | 13 |
 | 05 | 03 | 9min | 2 | 17 |
+| 05 | 04 | 3min | 2 | 22 |
 
 **Recent Trend:**
-- 05-01: 4min (2 tasks, 10 files)
 - 05-02: 3min (2 tasks, 13 files)
 - 05-03: 9min (2 tasks, 17 files)
+- 05-04: 3min (2 tasks, 22 files)
 
 *Updated after each plan completion*
 
@@ -114,6 +115,9 @@ Recent decisions affecting current work:
 - [Phase 05]: WorkspaceService uses duck-typed RepoDataSource interface for backwards-compatible migration
 - [Phase 05]: Feature files use vscode.commands.executeCommand for cross-feature calls to avoid circular imports
 - [Phase 05]: Inline basename helper (split/pop) instead of node:path import for simple path extraction
+- [Phase 05]: extension.ts is a thin wiring layer: create stores, register features, dispose on deactivation
+- [Phase 05]: sidebar-provider sends initial data via postMessage after setting HTML (no data baked into HTML)
+- [Phase 05]: Agent reconciliation inline in activate() (reset running->created) instead of delegating to service
 
 ### Pending Todos
 
@@ -139,6 +143,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-09T18:30:20.506Z
-Stopped at: Completed 05-03-PLAN.md
+Last session: 2026-03-09T18:36:30.218Z
+Stopped at: Completed 05-04-PLAN.md (checkpoint pending)
 Resume file: None
