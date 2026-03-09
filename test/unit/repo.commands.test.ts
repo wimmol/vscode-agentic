@@ -11,6 +11,17 @@ function createMockRepoConfigService() {
 	};
 }
 
+function createMockWorkspaceService() {
+	return {
+		ensureWorkspaceFile: vi.fn().mockResolvedValue(false),
+		syncWorkspaceFile: vi.fn().mockResolvedValue(undefined),
+		promptReopenInWorkspace: vi.fn().mockResolvedValue(undefined),
+		setExplorerScope: vi.fn(),
+		isInWorkspaceMode: vi.fn().mockReturnValue(false),
+		getWorkspaceFilePath: vi.fn().mockReturnValue("/home/test/.agentic/agentic.code-workspace"),
+	};
+}
+
 function createMockContext() {
 	const subscriptions: { dispose: () => void }[] = [];
 	return {
@@ -25,12 +36,14 @@ function createMockContext() {
 
 describe("registerRepoCommands", () => {
 	let repoConfigService: ReturnType<typeof createMockRepoConfigService>;
+	let workspaceService: ReturnType<typeof createMockWorkspaceService>;
 	let context: ReturnType<typeof createMockContext>;
 	let commandHandlers: Map<string, (...args: unknown[]) => unknown>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		repoConfigService = createMockRepoConfigService();
+		workspaceService = createMockWorkspaceService();
 		context = createMockContext();
 		commandHandlers = new Map();
 
@@ -39,12 +52,32 @@ describe("registerRepoCommands", () => {
 			return { dispose: vi.fn() };
 		});
 
-		registerRepoCommands(context as never, repoConfigService as never);
+		registerRepoCommands(context as never, repoConfigService as never, workspaceService as never);
 	});
 
 	it("registers addRepo and removeRepo commands", () => {
 		expect(commandHandlers.has("vscode-agentic.addRepo")).toBe(true);
 		expect(commandHandlers.has("vscode-agentic.removeRepo")).toBe(true);
+	});
+
+	describe("addRepo command", () => {
+		it("calls workspaceService.syncWorkspaceFile after successful add", async () => {
+			repoConfigService.addRepo.mockResolvedValueOnce({ path: "/new-repo", stagingBranch: "main", worktreeLimit: 5 });
+
+			const handler = commandHandlers.get("vscode-agentic.addRepo")!;
+			await handler();
+
+			expect(workspaceService.syncWorkspaceFile).toHaveBeenCalled();
+		});
+
+		it("does NOT call syncWorkspaceFile when addRepo returns nothing", async () => {
+			repoConfigService.addRepo.mockResolvedValueOnce(undefined);
+
+			const handler = commandHandlers.get("vscode-agentic.addRepo")!;
+			await handler();
+
+			expect(workspaceService.syncWorkspaceFile).not.toHaveBeenCalled();
+		});
 	});
 
 	describe("removeRepo command", () => {
@@ -62,6 +95,15 @@ describe("registerRepoCommands", () => {
 			expect(repoConfigService.removeRepo).toHaveBeenCalledWith("/repo");
 		});
 
+		it("calls workspaceService.syncWorkspaceFile after successful remove", async () => {
+			window.showWarningMessage.mockResolvedValueOnce("Remove");
+
+			const handler = commandHandlers.get("vscode-agentic.removeRepo")!;
+			await handler("/repo");
+
+			expect(workspaceService.syncWorkspaceFile).toHaveBeenCalled();
+		});
+
 		it("does nothing when user cancels confirmation", async () => {
 			window.showWarningMessage.mockResolvedValueOnce(undefined);
 
@@ -69,6 +111,7 @@ describe("registerRepoCommands", () => {
 			await handler("/repo");
 
 			expect(repoConfigService.removeRepo).not.toHaveBeenCalled();
+			expect(workspaceService.syncWorkspaceFile).not.toHaveBeenCalled();
 		});
 
 		it("shows info message on successful removal", async () => {

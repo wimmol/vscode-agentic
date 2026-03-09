@@ -61,6 +61,17 @@ function createMockRepoConfigService() {
 	};
 }
 
+function createMockWorkspaceService() {
+	return {
+		ensureWorkspaceFile: vi.fn().mockResolvedValue(false),
+		syncWorkspaceFile: vi.fn().mockResolvedValue(undefined),
+		promptReopenInWorkspace: vi.fn().mockResolvedValue(undefined),
+		setExplorerScope: vi.fn(),
+		isInWorkspaceMode: vi.fn().mockReturnValue(false),
+		getWorkspaceFilePath: vi.fn().mockReturnValue("/home/test/.agentic/agentic.code-workspace"),
+	};
+}
+
 function createMockContext() {
 	const subscriptions: { dispose: () => void }[] = [];
 	return {
@@ -78,6 +89,7 @@ describe("registerAgentCommands", () => {
 	let terminalService: ReturnType<typeof createMockTerminalService>;
 	let worktreeService: ReturnType<typeof createMockWorktreeService>;
 	let repoConfigService: ReturnType<typeof createMockRepoConfigService>;
+	let workspaceService: ReturnType<typeof createMockWorkspaceService>;
 	let context: ReturnType<typeof createMockContext>;
 	let commandHandlers: Map<string, (...args: unknown[]) => unknown>;
 
@@ -87,6 +99,7 @@ describe("registerAgentCommands", () => {
 		terminalService = createMockTerminalService();
 		worktreeService = createMockWorktreeService();
 		repoConfigService = createMockRepoConfigService();
+		workspaceService = createMockWorkspaceService();
 		context = createMockContext();
 		commandHandlers = new Map();
 
@@ -102,6 +115,7 @@ describe("registerAgentCommands", () => {
 			terminalService as never,
 			repoConfigService as never,
 			worktreeService as never,
+			workspaceService as never,
 		);
 	});
 
@@ -313,32 +327,31 @@ describe("registerAgentCommands", () => {
 			expect(agentService.focusAgent).toHaveBeenCalledWith("/repo", "my-agent");
 		});
 
-		it("calls workspace.updateWorkspaceFolders with the worktree URI when agent is not running", async () => {
-			agentService.getAgent.mockReturnValue({
-				agentName: "my-agent",
-				repoPath: "/repo",
-				status: "created",
-				createdAt: "2026-01-01T00:00:00.000Z",
-			});
-
+		it("calls workspaceService.setExplorerScope with agent scope object", async () => {
 			const handler = commandHandlers.get("vscode-agentic.focusAgent")!;
 			await handler("/repo", "my-agent");
 
-			expect(workspace.updateWorkspaceFolders).toHaveBeenCalled();
+			expect(workspaceService.setExplorerScope).toHaveBeenCalledWith({
+				repo: "/repo",
+				agent: "my-agent",
+				worktreePath: "/repo/.worktrees/my-agent",
+			});
 		});
 
-		it("calls workspace.updateWorkspaceFolders when showing an existing running terminal", async () => {
-			agentService.getAgent.mockReturnValue({
-				agentName: "my-agent",
-				repoPath: "/repo",
-				status: "running",
-				createdAt: "2026-01-01T00:00:00.000Z",
-			});
+		it("does not call workspace.updateWorkspaceFolders directly (uses WorkspaceService instead)", async () => {
+			const handler = commandHandlers.get("vscode-agentic.focusAgent")!;
+			await handler("/repo", "my-agent");
+
+			expect(workspace.updateWorkspaceFolders).not.toHaveBeenCalled();
+		});
+
+		it("does not call setExplorerScope when worktree entry is not found", async () => {
+			worktreeService.getManifest.mockReturnValue([]);
 
 			const handler = commandHandlers.get("vscode-agentic.focusAgent")!;
 			await handler("/repo", "my-agent");
 
-			expect(workspace.updateWorkspaceFolders).toHaveBeenCalled();
+			expect(workspaceService.setExplorerScope).not.toHaveBeenCalled();
 		});
 	});
 

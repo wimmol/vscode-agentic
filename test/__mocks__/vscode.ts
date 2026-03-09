@@ -75,6 +75,7 @@ export const window = {
 
 // Workspace API mocks
 export const workspace = {
+	workspaceFile: undefined as { fsPath: string; scheme: string } | undefined,
 	workspaceFolders: undefined as unknown[] | undefined,
 	getConfiguration: vi.fn(() => ({
 		get: vi.fn(),
