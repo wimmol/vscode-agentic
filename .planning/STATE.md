@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: in-progress
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-03-09T06:45:06Z"
-last_activity: 2026-03-09 - Completed 04-01-PLAN.md (WorkspaceService and root navigation commands)
+status: executing
+stopped_at: Completed 04-02-PLAN.md
+last_updated: "2026-03-09T06:46:13Z"
+last_activity: 2026-03-09 - Completed 04-02-PLAN.md (DOM patching, animations, root buttons)
 progress:
   total_phases: 4
-  completed_phases: 3
-  total_plans: 10
-  completed_plans: 8
-  percent: 80
+  completed_phases: 2
+  total_plans: 11
+  completed_plans: 9
+  percent: 82
 ---
 
 # Project State
@@ -26,18 +26,18 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 ## Current Position
 
 Phase: 4 of 4 (UI Polish)
-Plan: 1 of 3 in current phase (COMPLETE)
+Plan: 2 of 3 in current phase (COMPLETE)
 Status: In Progress
-Last activity: 2026-03-09 - Completed 04-01-PLAN.md (WorkspaceService and root navigation commands)
+Last activity: 2026-03-09 - Completed 04-02-PLAN.md (DOM patching, animations, root buttons)
 
-Progress: [████████░░] 80% (Overall: 8/10 plans)
+Progress: [████████░░] 82% (Overall: 9/11 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 8
+- Total plans completed: 9
 - Average duration: 4min
-- Total execution time: 34min
+- Total execution time: 38min
 
 **By Phase:**
 
@@ -51,11 +51,12 @@ Progress: [████████░░] 80% (Overall: 8/10 plans)
 | 03 | 01 | 5min | 2 | 11 |
 | 03 | 02 | 6min | 3 | 6 |
 | 04 | 01 | 3min | 2 | 5 |
+| 04 | 02 | 4min | 2 | 4 |
 
 **Recent Trend:**
-- 03-01: 5min (2 tasks, 11 files)
 - 03-02: 6min (3 tasks, 6 files)
 - 04-01: 3min (2 tasks, 5 files)
+- 04-02: 4min (2 tasks, 4 files)
 
 *Updated after each plan completion*
 
@@ -96,6 +97,10 @@ Recent decisions affecting current work:
 - [Phase 04-01]: WorkspaceService uses promise-chain mutex (same pattern as WorktreeService) for file write serialization
 - [Phase 04-01]: Workspace file folders use basename as name field for readable Explorer labels
 - [Phase 04-01]: setExplorerScope uses replace-all pattern (index 0, delete currentCount) for atomic folder switching
+- [Phase 04-02]: postMessage sends full dashboard data (repos+agents+scope) on every refresh -- no incremental diffing at provider level
+- [Phase 04-02]: DOM patcher does in-place attribute/text updates, never innerHTML replacement, to preserve scroll/focus
+- [Phase 04-02]: Double requestAnimationFrame for reliable CSS transition trigger on new elements
+- [Phase 04-02]: Root button placed first in repo-actions (before create/settings/remove)
 
 ### Pending Todos
 
@@ -120,6 +125,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-09T06:45:06Z
-Stopped at: Completed 04-01-PLAN.md
-Resume file: .planning/phases/04-ui-polish-agentic-tab-folder-scope-sidebar-workspace-naming-root-navigation-buttons-smooth-rendering-without-glitches/04-02-PLAN.md
+Last session: 2026-03-09T06:46:13Z
+Stopped at: Completed 04-02-PLAN.md
+Resume file: .planning/phases/04-ui-polish-agentic-tab-folder-scope-sidebar-workspace-naming-root-navigation-buttons-smooth-rendering-without-glitches/04-03-PLAN.md

@@ -82,7 +82,7 @@ Plans:
   5. Sidebar refresh uses postMessage + DOM patching (no full HTML replacement after initial render)
   6. New/deleted tiles animate in/out with CSS transitions
   7. All scope changes (global root, repo root, agent focus) update Explorer folders consistently
-**Plans:** 3 plans
+**Plans:** 2/3 plans executed
 
 Plans:
 - [ ] 04-01-PLAN.md -- WorkspaceService (workspace file CRUD, mode detection, scope management) and root navigation commands
