@@ -101,7 +101,7 @@ Plans:
   4. Three VS Code settings exposed (maxWorktreesPerRepo, defaultStagingBranch, worktreeDirectoryName)
   5. Thin data stores (AgentsStore, ReposStore) replace business-logic-heavy service classes
   6. All existing functionality preserved -- same behavior, cleaner structure
-**Plans:** 4 plans
+**Plans:** 3/4 plans executed
 
 Plans:
 - [x] 05-01-PLAN.md -- React build pipeline, tsconfig, VS Code settings, thin data stores (AgentsStore, ReposStore)
