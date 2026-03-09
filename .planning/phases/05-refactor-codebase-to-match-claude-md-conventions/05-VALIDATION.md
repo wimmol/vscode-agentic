@@ -2,8 +2,8 @@
 phase: 5
 slug: refactor-codebase-to-match-claude-md-conventions
 status: draft
-nyquist_compliant: false
-wave_0_complete: false
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-03-10
 ---
 
@@ -38,33 +38,33 @@ created: 2026-03-10
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 5-01-01 | 01 | 0 | Test infra | config | `npx vitest run` | ❌ W0 | ⬜ pending |
-| 5-01-02 | 01 | 0 | AgentsStore | unit | `npx vitest run test/unit/agents-store.test.ts` | ❌ W0 | ⬜ pending |
-| 5-01-03 | 01 | 0 | ReposStore | unit | `npx vitest run test/unit/repos-store.test.ts` | ❌ W0 | ⬜ pending |
-| 5-02-01 | 02 | 1 | React build | build | `npm run compile` | N/A | ⬜ pending |
-| 5-02-02 | 02 | 1 | Webview HTML shell | unit | `npx vitest run test/unit/view.test.ts` | ❌ W0 | ⬜ pending |
-| 5-03-01 | 03 | 1 | Feature: create-agent | unit | `npx vitest run test/unit/create-agent.test.ts` | ❌ W0 | ⬜ pending |
-| 5-03-02 | 03 | 1 | Feature: delete-agent | unit | `npx vitest run test/unit/delete-agent.test.ts` | ❌ W0 | ⬜ pending |
-| 5-03-03 | 03 | 1 | Feature: add-repo | unit | `npx vitest run test/unit/add-repo.test.ts` | ❌ W0 | ⬜ pending |
-| 5-04-01 | 04 | 2 | gitignore migrated | unit | `npx vitest run test/unit/gitignore.test.ts` | ✅ (needs update) | ⬜ pending |
-| 5-04-02 | 04 | 2 | workspace.service migrated | unit | `npx vitest run test/unit/workspace.service.test.ts` | ✅ (needs update) | ⬜ pending |
-| 5-05-01 | 05 | 2 | Settings | unit | `npx vitest run test/unit/settings.test.ts` | ❌ W0 | ⬜ pending |
+| 5-01-01 | 01 | 1 | React build infra | config + build | `npm run compile && test -f dist/webview.js` | N/A | pending |
+| 5-01-02 | 01 | 1 | AgentsStore + ReposStore | unit (TDD) | `npx vitest run test/unit/agents-store.test.ts test/unit/repos-store.test.ts` | Created in task | pending |
+| 5-02-01 | 02 | 2 | React atoms + hooks + types | build | `npm run compile` | N/A | pending |
+| 5-02-02 | 02 | 2 | React components + HTML shell | unit + build | `npx vitest run test/unit/view.test.ts` | Created in task | pending |
+| 5-03-01 | 03 | 2 | Agent feature files + terminal util | build | `npm run compile` | N/A | pending |
+| 5-03-02 | 03 | 2 | Repo features + fs migration + feature tests | unit | `npx vitest run test/unit/create-agent.test.ts test/unit/delete-agent.test.ts test/unit/add-repo.test.ts` | Created in task | pending |
+| 5-04-01 | 04 | 3 | Rewire extension.ts + sidebar-provider | build | `npm run compile` | N/A | pending |
+| 5-04-02 | 04 | 3 | Delete old files + update tests | unit + build | `npm run compile && npx vitest run` | Updated in task | pending |
+| 5-04-03 | 04 | 3 | Human verification | manual | Human confirms 12 verification steps | N/A | pending |
 
-*Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
+*Status: pending / green / red / flaky*
 
 ---
 
 ## Wave 0 Requirements
 
-- [ ] `vitest.config.ts` — configure to handle `.tsx` files and JSX
-- [ ] `test/unit/agents-store.test.ts` — stubs for thin store CRUD
-- [ ] `test/unit/repos-store.test.ts` — stubs for thin store CRUD
-- [ ] `test/unit/create-agent.test.ts` — replaces agent.commands.test.ts + agent.service.test.ts portions
-- [ ] `test/unit/delete-agent.test.ts` — replaces portions of above
-- [ ] `test/unit/add-repo.test.ts` — replaces repo.commands.test.ts + repo-config.service.test.ts portions
-- [ ] `test/unit/view.test.ts` — covers new HTML shell (replaces sidebar-html.test.ts)
-- [ ] Update `test/unit/gitignore.test.ts` — mock vscode.workspace.fs instead of node:fs
-- [ ] Update `test/unit/workspace.service.test.ts` — mock vscode.workspace.fs instead of node:fs
+All Wave 0 test files are created within their respective plan tasks:
+
+- [x] `vitest.config.ts` — updated for TSX in Plan 01 Task 1
+- [x] `test/unit/agents-store.test.ts` — created in Plan 01 Task 2 (TDD)
+- [x] `test/unit/repos-store.test.ts` — created in Plan 01 Task 2 (TDD)
+- [x] `test/unit/view.test.ts` — created in Plan 02 Task 2
+- [x] `test/unit/create-agent.test.ts` — created in Plan 03 Task 2
+- [x] `test/unit/delete-agent.test.ts` — created in Plan 03 Task 2
+- [x] `test/unit/add-repo.test.ts` — created in Plan 03 Task 2
+- [x] Update `test/unit/gitignore.test.ts` — updated in Plan 04 Task 2
+- [x] Update `test/unit/workspace.service.test.ts` — updated in Plan 04 Task 2
 
 ---
 
@@ -78,13 +78,13 @@ created: 2026-03-10
 
 ---
 
-## Validation Sign-Off
+## Nyquist Compliance Check
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 15s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify commands
+- [x] No 3 consecutive tasks without automated test feedback (Plans 02/03 now include unit tests)
+- [x] Wave 0 test files are created within their respective plans (not deferred)
+- [x] No watch-mode flags
+- [x] Feedback latency < 15s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** ready

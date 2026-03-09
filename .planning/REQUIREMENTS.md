@@ -111,9 +111,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AGENT-04 | Phase 4 | Planned |
 | UI-05 | Phase 4 | Planned |
 | UI-06 | Phase 2, 3 | Planned |
-| TERM-03 | Phase 5 | Planned |
-| AGENT-03 | Phase 5 | Planned |
-| PERF-03 | Phase 5 | Planned |
+| TERM-03 | Phase 6 | Planned |
+| AGENT-03 | Phase 6 | Planned |
+| PERF-03 | Phase 6 | Planned |
 | TERM-04 | Phase 6 | Planned |
 | TERM-05 | Phase 6 | Planned |
 | TERM-06 | Phase 6 | Planned |
@@ -126,6 +126,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 - Mapped to phases: 29
 - Unmapped: 0
 
+**Note:** Phase 5 is a refactoring-only phase (REFACTOR-01 through REFACTOR-07) that restructures existing functionality without adding new features. TERM-03, AGENT-03, and PERF-03 were moved from Phase 5 to Phase 6 to match the ROADMAP's refactoring-only scope.
+
 ---
 *Requirements defined: 2026-03-04*
-*Last updated: 2026-03-04 after roadmap creation*
+*Last updated: 2026-03-10 after Phase 5 refactoring scope correction*
