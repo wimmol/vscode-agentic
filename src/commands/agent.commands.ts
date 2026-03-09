@@ -3,6 +3,7 @@ import { isValidBranchName } from "../utils/branch-validation";
 import type { AgentService } from "../services/agent.service";
 import type { TerminalService } from "../services/terminal.service";
 import type { RepoConfigService } from "../services/repo-config.service";
+import type { WorkspaceService } from "../services/workspace.service";
 import type { WorktreeService } from "../services/worktree.service";
 
 /**
@@ -17,6 +18,7 @@ export function registerAgentCommands(
 	terminalService: TerminalService,
 	repoConfigService: RepoConfigService,
 	worktreeService: WorktreeService,
+	workspaceService: WorkspaceService,
 ): void {
 	const createAgent = vscode.commands.registerCommand(
 		"vscode-agentic.createAgent",
@@ -130,15 +132,15 @@ export function registerAgentCommands(
 		async (repoPath: string, agentName: string) => {
 			await agentService.focusAgent(repoPath, agentName);
 
-			// Switch workspace folders to the agent's worktree directory
+			// Switch Explorer scope to the agent's worktree directory via WorkspaceService
 			const manifest = worktreeService.getManifest(repoPath);
 			const worktreeEntry = manifest.find((w) => w.agentName === agentName);
 			if (worktreeEntry) {
-				vscode.workspace.updateWorkspaceFolders(
-					0,
-					vscode.workspace.workspaceFolders?.length ?? 0,
-					{ uri: vscode.Uri.file(worktreeEntry.path) },
-				);
+				workspaceService.setExplorerScope({
+					repo: repoPath,
+					agent: agentName,
+					worktreePath: worktreeEntry.path,
+				});
 			}
 		},
 	);

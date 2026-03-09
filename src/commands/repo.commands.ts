@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import type { RepoConfigService } from "../services/repo-config.service";
+import type { WorkspaceService } from "../services/workspace.service";
 import * as path from "node:path";
 
 /**
@@ -8,10 +9,14 @@ import * as path from "node:path";
 export function registerRepoCommands(
 	context: vscode.ExtensionContext,
 	repoConfigService: RepoConfigService,
+	workspaceService: WorkspaceService,
 ): void {
-	const addRepo = vscode.commands.registerCommand("vscode-agentic.addRepo", () =>
-		repoConfigService.addRepo(),
-	);
+	const addRepo = vscode.commands.registerCommand("vscode-agentic.addRepo", async () => {
+		const result = await repoConfigService.addRepo();
+		if (result) {
+			await workspaceService.syncWorkspaceFile();
+		}
+	});
 
 	const removeRepo = vscode.commands.registerCommand(
 		"vscode-agentic.removeRepo",
@@ -29,6 +34,7 @@ export function registerRepoCommands(
 			}
 
 			await repoConfigService.removeRepo(repoPath);
+			await workspaceService.syncWorkspaceFile();
 			vscode.window.showInformationMessage(`Repository '${displayName}' removed.`);
 		},
 	);
