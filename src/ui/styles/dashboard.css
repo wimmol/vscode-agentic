@@ -1,0 +1,215 @@
+/* Dashboard webview styles -- uses VS Code CSS variables throughout */
+
+body {
+	padding: 0;
+	margin: 0;
+	background: var(--vscode-sideBar-background);
+	color: var(--vscode-foreground);
+	font-family: var(--vscode-font-family);
+	font-size: var(--vscode-font-size);
+}
+
+.dashboard {
+	padding: 8px;
+}
+
+.dashboard-toolbar {
+	display: flex;
+	gap: 4px;
+	margin-bottom: 8px;
+}
+
+/* Repo section */
+
+.repo-section {
+	margin-bottom: 12px;
+	transition: opacity 0.2s ease;
+}
+
+.repo-section.collapsed .repo-agents {
+	display: none;
+}
+
+.repo-section.collapsed .collapse-btn .codicon-chevron-down {
+	transform: rotate(-90deg);
+}
+
+.repo-header {
+	display: flex;
+	align-items: center;
+	padding: 6px 8px;
+	background: var(--vscode-sideBarSectionHeader-background);
+	border: 1px solid var(--vscode-panel-border);
+	border-radius: 4px;
+	gap: 6px;
+}
+
+.collapse-btn {
+	background: none;
+	border: none;
+	color: var(--vscode-foreground);
+	cursor: pointer;
+	padding: 2px;
+	display: flex;
+	align-items: center;
+}
+
+.collapse-btn .codicon {
+	transition: transform 0.15s ease;
+}
+
+.repo-name {
+	flex: 1;
+	font-weight: 600;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.active-dot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--vscode-testing-runAction);
+	flex-shrink: 0;
+}
+
+.repo-actions {
+	display: flex;
+	gap: 2px;
+}
+
+.repo-action-btn {
+	background: none;
+	border: none;
+	color: var(--vscode-foreground);
+	cursor: pointer;
+	padding: 4px;
+	border-radius: 4px;
+	display: flex;
+	align-items: center;
+}
+
+.repo-action-btn:hover {
+	background: var(--vscode-toolbar-hoverBackground);
+}
+
+.repo-action-btn.scope-active {
+	background: var(--vscode-button-background);
+	color: var(--vscode-button-foreground);
+	border-radius: 4px;
+}
+
+.repo-agents {
+	padding-top: 4px;
+}
+
+.no-agents {
+	padding: 8px 12px;
+	opacity: 0.6;
+	font-size: 0.9em;
+}
+
+/* Agent tile */
+
+.agent-tile {
+	background: var(--vscode-editor-background);
+	border: 1px solid var(--vscode-panel-border);
+	border-radius: 6px;
+	padding: 12px;
+	margin: 8px 0;
+	cursor: pointer;
+	transition: opacity 0.2s ease, transform 0.2s ease, border-color 0.15s ease;
+}
+
+.agent-tile:hover {
+	border-color: var(--vscode-focusBorder);
+}
+
+.tile-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 6px;
+}
+
+.status-icon {
+	display: flex;
+	align-items: center;
+	transition: opacity 0.15s ease;
+}
+
+.status-running {
+	color: var(--vscode-testing-runAction);
+}
+
+.status-error {
+	color: var(--vscode-errorForeground);
+}
+
+.status-finished {
+	color: var(--vscode-testing-iconPassed);
+}
+
+.status-created {
+	color: var(--vscode-descriptionForeground);
+}
+
+.agent-name {
+	font-weight: 600;
+	font-size: 1.05em;
+}
+
+.elapsed-time {
+	margin-left: auto;
+	opacity: 0.8;
+	font-size: 0.9em;
+}
+
+.tile-info {
+	margin: 4px 0;
+	opacity: 0.7;
+	font-size: 0.9em;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.tile-actions {
+	display: flex;
+	gap: 4px;
+	margin-top: 8px;
+}
+
+.action-button {
+	background: var(--vscode-button-secondaryBackground);
+	color: var(--vscode-button-secondaryForeground);
+	border: none;
+	border-radius: 4px;
+	padding: 4px 8px;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.action-button:hover:not(:disabled) {
+	background: var(--vscode-button-secondaryHoverBackground);
+}
+
+.action-button:disabled {
+	opacity: 0.7;
+	cursor: default;
+}
+
+/* Spin animation for loading icon */
+
+@keyframes spin {
+	from { transform: rotate(0deg); }
+	to { transform: rotate(360deg); }
+}
+
+.spin {
+	animation: spin 1s linear infinite;
+	display: inline-block;
+}
