@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 5 context gathered
-last_updated: "2026-03-09T17:30:29.920Z"
-last_activity: 2026-03-09 - Completed 04-02-PLAN.md (DOM patching, animations, root buttons)
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-03-09T18:15:24Z"
+last_activity: 2026-03-10 - Completed 05-01-PLAN.md (React build pipeline, data stores, VS Code settings)
 progress:
   total_phases: 5
   completed_phases: 2
-  total_plans: 11
-  completed_plans: 9
-  percent: 82
+  total_plans: 15
+  completed_plans: 10
+  percent: 67
 ---
 
 # Project State
@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** Fast, isolated multi-agent development -- switch between AI coding agents and repos instantly, with each agent working in its own worktree so nothing conflicts.
-**Current focus:** Phase 4 -- UI Polish
+**Current focus:** Phase 5 -- Refactor Codebase to Match CLAUDE.md Conventions
 
 ## Current Position
 
-Phase: 4 of 4 (UI Polish)
-Plan: 2 of 3 in current phase (COMPLETE)
+Phase: 5 of 5 (Refactor Codebase to Match CLAUDE.md Conventions)
+Plan: 1 of 4 in current phase (COMPLETE)
 Status: In Progress
-Last activity: 2026-03-09 - Completed 04-02-PLAN.md (DOM patching, animations, root buttons)
+Last activity: 2026-03-10 - Completed 05-01-PLAN.md (React build pipeline, data stores, VS Code settings)
 
-Progress: [████████░░] 82% (Overall: 9/11 plans)
+Progress: [████████░░] 80% (Overall: 10/15 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 9
+- Total plans completed: 10
 - Average duration: 4min
-- Total execution time: 38min
+- Total execution time: 42min
 
 **By Phase:**
 
@@ -52,11 +52,12 @@ Progress: [████████░░] 82% (Overall: 9/11 plans)
 | 03 | 02 | 6min | 3 | 6 |
 | 04 | 01 | 3min | 2 | 5 |
 | 04 | 02 | 4min | 2 | 4 |
+| 05 | 01 | 4min | 2 | 10 |
 
 **Recent Trend:**
-- 03-02: 6min (3 tasks, 6 files)
 - 04-01: 3min (2 tasks, 5 files)
 - 04-02: 4min (2 tasks, 4 files)
+- 05-01: 4min (2 tasks, 10 files)
 
 *Updated after each plan completion*
 
@@ -101,6 +102,9 @@ Recent decisions affecting current work:
 - [Phase 04-02]: DOM patcher does in-place attribute/text updates, never innerHTML replacement, to preserve scroll/focus
 - [Phase 04-02]: Double requestAnimationFrame for reliable CSS transition trigger on new elements
 - [Phase 04-02]: Root button placed first in repo-actions (before create/settings/remove)
+- [Phase 05-01]: Webview tsconfig needs own exclude array to override base tsconfig's TSX exclusion
+- [Phase 05-01]: esbuild jsx: automatic for React 19 transform (no React import needed in JSX files)
+- [Phase 05-01]: Both esbuild contexts (extension + webview) run in parallel for watch and build modes
 
 ### Pending Todos
 
@@ -126,6 +130,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-09T17:30:29.908Z
-Stopped at: Phase 5 context gathered
-Resume file: .planning/phases/05-refactor-codebase-to-match-claude-md-conventions/05-CONTEXT.md
+Last session: 2026-03-09T18:15:24Z
+Stopped at: Completed 05-01-PLAN.md
+Resume file: .planning/phases/05-refactor-codebase-to-match-claude-md-conventions/05-01-SUMMARY.md
