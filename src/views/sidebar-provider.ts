@@ -36,6 +36,7 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
 		private readonly repoConfigService: RepoConfigService,
 	) {
 		this.agentService.onDidChange(() => this.refresh());
+		this.repoConfigService.onDidChange(() => this.refresh());
 	}
 
 	resolveWebviewView(
@@ -63,6 +64,7 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
 	 * after the initial full HTML render.
 	 */
 	refresh(): void {
+		console.log("[SidebarProvider.refresh]");
 		if (!this._view) return;
 		if (!this._initialRenderDone) return;
 		const data = this._buildDashboardData();
@@ -73,6 +75,7 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
 	 * Update the scope mode and trigger a refresh.
 	 */
 	setScope(scope: string): void {
+		console.log("[SidebarProvider.setScope]", scope);
 		this._currentScope = scope;
 		this.refresh();
 	}
@@ -102,6 +105,7 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
 	}
 
 	private _handleMessage(message: any): void {
+		console.log("[SidebarProvider._handleMessage]", message.command, message);
 		switch (message.command) {
 			case "focusAgent":
 				vscode.commands.executeCommand(

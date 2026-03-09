@@ -44,9 +44,10 @@ export function activate(context: vscode.ExtensionContext): void {
 	registerAgentCommands(context, agentService, terminalService, repoConfigService, worktreeService, workspaceService);
 	registerWorkspaceCommands(context, workspaceService);
 
-	// 6. Dispose terminal listeners and agent service on deactivation
+	// 6. Dispose terminal listeners, agent service, and repo config service on deactivation
 	context.subscriptions.push({ dispose: () => terminalService.dispose() });
 	context.subscriptions.push({ dispose: () => agentService.dispose() });
+	context.subscriptions.push({ dispose: () => repoConfigService.dispose() });
 
 	// 7. Git health check (non-blocking -- extension still activates, just warns)
 	gitService.exec(".", ["--version"]).catch(() => {

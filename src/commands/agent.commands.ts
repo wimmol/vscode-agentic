@@ -23,6 +23,7 @@ export function registerAgentCommands(
 	const createAgent = vscode.commands.registerCommand(
 		"vscode-agentic.createAgent",
 		async (repoPath?: string) => {
+			console.log("[cmd:createAgent]", { repoPath });
 			// Fall back to first configured repo if not passed from sidebar
 			if (!repoPath) {
 				const repos = repoConfigService.getAll();
@@ -105,6 +106,7 @@ export function registerAgentCommands(
 	const deleteAgent = vscode.commands.registerCommand(
 		"vscode-agentic.deleteAgent",
 		async (repoPath: string, agentName: string) => {
+			console.log("[cmd:deleteAgent]", { repoPath, agentName });
 			const agent = agentService.getAgent(repoPath, agentName);
 			const isRunning = agent?.status === "running";
 
@@ -130,17 +132,13 @@ export function registerAgentCommands(
 	const focusAgent = vscode.commands.registerCommand(
 		"vscode-agentic.focusAgent",
 		async (repoPath: string, agentName: string) => {
+			console.log("[cmd:focusAgent]", { repoPath, agentName });
 			await agentService.focusAgent(repoPath, agentName);
 
-			// Switch Explorer scope to the agent's worktree directory via WorkspaceService
 			const manifest = worktreeService.getManifest(repoPath);
 			const worktreeEntry = manifest.find((w) => w.agentName === agentName);
 			if (worktreeEntry) {
-				workspaceService.setExplorerScope({
-					repo: repoPath,
-					agent: agentName,
-					worktreePath: worktreeEntry.path,
-				});
+				workspaceService.setExplorerScope(worktreeEntry.path, agentName);
 			}
 		},
 	);
@@ -148,6 +146,7 @@ export function registerAgentCommands(
 	const stopAgent = vscode.commands.registerCommand(
 		"vscode-agentic.stopAgent",
 		async (repoPath: string, agentName: string) => {
+			console.log("[cmd:stopAgent]", { repoPath, agentName });
 			const agent = agentService.getAgent(repoPath, agentName);
 			if (!agent || agent.status !== "running") {
 				return;

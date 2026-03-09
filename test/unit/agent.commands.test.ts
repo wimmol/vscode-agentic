@@ -67,6 +67,7 @@ function createMockWorkspaceService() {
 		syncWorkspaceFile: vi.fn().mockResolvedValue(undefined),
 		promptReopenInWorkspace: vi.fn().mockResolvedValue(undefined),
 		setExplorerScope: vi.fn(),
+		resetExplorerScope: vi.fn(),
 		isInWorkspaceMode: vi.fn().mockReturnValue(false),
 		getWorkspaceFilePath: vi.fn().mockReturnValue("/home/test/.agentic/agentic.code-workspace"),
 	};
@@ -327,15 +328,14 @@ describe("registerAgentCommands", () => {
 			expect(agentService.focusAgent).toHaveBeenCalledWith("/repo", "my-agent");
 		});
 
-		it("calls workspaceService.setExplorerScope with agent scope object", async () => {
+		it("calls workspaceService.setExplorerScope with worktree path and agent name", async () => {
 			const handler = commandHandlers.get("vscode-agentic.focusAgent")!;
 			await handler("/repo", "my-agent");
 
-			expect(workspaceService.setExplorerScope).toHaveBeenCalledWith({
-				repo: "/repo",
-				agent: "my-agent",
-				worktreePath: "/repo/.worktrees/my-agent",
-			});
+			expect(workspaceService.setExplorerScope).toHaveBeenCalledWith(
+				"/repo/.worktrees/my-agent",
+				"my-agent",
+			);
 		});
 
 		it("does not call workspace.updateWorkspaceFolders directly (uses WorkspaceService instead)", async () => {

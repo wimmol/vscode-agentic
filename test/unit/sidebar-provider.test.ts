@@ -23,6 +23,7 @@ function createMocks() {
 
 	const repoConfigService = {
 		getAll: vi.fn(() => []),
+		onDidChange: vi.fn(() => ({ dispose: vi.fn() })),
 	};
 
 	const extensionUri = { fsPath: "/mock/extension" };

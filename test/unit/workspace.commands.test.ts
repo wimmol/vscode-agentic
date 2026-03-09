@@ -5,6 +5,7 @@ import { registerWorkspaceCommands } from "../../src/commands/workspace.commands
 function createMockWorkspaceService() {
 	return {
 		setExplorerScope: vi.fn(),
+		resetExplorerScope: vi.fn(),
 		ensureWorkspaceFile: vi.fn().mockResolvedValue(false),
 		syncWorkspaceFile: vi.fn().mockResolvedValue(undefined),
 		isInWorkspaceMode: vi.fn().mockReturnValue(false),
@@ -54,20 +55,20 @@ describe("registerWorkspaceCommands", () => {
 	});
 
 	describe("rootGlobal command", () => {
-		it("calls workspaceService.setExplorerScope('global')", () => {
+		it("calls workspaceService.resetExplorerScope()", () => {
 			const handler = commandHandlers.get("vscode-agentic.rootGlobal")!;
 			handler();
 
-			expect(workspaceService.setExplorerScope).toHaveBeenCalledWith("global");
+			expect(workspaceService.resetExplorerScope).toHaveBeenCalled();
 		});
 	});
 
 	describe("rootRepo command", () => {
-		it("calls workspaceService.setExplorerScope({ repo: repoPath }) with the provided repoPath argument", () => {
+		it("calls workspaceService.setExplorerScope(repoPath)", () => {
 			const handler = commandHandlers.get("vscode-agentic.rootRepo")!;
 			handler("/repos/my-app");
 
-			expect(workspaceService.setExplorerScope).toHaveBeenCalledWith({ repo: "/repos/my-app" });
+			expect(workspaceService.setExplorerScope).toHaveBeenCalledWith("/repos/my-app");
 		});
 	});
 });

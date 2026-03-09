@@ -15,13 +15,15 @@ export function registerWorkspaceCommands(
 	workspaceService: WorkspaceService,
 ): void {
 	const rootGlobal = vscode.commands.registerCommand("vscode-agentic.rootGlobal", () => {
-		workspaceService.setExplorerScope("global");
+		console.log("[cmd:rootGlobal]");
+		workspaceService.resetExplorerScope();
 	});
 
 	const rootRepo = vscode.commands.registerCommand(
 		"vscode-agentic.rootRepo",
 		(repoPath: string) => {
-			workspaceService.setExplorerScope({ repo: repoPath });
+			console.log("[cmd:rootRepo]", { repoPath });
+			workspaceService.setExplorerScope(repoPath);
 		},
 	);
 

@@ -37,11 +37,13 @@ export class TerminalService {
 		worktreePath: string,
 		initialPrompt?: string,
 	): vscode.Terminal {
+		console.log("[TerminalService.createTerminal]", { repoPath, agentName, worktreePath, initialPrompt });
 		const key = this.terminalKey(repoPath, agentName);
 
 		// If terminal already exists, just show it and return
 		const existing = this.terminals.get(key);
 		if (existing) {
+			console.log("[TerminalService.createTerminal] existing terminal found, showing");
 			existing.show();
 			return existing;
 		}
@@ -64,6 +66,7 @@ export class TerminalService {
 	}
 
 	disposeTerminal(repoPath: string, agentName: string): void {
+		console.log("[TerminalService.disposeTerminal]", { repoPath, agentName });
 		const key = this.terminalKey(repoPath, agentName);
 		const terminal = this.terminals.get(key);
 		if (terminal) {
@@ -75,6 +78,7 @@ export class TerminalService {
 	}
 
 	showTerminal(repoPath: string, agentName: string): void {
+		console.log("[TerminalService.showTerminal]", { repoPath, agentName });
 		const terminal = this.terminals.get(this.terminalKey(repoPath, agentName));
 		if (terminal) {
 			terminal.show();
@@ -86,6 +90,7 @@ export class TerminalService {
 	}
 
 	private handleTerminalClose(terminal: vscode.Terminal): void {
+		console.log("[TerminalService.handleTerminalClose]", terminal.name);
 		for (const [key, t] of this.terminals.entries()) {
 			if (t === terminal) {
 				this.terminals.delete(key);

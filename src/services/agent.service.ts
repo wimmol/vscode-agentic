@@ -10,7 +10,7 @@ import type { WorktreeService } from "./worktree.service.js";
  * Delegates git operations to WorktreeService and terminal management to TerminalService.
  * Persists agent registry in VS Code Memento (globalState).
  */
-export class AgentService {
+export class AgentService { 
 	private terminalService: TerminalService | undefined;
 	private readonly _onDidChange = new vscode.EventEmitter<void>();
 	readonly onDidChange: vscode.Event<void> = this._onDidChange.event;
@@ -55,6 +55,7 @@ export class AgentService {
 	 * Create a new agent with a git worktree and persist it with status "created".
 	 */
 	async createAgent(repoPath: string, agentName: string, initialPrompt?: string): Promise<AgentEntry> {
+		console.log("[AgentService.createAgent]", { repoPath, agentName, initialPrompt });
 		await this.worktreeService.addWorktree(repoPath, agentName);
 
 		const entry: AgentEntry = {
@@ -77,21 +78,27 @@ export class AgentService {
 	 * Get an agent by repoPath and agentName.
 	 */
 	getAgent(repoPath: string, agentName: string): AgentEntry | undefined {
-		return this.getRegistry().find((e) => e.repoPath === repoPath && e.agentName === agentName);
+		const agent = this.getRegistry().find((e) => e.repoPath === repoPath && e.agentName === agentName);
+		console.log("[AgentService.getAgent]", { repoPath, agentName, found: !!agent, status: agent?.status });
+		return agent;
 	}
 
 	/**
 	 * Get all agent entries across all repos.
 	 */
 	getAll(): AgentEntry[] {
-		return this.getRegistry();
+		const all = this.getRegistry();
+		console.log("[AgentService.getAll]", { count: all.length });
+		return all;
 	}
 
 	/**
 	 * Get agents for a specific repo.
 	 */
 	getForRepo(repoPath: string): AgentEntry[] {
-		return this.getRegistry().filter((e) => e.repoPath === repoPath);
+		const agents = this.getRegistry().filter((e) => e.repoPath === repoPath);
+		console.log("[AgentService.getForRepo]", { repoPath, count: agents.length });
+		return agents;
 	}
 
 	/**
@@ -99,6 +106,7 @@ export class AgentService {
 	 * No-op if agent does not exist.
 	 */
 	async deleteAgent(repoPath: string, agentName: string): Promise<void> {
+		console.log("[AgentService.deleteAgent]", { repoPath, agentName });
 		const ts = this.requireTerminalService();
 		const registry = this.getRegistry();
 		const index = registry.findIndex((e) => e.repoPath === repoPath && e.agentName === agentName);
@@ -121,18 +129,22 @@ export class AgentService {
 	 * Transitions status to "running" when creating a new terminal.
 	 */
 	async focusAgent(repoPath: string, agentName: string): Promise<void> {
+		console.log("[AgentService.focusAgent]", { repoPath, agentName });
 		const ts = this.requireTerminalService();
 		const agent = this.getAgent(repoPath, agentName);
 		if (!agent) {
+			console.log("[AgentService.focusAgent] agent not found, returning");
 			return;
 		}
 
 		if (agent.status === "running") {
+			console.log("[AgentService.focusAgent] already running, showing terminal");
 			ts.showTerminal(repoPath, agentName);
 			return;
 		}
 
 		// Status is "created", "finished", or "error" -- create a new terminal
+		console.log("[AgentService.focusAgent] status=%s, creating terminal", agent.status);
 		const manifest = this.worktreeService.getManifest(repoPath);
 		const worktreeEntry = manifest.find((w) => w.agentName === agentName);
 		if (!worktreeEntry) {
@@ -148,6 +160,7 @@ export class AgentService {
 	 * Update an agent's status and optional exit code in the registry.
 	 */
 	async updateStatus(repoPath: string, agentName: string, status: AgentStatus, exitCode?: number): Promise<void> {
+		console.log("[AgentService.updateStatus]", { repoPath, agentName, status, exitCode });
 		const registry = this.getRegistry();
 		const entry = registry.find((e) => e.repoPath === repoPath && e.agentName === agentName);
 		if (!entry) {
@@ -171,6 +184,7 @@ export class AgentService {
 	 * On extension activation, reset all "running" agents to "created" since terminals are lost on restart.
 	 */
 	async reconcileOnActivation(): Promise<void> {
+		console.log("[AgentService.reconcileOnActivation]");
 		const registry = this.getRegistry();
 		let changed = false;
 

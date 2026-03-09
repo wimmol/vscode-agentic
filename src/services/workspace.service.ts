@@ -14,11 +14,6 @@ interface WorkspaceFileContent {
 	settings: Record<string, unknown>;
 }
 
-type ExplorerScope =
-	| "global"
-	| { repo: string }
-	| { repo: string; agent: string; worktreePath: string };
-
 export class WorkspaceService {
 	private readonly workspaceDir: string;
 	private readonly workspaceFilePath: string;
@@ -55,6 +50,7 @@ export class WorkspaceService {
 	 * Returns true if file was created for the first time (caller should prompt reopen).
 	 */
 	async ensureWorkspaceFile(): Promise<boolean> {
+		console.log("[WorkspaceService.ensureWorkspaceFile]");
 		return this.withWriteLock(async () => {
 			const repos = this.repoConfigService.getAll();
 			if (repos.length === 0) {
@@ -101,6 +97,7 @@ export class WorkspaceService {
 	 * Writes the workspace file with the current repo list.
 	 */
 	async syncWorkspaceFile(): Promise<void> {
+		console.log("[WorkspaceService.syncWorkspaceFile]");
 		return this.withWriteLock(async () => {
 			const repos = this.repoConfigService.getAll();
 			const folders = repos.map((r) => ({
@@ -139,35 +136,33 @@ export class WorkspaceService {
 	}
 
 	/**
-	 * Sets the Explorer scope by replacing all workspace folders.
-	 *
-	 * - "global": all repo roots with basenames
-	 * - { repo }: single repo root
-	 * - { repo, agent, worktreePath }: single worktree path
+	 * Sets the Explorer to show a single folder.
 	 */
-	setExplorerScope(mode: ExplorerScope): void {
+	setExplorerScope(folderPath: string, name?: string): void {
+		console.log("[WorkspaceService.setExplorerScope]", { folderPath, name });
 		const currentCount = vscode.workspace.workspaceFolders?.length ?? 0;
+		vscode.workspace.updateWorkspaceFolders(0, currentCount, {
+			uri: vscode.Uri.file(folderPath),
+			name: name ?? path.basename(folderPath),
+		});
+	}
 
-		if (mode === "global") {
-			const repos = this.repoConfigService.getAll();
-			const folders = repos.map((r) => ({
+	/**
+	 * Resets the Explorer to show all configured repo roots.
+	 */
+	resetExplorerScope(): void {
+		console.log("[WorkspaceService.resetExplorerScope]");
+		const repos = this.repoConfigService.getAll();
+		if (repos.length === 0) return;
+		const currentCount = vscode.workspace.workspaceFolders?.length ?? 0;
+		vscode.workspace.updateWorkspaceFolders(
+			0,
+			currentCount,
+			...repos.map((r) => ({
 				uri: vscode.Uri.file(r.path),
 				name: path.basename(r.path),
-			}));
-			vscode.workspace.updateWorkspaceFolders(0, currentCount, ...folders);
-		} else if ("worktreePath" in mode) {
-			// Agent mode
-			vscode.workspace.updateWorkspaceFolders(0, currentCount, {
-				uri: vscode.Uri.file(mode.worktreePath),
-				name: mode.agent,
-			});
-		} else {
-			// Repo mode
-			vscode.workspace.updateWorkspaceFolders(0, currentCount, {
-				uri: vscode.Uri.file(mode.repo),
-				name: path.basename(mode.repo),
-			});
-		}
+			})),
+		);
 	}
 
 	/**

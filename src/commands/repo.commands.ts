@@ -12,6 +12,7 @@ export function registerRepoCommands(
 	workspaceService: WorkspaceService,
 ): void {
 	const addRepo = vscode.commands.registerCommand("vscode-agentic.addRepo", async () => {
+		console.log("[cmd:addRepo]");
 		const result = await repoConfigService.addRepo();
 		if (result) {
 			await workspaceService.syncWorkspaceFile();
@@ -21,6 +22,7 @@ export function registerRepoCommands(
 	const removeRepo = vscode.commands.registerCommand(
 		"vscode-agentic.removeRepo",
 		async (repoPath: string) => {
+			console.log("[cmd:removeRepo]", { repoPath });
 			const displayName = path.basename(repoPath);
 
 			const confirmed = await vscode.window.showWarningMessage(

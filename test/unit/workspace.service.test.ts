@@ -199,27 +199,10 @@ describe("WorkspaceService", () => {
 	});
 
 	describe("setExplorerScope", () => {
-		it("updateWorkspaceFolders with all repo roots for 'global' mode", () => {
-			repoConfigService.getAll.mockReturnValue([
-				{ path: "/repos/my-app", stagingBranch: "staging", worktreeLimit: 5 },
-				{ path: "/repos/backend", stagingBranch: "staging", worktreeLimit: 5 },
-			]);
+		it("replaces workspace folders with the given path", () => {
 			workspace.workspaceFolders = [{ uri: { fsPath: "/old" }, name: "old", index: 0 }];
 
-			service.setExplorerScope("global");
-
-			expect(workspace.updateWorkspaceFolders).toHaveBeenCalledWith(
-				0,
-				1,
-				{ uri: expect.objectContaining({ fsPath: "/repos/my-app" }), name: "my-app" },
-				{ uri: expect.objectContaining({ fsPath: "/repos/backend" }), name: "backend" },
-			);
-		});
-
-		it("updateWorkspaceFolders with single repo root for repo mode", () => {
-			workspace.workspaceFolders = [{ uri: { fsPath: "/old" }, name: "old", index: 0 }];
-
-			service.setExplorerScope({ repo: "/repos/my-app" });
+			service.setExplorerScope("/repos/my-app");
 
 			expect(workspace.updateWorkspaceFolders).toHaveBeenCalledWith(
 				0,
@@ -228,14 +211,10 @@ describe("WorkspaceService", () => {
 			);
 		});
 
-		it("updateWorkspaceFolders with single worktree path for agent mode", () => {
+		it("uses custom name when provided", () => {
 			workspace.workspaceFolders = [{ uri: { fsPath: "/old" }, name: "old", index: 0 }];
 
-			service.setExplorerScope({
-				repo: "/repos/my-app",
-				agent: "fix-bug",
-				worktreePath: "/repos/my-app/.worktrees/fix-bug",
-			});
+			service.setExplorerScope("/repos/my-app/.worktrees/fix-bug", "fix-bug");
 
 			expect(workspace.updateWorkspaceFolders).toHaveBeenCalledWith(
 				0,
@@ -247,19 +226,43 @@ describe("WorkspaceService", () => {
 			);
 		});
 
-		it("handles empty workspaceFolders for global mode", () => {
-			repoConfigService.getAll.mockReturnValue([
-				{ path: "/repos/my-app", stagingBranch: "staging", worktreeLimit: 5 },
-			]);
+		it("uses basename when name is not provided", () => {
 			workspace.workspaceFolders = undefined;
 
-			service.setExplorerScope("global");
+			service.setExplorerScope("/repos/my-app");
 
 			expect(workspace.updateWorkspaceFolders).toHaveBeenCalledWith(
 				0,
 				0,
 				{ uri: expect.objectContaining({ fsPath: "/repos/my-app" }), name: "my-app" },
 			);
+		});
+	});
+
+	describe("resetExplorerScope", () => {
+		it("replaces workspace folders with all repo roots", () => {
+			repoConfigService.getAll.mockReturnValue([
+				{ path: "/repos/my-app", stagingBranch: "staging", worktreeLimit: 5 },
+				{ path: "/repos/backend", stagingBranch: "staging", worktreeLimit: 5 },
+			]);
+			workspace.workspaceFolders = [{ uri: { fsPath: "/old" }, name: "old", index: 0 }];
+
+			service.resetExplorerScope();
+
+			expect(workspace.updateWorkspaceFolders).toHaveBeenCalledWith(
+				0,
+				1,
+				{ uri: expect.objectContaining({ fsPath: "/repos/my-app" }), name: "my-app" },
+				{ uri: expect.objectContaining({ fsPath: "/repos/backend" }), name: "backend" },
+			);
+		});
+
+		it("does nothing when no repos configured", () => {
+			repoConfigService.getAll.mockReturnValue([]);
+
+			service.resetExplorerScope();
+
+			expect(workspace.updateWorkspaceFolders).not.toHaveBeenCalled();
 		});
 	});
 });

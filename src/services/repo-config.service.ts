@@ -13,23 +13,34 @@ interface RepoPickItem extends vscode.QuickPickItem {
 }
 
 export class RepoConfigService {
+	private readonly _onDidChange = new vscode.EventEmitter<void>();
+	readonly onDidChange: vscode.Event<void> = this._onDidChange.event;
+
 	constructor(
 		private readonly state: vscode.Memento,
 		private readonly git: GitService,
 	) {}
 
+	dispose(): void {
+		this._onDidChange.dispose();
+	}
+
 	/**
 	 * Returns all configured repositories.
 	 */
 	getAll(): RepoConfig[] {
-		return this.state.get<RepoConfig[]>(REPO_CONFIGS_KEY, []);
+		const configs = this.state.get<RepoConfig[]>(REPO_CONFIGS_KEY, []);
+		console.log("[RepoConfigService.getAll]", { count: configs.length });
+		return configs;
 	}
 
 	/**
 	 * Returns config for a specific repo path, or undefined if not configured.
 	 */
 	getForRepo(repoPath: string): RepoConfig | undefined {
-		return this.getAll().find((c) => c.path === repoPath);
+		const config = this.getAll().find((c) => c.path === repoPath);
+		console.log("[RepoConfigService.getForRepo]", { repoPath, found: !!config });
+		return config;
 	}
 
 	/**
@@ -41,6 +52,7 @@ export class RepoConfigService {
 	 * 5. Save config and ensure .gitignore entry
 	 */
 	async addRepo(): Promise<RepoConfig | undefined> {
+		console.log("[RepoConfigService.addRepo]");
 		// Step 1: Build picker items from workspace folders
 		const items: RepoPickItem[] = [];
 		const folders = vscode.workspace.workspaceFolders;
@@ -166,11 +178,13 @@ export class RepoConfigService {
 	 * Remove a repository configuration.
 	 */
 	async removeRepo(repoPath: string): Promise<void> {
+		console.log("[RepoConfigService.removeRepo]", { repoPath });
 		const configs = this.getAll().filter((c) => c.path !== repoPath);
 		await this.save(configs);
 	}
 
 	private async save(configs: RepoConfig[]): Promise<void> {
 		await this.state.update(REPO_CONFIGS_KEY, configs);
+		this._onDidChange.fire();
 	}
 }

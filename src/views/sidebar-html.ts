@@ -697,10 +697,13 @@ function getDashboardScript(): string {
 					const action = repoActionBtn.dataset.action;
 					const repoPath = repoActionBtn.dataset.repoPath;
 					if (action === 'createAgent') {
+						console.log('[UI:click] createAgent button', { repoPath });
 						vscode.postMessage({ command: 'createAgent', repoPath });
 					} else if (action === 'removeRepo') {
+						console.log('[UI:click] removeRepo button', { repoPath });
 						vscode.postMessage({ command: 'removeRepo', repoPath });
 					} else if (action === 'rootRepo') {
+						console.log('[UI:click] rootRepo button', { repoPath });
 						vscode.postMessage({ command: 'rootRepo', repoPath });
 					} else if (action === 'settings') {
 						// Settings not wired yet -- placeholder for future phase
@@ -720,15 +723,19 @@ function getDashboardScript(): string {
 
 					switch (action) {
 						case 'stopAgent':
+							console.log('[UI:click] stopAgent button', { repoPath, agentName });
 							vscode.postMessage({ command: 'stopAgent', repoPath, agentName });
 							break;
 						case 'resetChanges':
+							console.log('[UI:click] resetChanges button', { repoPath, agentName });
 							vscode.postMessage({ command: 'resetChanges', repoPath, agentName });
 							break;
 						case 'deleteAgent':
+							console.log('[UI:click] deleteAgent button', { repoPath, agentName });
 							vscode.postMessage({ command: 'deleteAgent', repoPath, agentName });
 							break;
 						case 'clearContext':
+							console.log('[UI:click] clearContext button', { repoPath, agentName });
 							vscode.postMessage({ command: 'clearContext', repoPath, agentName });
 							break;
 					}
@@ -740,6 +747,7 @@ function getDashboardScript(): string {
 				if (tile) {
 					const repoPath = tile.dataset.repoPath;
 					const agentName = tile.dataset.agentName;
+					console.log('[UI:click] agent tile → focusAgent', { repoPath, agentName });
 					vscode.postMessage({ command: 'focusAgent', repoPath, agentName });
 				}
 			});

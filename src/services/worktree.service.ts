@@ -68,6 +68,7 @@ export class WorktreeService {
 		startPoint?: string,
 		limit: number = DEFAULT_WORKTREE_LIMIT,
 	): Promise<WorktreeEntry> {
+		console.log("[WorktreeService.addWorktree]", { repoPath, agentName, startPoint, limit });
 		return this.withLock(repoPath, async () => {
 			const existing = this.getManifest(repoPath);
 
@@ -108,6 +109,7 @@ export class WorktreeService {
 	 * Handles missing worktrees/branches gracefully.
 	 */
 	async removeWorktree(repoPath: string, agentName: string): Promise<void> {
+		console.log("[WorktreeService.removeWorktree]", { repoPath, agentName });
 		return this.withLock(repoPath, async () => {
 			const allEntries = this.getAllManifestEntries();
 			const entry = allEntries.find((e) => e.agentName === agentName && e.repoPath === repoPath);
@@ -140,7 +142,9 @@ export class WorktreeService {
 	 * Get all manifest entries for a specific repo.
 	 */
 	getManifest(repoPath: string): WorktreeEntry[] {
-		return this.getAllManifestEntries().filter((e) => e.repoPath === repoPath);
+		const entries = this.getAllManifestEntries().filter((e) => e.repoPath === repoPath);
+		console.log("[WorktreeService.getManifest]", { repoPath, count: entries.length });
+		return entries;
 	}
 
 	/**
@@ -150,6 +154,7 @@ export class WorktreeService {
 	 * - Returns a report of what was found and cleaned
 	 */
 	async reconcile(repoPath: string): Promise<ReconciliationResult> {
+		console.log("[WorktreeService.reconcile]", { repoPath });
 		const manifestEntries = this.getManifest(repoPath);
 
 		// Get actual worktrees on disk

@@ -181,6 +181,39 @@ describe("RepoConfigService", () => {
 		});
 	});
 
+	describe("onDidChange", () => {
+		it("fires after addRepo saves a new config", async () => {
+			const listener = vi.fn();
+			service.onDidChange(listener);
+
+			workspace.workspaceFolders = [{ uri: { fsPath: "/my-repo" }, name: "my-repo", index: 0 }];
+			window.showQuickPick.mockResolvedValueOnce({
+				label: "my-repo",
+				description: "/my-repo",
+				_path: "/my-repo",
+			});
+			(git.exec as ReturnType<typeof vi.fn>).mockResolvedValueOnce(".git");
+			window.showInputBox.mockResolvedValueOnce("staging");
+			(git.branchExists as ReturnType<typeof vi.fn>).mockResolvedValueOnce(false);
+
+			await service.addRepo();
+
+			expect(listener).toHaveBeenCalled();
+		});
+
+		it("fires after removeRepo", async () => {
+			const listener = vi.fn();
+			memento.update(REPO_CONFIGS_KEY, [
+				{ path: "/repo1", stagingBranch: "staging", worktreeLimit: 5 },
+			]);
+			service.onDidChange(listener);
+
+			await service.removeRepo("/repo1");
+
+			expect(listener).toHaveBeenCalled();
+		});
+	});
+
 	describe("removeRepo", () => {
 		it("removes config from state", async () => {
 			const configs = [

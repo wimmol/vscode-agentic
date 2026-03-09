@@ -17,6 +17,7 @@ function createMockWorkspaceService() {
 		syncWorkspaceFile: vi.fn().mockResolvedValue(undefined),
 		promptReopenInWorkspace: vi.fn().mockResolvedValue(undefined),
 		setExplorerScope: vi.fn(),
+		resetExplorerScope: vi.fn(),
 		isInWorkspaceMode: vi.fn().mockReturnValue(false),
 		getWorkspaceFilePath: vi.fn().mockReturnValue("/home/test/.agentic/agentic.code-workspace"),
 	};
