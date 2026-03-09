@@ -105,6 +105,6 @@ Plans:
 
 Plans:
 - [x] 05-01-PLAN.md -- React build pipeline, tsconfig, VS Code settings, thin data stores (AgentsStore, ReposStore)
-- [ ] 05-02-PLAN.md -- React webview components (Dashboard, RepoSection, AgentTile, atoms, hooks, CSS, HTML shell)
+- [x] 05-02-PLAN.md -- React webview components (Dashboard, RepoSection, AgentTile, atoms, hooks, CSS, HTML shell)
 - [ ] 05-03-PLAN.md -- Feature files (8 commands), fs/path migration (gitignore, workspace.service)
 - [ ] 05-04-PLAN.md -- Extension.ts rewiring, sidebar-provider update, old file cleanup, test updates, human verification
