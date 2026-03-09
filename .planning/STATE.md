@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Phase 4 context gathered
-last_updated: "2026-03-07T07:33:13.986Z"
-last_activity: 2026-03-06 - Completed 03-02-PLAN.md (Webview sidebar dashboard with tiles and repo sections)
+status: in-progress
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-03-09T06:45:06Z"
+last_activity: 2026-03-09 - Completed 04-01-PLAN.md (WorkspaceService and root navigation commands)
 progress:
   total_phases: 4
-  completed_phases: 2
-  total_plans: 8
-  completed_plans: 7
-  percent: 100
+  completed_phases: 3
+  total_plans: 10
+  completed_plans: 8
+  percent: 80
 ---
 
 # Project State
@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** Fast, isolated multi-agent development -- switch between AI coding agents and repos instantly, with each agent working in its own worktree so nothing conflicts.
-**Current focus:** Phase 3 -- Sidebar UI
+**Current focus:** Phase 4 -- UI Polish
 
 ## Current Position
 
-Phase: 3 of 3 (Sidebar UI)
-Plan: 2 of 2 in current phase (COMPLETE)
-Status: Phase Complete
-Last activity: 2026-03-06 - Completed 03-02-PLAN.md (Webview sidebar dashboard with tiles and repo sections)
+Phase: 4 of 4 (UI Polish)
+Plan: 1 of 3 in current phase (COMPLETE)
+Status: In Progress
+Last activity: 2026-03-09 - Completed 04-01-PLAN.md (WorkspaceService and root navigation commands)
 
-Progress: [██████████] 100% (Overall: 7/7 plans)
+Progress: [████████░░] 80% (Overall: 8/10 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 7
+- Total plans completed: 8
 - Average duration: 4min
-- Total execution time: 31min
+- Total execution time: 34min
 
 **By Phase:**
 
@@ -50,11 +50,12 @@ Progress: [██████████] 100% (Overall: 7/7 plans)
 | 02 | 02 | 4min | 2 | 6 |
 | 03 | 01 | 5min | 2 | 11 |
 | 03 | 02 | 6min | 3 | 6 |
+| 04 | 01 | 3min | 2 | 5 |
 
 **Recent Trend:**
-- 02-02: 4min (2 tasks, 6 files)
 - 03-01: 5min (2 tasks, 11 files)
 - 03-02: 6min (3 tasks, 6 files)
+- 04-01: 3min (2 tasks, 5 files)
 
 *Updated after each plan completion*
 
@@ -92,6 +93,9 @@ Recent decisions affecting current work:
 - [Phase 03-02]: Event delegation on .dashboard container for all click handling (tiles, buttons, repo actions)
 - [Phase 03-02]: No retainContextWhenHidden -- recalculates from timestamps on each render
 - [Phase 03-02]: RepoConfigService has no EventEmitter yet -- sidebar refreshes only on agent changes
+- [Phase 04-01]: WorkspaceService uses promise-chain mutex (same pattern as WorktreeService) for file write serialization
+- [Phase 04-01]: Workspace file folders use basename as name field for readable Explorer labels
+- [Phase 04-01]: setExplorerScope uses replace-all pattern (index 0, delete currentCount) for atomic folder switching
 
 ### Pending Todos
 
@@ -116,6 +120,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-07T07:33:13.972Z
-Stopped at: Phase 4 context gathered
-Resume file: .planning/phases/04-ui-polish-agentic-tab-folder-scope-sidebar-workspace-naming-root-navigation-buttons-smooth-rendering-without-glitches/04-CONTEXT.md
+Last session: 2026-03-09T06:45:06Z
+Stopped at: Completed 04-01-PLAN.md
+Resume file: .planning/phases/04-ui-polish-agentic-tab-folder-scope-sidebar-workspace-naming-root-navigation-buttons-smooth-rendering-without-glitches/04-02-PLAN.md
