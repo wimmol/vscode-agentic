@@ -117,6 +117,75 @@ describe("getHtmlForWebview", () => {
 		expect(html).toContain("codicon-gear");
 		expect(html).toContain("codicon-close");
 	});
+
+	it("renders per-repo root button with codicon-root-folder in repo header", () => {
+		const repo = makeRepo({ path: "/repos/my-project" });
+		const repos = [repo];
+		const agentsByRepo = new Map<string, AgentEntry[]>();
+		agentsByRepo.set(repo.path, []);
+
+		const html = getHtmlForWebview(mockWebview as any, mockExtensionUri as any, repos, agentsByRepo);
+
+		expect(html).toContain("codicon-root-folder");
+		expect(html).toContain('data-action="rootRepo"');
+	});
+
+	it("root button has correct data-repo-path attribute", () => {
+		const repo = makeRepo({ path: "/repos/my-project" });
+		const repos = [repo];
+		const agentsByRepo = new Map<string, AgentEntry[]>();
+		agentsByRepo.set(repo.path, []);
+
+		const html = getHtmlForWebview(mockWebview as any, mockExtensionUri as any, repos, agentsByRepo);
+
+		// Find the rootRepo button and verify it has the right repo path
+		const rootBtnMatch = html.match(/data-action="rootRepo"[^>]*data-repo-path="([^"]*)"/);
+		expect(rootBtnMatch).toBeTruthy();
+		expect(rootBtnMatch![1]).toBe("/repos/my-project");
+	});
+
+	it("root button appears before create button in repo-actions", () => {
+		const repo = makeRepo({ path: "/repos/my-project" });
+		const repos = [repo];
+		const agentsByRepo = new Map<string, AgentEntry[]>();
+		agentsByRepo.set(repo.path, []);
+
+		const html = getHtmlForWebview(mockWebview as any, mockExtensionUri as any, repos, agentsByRepo);
+
+		const rootIdx = html.indexOf('data-action="rootRepo"');
+		const createIdx = html.indexOf('data-action="createAgent"');
+		expect(rootIdx).toBeGreaterThan(-1);
+		expect(createIdx).toBeGreaterThan(-1);
+		expect(rootIdx).toBeLessThan(createIdx);
+	});
+
+	it("contains DOM patcher (patchDashboard function) in script", () => {
+		const repos: RepoConfig[] = [];
+		const agentsByRepo = new Map<string, AgentEntry[]>();
+		const html = getHtmlForWebview(mockWebview as any, mockExtensionUri as any, repos, agentsByRepo);
+
+		expect(html).toContain("patchDashboard");
+		expect(html).toContain("addEventListener('message'");
+	});
+
+	it("contains animation CSS classes (.entering, .exiting, .scope-active)", () => {
+		const repos: RepoConfig[] = [];
+		const agentsByRepo = new Map<string, AgentEntry[]>();
+		const html = getHtmlForWebview(mockWebview as any, mockExtensionUri as any, repos, agentsByRepo);
+
+		expect(html).toContain(".agent-tile.entering");
+		expect(html).toContain(".agent-tile.exiting");
+		expect(html).toContain(".scope-active");
+	});
+
+	it("contains rootRepo click handler in event delegation", () => {
+		const repos: RepoConfig[] = [];
+		const agentsByRepo = new Map<string, AgentEntry[]>();
+		const html = getHtmlForWebview(mockWebview as any, mockExtensionUri as any, repos, agentsByRepo);
+
+		expect(html).toContain("action === 'rootRepo'");
+		expect(html).toContain("command: 'rootRepo'");
+	});
 });
 
 describe("renderAgentTile (via getHtmlForWebview)", () => {
