@@ -14,6 +14,18 @@
 	"contributes": {
 		"commands": [
 			{
+				"command": "vscode-agentic.rootGlobal",
+				"title": "Show All Repos",
+				"category": "Agentic",
+				"icon": "$(root-folder)"
+			},
+			{
+				"command": "vscode-agentic.rootRepo",
+				"title": "Show Repo Root",
+				"category": "Agentic",
+				"icon": "$(root-folder)"
+			},
+			{
 				"command": "vscode-agentic.addRepo",
 				"title": "Add Repository",
 				"category": "Agentic",
@@ -52,12 +64,25 @@
 		"menus": {
 			"view/title": [
 				{
+					"command": "vscode-agentic.rootGlobal",
+					"group": "navigation@1",
+					"when": "view == vscode-agentic.agents"
+				},
+				{
 					"command": "vscode-agentic.addRepo",
-					"group": "navigation",
+					"group": "navigation@2",
 					"when": "view == vscode-agentic.agents"
 				}
 			],
 			"commandPalette": [
+				{
+					"command": "vscode-agentic.rootGlobal",
+					"when": "false"
+				},
+				{
+					"command": "vscode-agentic.rootRepo",
+					"when": "false"
+				},
 				{
 					"command": "vscode-agentic.addRepo",
 					"when": "false"
