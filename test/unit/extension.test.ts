@@ -1,11 +1,28 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockMemento } from "../__mocks__/vscode";
 
-// Track constructor arguments for each service
-const worktreeServiceConstructorArgs: unknown[][] = [];
-const repoConfigServiceConstructorArgs: unknown[][] = [];
-const agentServiceConstructorArgs: unknown[][] = [];
+// Track constructor arguments for each service/store
+const agentsStoreConstructorArgs: unknown[][] = [];
+const reposStoreConstructorArgs: unknown[][] = [];
 const workspaceServiceConstructorArgs: unknown[][] = [];
+
+// Mock AgentsStore
+const mockAgentsStoreInstance = {
+	getAll: vi.fn().mockReturnValue([]),
+	getForRepo: vi.fn().mockReturnValue([]),
+	save: vi.fn().mockResolvedValue(undefined),
+	dispose: vi.fn(),
+	onDidChange: vi.fn(),
+};
+
+// Mock ReposStore
+const mockReposStoreInstance = {
+	getAll: vi.fn().mockReturnValue([]),
+	getForRepo: vi.fn().mockReturnValue(undefined),
+	save: vi.fn().mockResolvedValue(undefined),
+	dispose: vi.fn(),
+	onDidChange: vi.fn(),
+};
 
 // Mock WorkspaceService
 const mockWorkspaceServiceInstance = {
@@ -18,8 +35,7 @@ const mockWorkspaceServiceInstance = {
 	getWorkspaceFilePath: vi.fn().mockReturnValue("/home/test/.agentic/agentic.code-workspace"),
 };
 
-// Mock all service modules before importing extension
-// Use class-based mocks so `new` works correctly
+// Mock all modules before importing extension
 vi.mock("../../src/services/git.service", () => {
 	return {
 		GitService: class MockGitService {
@@ -28,28 +44,24 @@ vi.mock("../../src/services/git.service", () => {
 	};
 });
 
-vi.mock("../../src/services/worktree.service", () => {
+vi.mock("../../src/services/agents-store", () => {
 	return {
-		WorktreeService: class MockWorktreeService {
+		AgentsStore: class MockAgentsStore {
 			constructor(...args: unknown[]) {
-				worktreeServiceConstructorArgs.push(args);
+				agentsStoreConstructorArgs.push(args);
+				Object.assign(this, mockAgentsStoreInstance);
 			}
-			reconcile = vi.fn().mockResolvedValue({
-				orphanedInManifest: [],
-				orphanedOnDisk: [],
-				healthy: [],
-			});
 		},
 	};
 });
 
-vi.mock("../../src/services/repo-config.service", () => {
+vi.mock("../../src/services/repos-store", () => {
 	return {
-		RepoConfigService: class MockRepoConfigService {
+		ReposStore: class MockReposStore {
 			constructor(...args: unknown[]) {
-				repoConfigServiceConstructorArgs.push(args);
+				reposStoreConstructorArgs.push(args);
+				Object.assign(this, mockReposStoreInstance);
 			}
-			getAll = vi.fn().mockReturnValue([]);
 		},
 	};
 });
@@ -65,49 +77,52 @@ vi.mock("../../src/services/workspace.service", () => {
 	};
 });
 
-vi.mock("../../src/services/agent.service", () => {
-	return {
-		AgentService: class MockAgentService {
-			constructor(...args: unknown[]) {
-				agentServiceConstructorArgs.push(args);
-			}
-			setTerminalService = vi.fn();
-			onDidChange = vi.fn();
-			reconcileOnActivation = vi.fn().mockResolvedValue(undefined);
-			dispose = vi.fn();
-		},
-	};
-});
-
-vi.mock("../../src/services/terminal.service", () => {
-	return {
-		TerminalService: class MockTerminalService {
-			dispose = vi.fn();
-		},
-	};
-});
-
-vi.mock("../../src/commands/agent.commands", () => ({
-	registerAgentCommands: vi.fn(),
+vi.mock("../../src/utils/terminal", () => ({
+	initTerminals: vi.fn().mockReturnValue([]),
+	disposeAllTerminals: vi.fn(),
 }));
 
-vi.mock("../../src/commands/repo.commands", () => ({
-	registerRepoCommands: vi.fn(),
+vi.mock("../../src/features/create-agent", () => ({
+	registerCreateAgent: vi.fn(),
 }));
 
-vi.mock("../../src/commands/workspace.commands", () => ({
-	registerWorkspaceCommands: vi.fn(),
+vi.mock("../../src/features/delete-agent", () => ({
+	registerDeleteAgent: vi.fn(),
+}));
+
+vi.mock("../../src/features/focus-agent", () => ({
+	registerFocusAgent: vi.fn(),
+}));
+
+vi.mock("../../src/features/stop-agent", () => ({
+	registerStopAgent: vi.fn(),
+}));
+
+vi.mock("../../src/features/add-repo", () => ({
+	registerAddRepo: vi.fn(),
+}));
+
+vi.mock("../../src/features/remove-repo", () => ({
+	registerRemoveRepo: vi.fn(),
+}));
+
+vi.mock("../../src/features/root-global", () => ({
+	registerRootGlobal: vi.fn(),
+}));
+
+vi.mock("../../src/features/root-repo", () => ({
+	registerRootRepo: vi.fn(),
 }));
 
 vi.mock("../../src/views/sidebar-provider", () => {
 	return {
 		SidebarViewProvider: class MockSidebarViewProvider {
-			static viewType = "vscode-agentic.dashboard";
+			static viewType = "vscode-agentic.agents";
 		},
 	};
 });
 
-describe("extension activate() - globalState usage", () => {
+describe("extension activate() - new architecture", () => {
 	let globalStateMock: ReturnType<typeof createMockMemento>;
 	let workspaceStateMock: ReturnType<typeof createMockMemento>;
 	let context: {
@@ -119,9 +134,8 @@ describe("extension activate() - globalState usage", () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		worktreeServiceConstructorArgs.length = 0;
-		repoConfigServiceConstructorArgs.length = 0;
-		agentServiceConstructorArgs.length = 0;
+		agentsStoreConstructorArgs.length = 0;
+		reposStoreConstructorArgs.length = 0;
 		workspaceServiceConstructorArgs.length = 0;
 
 		globalStateMock = createMockMemento();
@@ -135,43 +149,62 @@ describe("extension activate() - globalState usage", () => {
 		};
 	});
 
-	it("passes context.globalState (not workspaceState) to WorktreeService constructor", async () => {
+	it("passes context.globalState to AgentsStore constructor", async () => {
 		const { activate } = await import("../../src/extension");
 		activate(context as never);
 
-		expect(worktreeServiceConstructorArgs.length).toBe(1);
-		const [_gitService, mementoArg] = worktreeServiceConstructorArgs[0];
+		expect(agentsStoreConstructorArgs.length).toBe(1);
+		const [mementoArg] = agentsStoreConstructorArgs[0];
 		expect(mementoArg).toBe(globalStateMock);
 		expect(mementoArg).not.toBe(workspaceStateMock);
 	});
 
-	it("passes context.globalState (not workspaceState) to RepoConfigService constructor", async () => {
+	it("passes context.globalState to ReposStore constructor", async () => {
 		const { activate } = await import("../../src/extension");
 		activate(context as never);
 
-		expect(repoConfigServiceConstructorArgs.length).toBe(1);
-		const [mementoArg] = repoConfigServiceConstructorArgs[0];
+		expect(reposStoreConstructorArgs.length).toBe(1);
+		const [mementoArg] = reposStoreConstructorArgs[0];
 		expect(mementoArg).toBe(globalStateMock);
 		expect(mementoArg).not.toBe(workspaceStateMock);
 	});
 
-	it("passes context.globalState (not workspaceState) to AgentService constructor", async () => {
-		const { activate } = await import("../../src/extension");
-		activate(context as never);
-
-		expect(agentServiceConstructorArgs.length).toBe(1);
-		const [mementoArg] = agentServiceConstructorArgs[0];
-		expect(mementoArg).toBe(globalStateMock);
-		expect(mementoArg).not.toBe(workspaceStateMock);
-	});
-
-	it("creates WorkspaceService with repoConfigService", async () => {
+	it("creates WorkspaceService with reposStore", async () => {
 		const { activate } = await import("../../src/extension");
 		activate(context as never);
 
 		expect(workspaceServiceConstructorArgs.length).toBe(1);
-		// WorkspaceService constructor receives the repoConfigService instance
 		expect(workspaceServiceConstructorArgs[0].length).toBe(1);
+	});
+
+	it("registers all 8 feature commands", async () => {
+		const { activate } = await import("../../src/extension");
+		const { registerCreateAgent } = await import("../../src/features/create-agent");
+		const { registerDeleteAgent } = await import("../../src/features/delete-agent");
+		const { registerFocusAgent } = await import("../../src/features/focus-agent");
+		const { registerStopAgent } = await import("../../src/features/stop-agent");
+		const { registerAddRepo } = await import("../../src/features/add-repo");
+		const { registerRemoveRepo } = await import("../../src/features/remove-repo");
+		const { registerRootGlobal } = await import("../../src/features/root-global");
+		const { registerRootRepo } = await import("../../src/features/root-repo");
+		activate(context as never);
+
+		expect(registerCreateAgent).toHaveBeenCalledOnce();
+		expect(registerDeleteAgent).toHaveBeenCalledOnce();
+		expect(registerFocusAgent).toHaveBeenCalledOnce();
+		expect(registerStopAgent).toHaveBeenCalledOnce();
+		expect(registerAddRepo).toHaveBeenCalledOnce();
+		expect(registerRemoveRepo).toHaveBeenCalledOnce();
+		expect(registerRootGlobal).toHaveBeenCalledOnce();
+		expect(registerRootRepo).toHaveBeenCalledOnce();
+	});
+
+	it("calls initTerminals with a status callback", async () => {
+		const { activate } = await import("../../src/extension");
+		const { initTerminals } = await import("../../src/utils/terminal");
+		activate(context as never);
+
+		expect(initTerminals).toHaveBeenCalledWith(expect.any(Function));
 	});
 
 	it("calls ensureWorkspaceFile on activation", async () => {
@@ -208,48 +241,11 @@ describe("extension activate() - globalState usage", () => {
 		expect(mockWorkspaceServiceInstance.promptReopenInWorkspace).not.toHaveBeenCalled();
 	});
 
-	it("calls registerWorkspaceCommands with context and workspaceService", async () => {
+	it("pushes dispose callbacks to context.subscriptions", async () => {
 		const { activate } = await import("../../src/extension");
-		const { registerWorkspaceCommands } = await import("../../src/commands/workspace.commands");
 		activate(context as never);
 
-		expect(registerWorkspaceCommands).toHaveBeenCalledWith(
-			context,
-			expect.objectContaining({
-				ensureWorkspaceFile: expect.any(Function),
-				setExplorerScope: expect.any(Function),
-			}),
-		);
-	});
-
-	it("passes workspaceService to registerAgentCommands", async () => {
-		const { activate } = await import("../../src/extension");
-		const { registerAgentCommands } = await import("../../src/commands/agent.commands");
-		activate(context as never);
-
-		expect(registerAgentCommands).toHaveBeenCalledWith(
-			context,
-			expect.anything(), // agentService
-			expect.anything(), // terminalService
-			expect.anything(), // repoConfigService
-			expect.anything(), // worktreeService
-			expect.objectContaining({
-				setExplorerScope: expect.any(Function),
-			}),
-		);
-	});
-
-	it("passes workspaceService to registerRepoCommands", async () => {
-		const { activate } = await import("../../src/extension");
-		const { registerRepoCommands } = await import("../../src/commands/repo.commands");
-		activate(context as never);
-
-		expect(registerRepoCommands).toHaveBeenCalledWith(
-			context,
-			expect.anything(), // repoConfigService
-			expect.objectContaining({
-				syncWorkspaceFile: expect.any(Function),
-			}),
-		);
+		// Should have subscriptions for: webview provider, agentsStore dispose, reposStore dispose, terminals dispose
+		expect(context.subscriptions.length).toBeGreaterThanOrEqual(4);
 	});
 });
