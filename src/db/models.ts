@@ -8,6 +8,7 @@ export interface Repository {
   name: string;
   localPath: string;
   stagingBranch: string;
+  isExpanded: boolean;
   createdAt: number;
 }
 
@@ -36,6 +37,7 @@ export class RepositoryModel extends Model<Repository> implements Repository {
   declare name: string;
   declare localPath: string;
   declare stagingBranch: string;
+  declare isExpanded: boolean;
   declare createdAt: number;
 }
 
@@ -66,6 +68,7 @@ export const initModels = (sequelize: Sequelize): void => {
       name: { type: DataTypes.TEXT, allowNull: false },
       localPath: { type: DataTypes.TEXT, allowNull: false, unique: true },
       stagingBranch: { type: DataTypes.TEXT, allowNull: false },
+      isExpanded: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
       createdAt: { type: DataTypes.INTEGER, allowNull: false },
     },
     { sequelize, tableName: 'repositories', timestamps: false },

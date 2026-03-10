@@ -1,12 +1,10 @@
 import { TabHeader } from '../shared/molecules/TabHeader';
-import { RepoHeader } from '../shared/molecules/RepoHeader';
-import { AgentTile } from '../shared/molecules/AgentTile';
+import { RepoSection } from './RepoSection';
 import { EmptyState } from '../shared/atoms/EmptyState';
 import type { RepoWithAgents } from '../../types';
 
 interface AgentPanelViewProps {
   repos: RepoWithAgents[];
-  expandedRepoIds: Set<string>;
   onRootClick: () => void;
   onAddRepoClick: () => void;
   onRepoRootClick: (repoId: string) => void;
@@ -22,7 +20,6 @@ interface AgentPanelViewProps {
 
 export const AgentPanelView = ({
   repos,
-  expandedRepoIds,
   onRootClick,
   onAddRepoClick,
   onRepoRootClick,
@@ -43,39 +40,19 @@ export const AgentPanelView = ({
         <EmptyState text="press + to add repo" />
       ) : (
         repos.map((repo) => (
-          <section key={repo.repositoryId} className="repo-section">
-            <RepoHeader
-              name={repo.name}
-              expanded={expandedRepoIds.has(repo.repositoryId)}
-              onRootClick={() => onRepoRootClick(repo.repositoryId)}
-              onAddAgentClick={() => onAddAgentClick(repo.repositoryId)}
-              onRemoveClick={() => onRemoveRepoClick(repo.repositoryId)}
-              onToggleClick={() => onToggleRepoClick(repo.repositoryId)}
-            />
-
-            {expandedRepoIds.has(repo.repositoryId) && (
-              <div className="repo-agents">
-                {repo.agents.length === 0 ? (
-                  <EmptyState text="press + to add agent" />
-                ) : (
-                  repo.agents.map((agent) => (
-                    <AgentTile
-                      key={agent.agentId}
-                      name={agent.name}
-                      status={agent.status}
-                      lastPrompt={agent.lastPrompt}
-                      startedAt={agent.startedAt}
-                      onClick={() => onAgentClick(agent.agentId)}
-                      onCloneClick={() => onCloneAgentClick(agent.agentId)}
-                      onStopClick={() => onStopAgentClick(agent.agentId)}
-                      onRemoveClick={() => onRemoveAgentClick(agent.agentId)}
-                      onClearClick={() => onClearAgentClick(agent.agentId)}
-                    />
-                  ))
-                )}
-              </div>
-            )}
-          </section>
+          <RepoSection
+            key={repo.repositoryId}
+            repo={repo}
+            onRepoRootClick={() => onRepoRootClick(repo.repositoryId)}
+            onAddAgentClick={() => onAddAgentClick(repo.repositoryId)}
+            onRemoveRepoClick={() => onRemoveRepoClick(repo.repositoryId)}
+            onToggleRepoClick={() => onToggleRepoClick(repo.repositoryId)}
+            onAgentClick={onAgentClick}
+            onCloneAgentClick={onCloneAgentClick}
+            onStopAgentClick={onStopAgentClick}
+            onRemoveAgentClick={onRemoveAgentClick}
+            onClearAgentClick={onClearAgentClick}
+          />
         ))
       )}
     </section>

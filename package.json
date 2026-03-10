@@ -35,7 +35,7 @@
     }
   },
   "scripts": {
-    "compile": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --sourcemap && esbuild src/ui/index.tsx --bundle --outfile=out/ui/index.js --format=esm --jsx=automatic --sourcemap",
+    "compile": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --external:pg-hstore --format=cjs --platform=node --sourcemap && esbuild src/ui/index.tsx --bundle --outfile=out/ui/index.js --format=esm --jsx=automatic --sourcemap",
     "watch": "npm run compile -- --watch",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",

@@ -340,7 +340,7 @@ var require_react_development = __commonJS({
         this.refs = emptyObject;
         this.updater = updater || ReactNoopUpdateQueue;
       }
-      function noop() {
+      function noop2() {
       }
       function testStringCoercion(value) {
         return "" + value;
@@ -531,7 +531,7 @@ var require_react_development = __commonJS({
           case "rejected":
             throw thenable.reason;
           default:
-            switch ("string" === typeof thenable.status ? thenable.then(noop, noop) : (thenable.status = "pending", thenable.then(
+            switch ("string" === typeof thenable.status ? thenable.then(noop2, noop2) : (thenable.status = "pending", thenable.then(
               function(fulfilledValue) {
                 "pending" === thenable.status && (thenable.status = "fulfilled", thenable.value = fulfilledValue);
               },
@@ -1169,7 +1169,7 @@ var require_react_development = __commonJS({
         try {
           var returnValue = scope(), onStartTransitionFinish = ReactSharedInternals.S;
           null !== onStartTransitionFinish && onStartTransitionFinish(currentTransition, returnValue);
-          "object" === typeof returnValue && null !== returnValue && "function" === typeof returnValue.then && (ReactSharedInternals.asyncTransitions++, returnValue.then(releaseAsyncTransition, releaseAsyncTransition), returnValue.then(noop, reportGlobalError));
+          "object" === typeof returnValue && null !== returnValue && "function" === typeof returnValue.then && (ReactSharedInternals.asyncTransitions++, returnValue.then(releaseAsyncTransition, releaseAsyncTransition), returnValue.then(noop2, reportGlobalError));
         } catch (error) {
           reportGlobalError(error);
         } finally {
@@ -1284,7 +1284,7 @@ var require_react_dom_development = __commonJS({
   "node_modules/react-dom/cjs/react-dom.development.js"(exports) {
     "use strict";
     (function() {
-      function noop() {
+      function noop2() {
       }
       function testStringCoercion(value) {
         return "" + value;
@@ -1330,19 +1330,19 @@ var require_react_dom_development = __commonJS({
       "undefined" !== typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ && "function" === typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart && __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart(Error());
       var React = require_react(), Internals = {
         d: {
-          f: noop,
+          f: noop2,
           r: function() {
             throw Error(
               "Invalid form element. requestFormReset must be passed a form that was rendered by React."
             );
           },
-          D: noop,
-          C: noop,
-          L: noop,
-          m: noop,
-          X: noop,
-          S: noop,
-          M: noop
+          D: noop2,
+          C: noop2,
+          L: noop2,
+          m: noop2,
+          X: noop2,
+          S: noop2,
+          M: noop2
         },
         p: 0,
         findDOMNode: null
@@ -1599,7 +1599,7 @@ var require_react_dom_client_development = __commonJS({
           "Context can only be read while React is rendering. In classes, you can read it in the render method or getDerivedStateFromProps. In function components, you can read it directly in the function body, but not inside Hooks like useReducer() or useMemo()."
         );
       }
-      function noop() {
+      function noop2() {
       }
       function warnForMissingKey() {
       }
@@ -7914,7 +7914,7 @@ var require_react_dom_client_development = __commonJS({
           queue,
           pendingState,
           NotPendingTransition,
-          null === action ? noop : function() {
+          null === action ? noop2 : function() {
             requestFormReset$1(formFiber);
             return action(formData);
           }
@@ -21720,6 +21720,9 @@ var require_jsx_runtime = __commonJS({
 // src/ui/index.tsx
 var import_client = __toESM(require_client());
 
+// src/ui/agentPanel/AgentPanelPage.tsx
+var import_react3 = __toESM(require_react());
+
 // src/ui/shared/atoms/IconButton.tsx
 var import_jsx_runtime = __toESM(require_jsx_runtime());
 var IconButton = ({ icon, onClick, disabled, title }) => {
@@ -21738,12 +21741,12 @@ var IconButton = ({ icon, onClick, disabled, title }) => {
 
 // src/ui/shared/molecules/TabHeader.tsx
 var import_jsx_runtime2 = __toESM(require_jsx_runtime());
-var TabHeader = ({ onRootClick: onRootClick2, onAddRepoClick: onAddRepoClick2 }) => {
+var TabHeader = ({ onRootClick, onAddRepoClick }) => {
   return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("header", { className: "tab-header", children: [
     /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "tab-header-title", children: "Agentic" }),
     /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("nav", { className: "tab-header-actions", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(IconButton, { icon: "root-folder", onClick: onRootClick2, title: "Navigate to workspace" }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(IconButton, { icon: "add", onClick: onAddRepoClick2, title: "Add repo" })
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(IconButton, { icon: "root-folder", onClick: onRootClick, title: "Navigate to workspace" }),
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(IconButton, { icon: "add", onClick: onAddRepoClick, title: "Add repo" })
     ] })
   ] });
 };
@@ -21753,16 +21756,16 @@ var import_jsx_runtime3 = __toESM(require_jsx_runtime());
 var RepoHeader = ({
   name,
   expanded,
-  onRootClick: onRootClick2,
-  onAddAgentClick: onAddAgentClick2,
+  onRootClick,
+  onAddAgentClick,
   onRemoveClick,
   onToggleClick
 }) => {
   return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("header", { className: "repo-header", children: [
     /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { className: "repo-header-name", children: name }),
     /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("nav", { className: "repo-header-actions", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(IconButton, { icon: "root-folder", onClick: onRootClick2, title: "Navigate to repo" }),
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(IconButton, { icon: "add", onClick: onAddAgentClick2, title: "Add agent" }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(IconButton, { icon: "root-folder", onClick: onRootClick, title: "Navigate to repo" }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(IconButton, { icon: "add", onClick: onAddAgentClick, title: "Add agent" }),
       /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(IconButton, { icon: "close", onClick: onRemoveClick, title: "Remove repo" }),
       /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
         IconButton,
@@ -21867,112 +21870,148 @@ var EmptyState = ({ text }) => {
   return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("p", { className: "empty-state", children: text });
 };
 
-// src/ui/agentPanel/AgentPanelView.tsx
+// src/ui/agentPanel/RepoSection.tsx
 var import_jsx_runtime9 = __toESM(require_jsx_runtime());
-var AgentPanelView = ({
-  repos,
-  expandedRepoIds,
-  onRootClick: onRootClick2,
-  onAddRepoClick: onAddRepoClick2,
-  onRepoRootClick: onRepoRootClick2,
-  onAddAgentClick: onAddAgentClick2,
-  onRemoveRepoClick: onRemoveRepoClick2,
-  onToggleRepoClick: onToggleRepoClick2,
-  onAgentClick: onAgentClick2,
-  onCloneAgentClick: onCloneAgentClick2,
-  onStopAgentClick: onStopAgentClick2,
-  onRemoveAgentClick: onRemoveAgentClick2,
-  onClearAgentClick: onClearAgentClick2
+var RepoSection = ({
+  repo,
+  onRepoRootClick,
+  onAddAgentClick,
+  onRemoveRepoClick,
+  onToggleRepoClick,
+  onAgentClick,
+  onCloneAgentClick,
+  onStopAgentClick,
+  onRemoveAgentClick,
+  onClearAgentClick
 }) => {
-  return /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("section", { className: "agent-panel", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(TabHeader, { onRootClick: onRootClick2, onAddRepoClick: onAddRepoClick2 }),
-    repos.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(EmptyState, { text: "press + to add repo" }) : repos.map((repo) => /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("section", { className: "repo-section", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
-        RepoHeader,
-        {
-          name: repo.name,
-          expanded: expandedRepoIds.has(repo.repositoryId),
-          onRootClick: () => onRepoRootClick2(repo.repositoryId),
-          onAddAgentClick: () => onAddAgentClick2(repo.repositoryId),
-          onRemoveClick: () => onRemoveRepoClick2(repo.repositoryId),
-          onToggleClick: () => onToggleRepoClick2(repo.repositoryId)
-        }
-      ),
-      expandedRepoIds.has(repo.repositoryId) && /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("div", { className: "repo-agents", children: repo.agents.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(EmptyState, { text: "press + to add agent" }) : repo.agents.map((agent) => /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
-        AgentTile,
-        {
-          name: agent.name,
-          status: agent.status,
-          lastPrompt: agent.lastPrompt,
-          startedAt: agent.startedAt,
-          onClick: () => onAgentClick2(agent.agentId),
-          onCloneClick: () => onCloneAgentClick2(agent.agentId),
-          onStopClick: () => onStopAgentClick2(agent.agentId),
-          onRemoveClick: () => onRemoveAgentClick2(agent.agentId),
-          onClearClick: () => onClearAgentClick2(agent.agentId)
-        },
-        agent.agentId
-      )) })
-    ] }, repo.repositoryId))
+  return /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("section", { className: "repo-section", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
+      RepoHeader,
+      {
+        name: repo.name,
+        expanded: repo.isExpanded,
+        onRootClick: onRepoRootClick,
+        onAddAgentClick,
+        onRemoveClick: onRemoveRepoClick,
+        onToggleClick: onToggleRepoClick
+      }
+    ),
+    repo.isExpanded && /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("div", { className: "repo-agents", children: repo.agents.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(EmptyState, { text: "press + to add agent" }) : repo.agents.map((agent) => /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
+      AgentTile,
+      {
+        name: agent.name,
+        status: agent.status,
+        lastPrompt: agent.lastPrompt,
+        startedAt: agent.startedAt,
+        onClick: () => onAgentClick(agent.agentId),
+        onCloneClick: () => onCloneAgentClick(agent.agentId),
+        onStopClick: () => onStopAgentClick(agent.agentId),
+        onRemoveClick: () => onRemoveAgentClick(agent.agentId),
+        onClearClick: () => onClearAgentClick(agent.agentId)
+      },
+      agent.agentId
+    )) })
   ] });
 };
 
-// src/ui/agentPanel/AgentPanelPage.tsx
+// src/ui/agentPanel/AgentPanelView.tsx
 var import_jsx_runtime10 = __toESM(require_jsx_runtime());
-var placeholderRepos = [];
-var onRootClick = () => {
+var AgentPanelView = ({
+  repos,
+  onRootClick,
+  onAddRepoClick,
+  onRepoRootClick,
+  onAddAgentClick,
+  onRemoveRepoClick,
+  onToggleRepoClick,
+  onAgentClick,
+  onCloneAgentClick,
+  onStopAgentClick,
+  onRemoveAgentClick,
+  onClearAgentClick
+}) => {
+  return /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("section", { className: "agent-panel", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(TabHeader, { onRootClick, onAddRepoClick }),
+    repos.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(EmptyState, { text: "press + to add repo" }) : repos.map((repo) => /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
+      RepoSection,
+      {
+        repo,
+        onRepoRootClick: () => onRepoRootClick(repo.repositoryId),
+        onAddAgentClick: () => onAddAgentClick(repo.repositoryId),
+        onRemoveRepoClick: () => onRemoveRepoClick(repo.repositoryId),
+        onToggleRepoClick: () => onToggleRepoClick(repo.repositoryId),
+        onAgentClick,
+        onCloneAgentClick,
+        onStopAgentClick,
+        onRemoveAgentClick,
+        onClearAgentClick
+      },
+      repo.repositoryId
+    ))
+  ] });
 };
-var onAddRepoClick = () => {
+
+// src/ui/agentPanel/useAgentPanel.ts
+var import_react2 = __toESM(require_react());
+var useAgentPanel = () => {
+  const [repos, setRepos] = (0, import_react2.useState)([]);
+  (0, import_react2.useEffect)(() => {
+    const handler = (event) => {
+      const message = event.data;
+      if (message.type === "update") {
+        setRepos(message.repos);
+      }
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, []);
+  return repos;
 };
-var onRepoRootClick = (_repoId) => {
+
+// src/ui/agentPanel/AgentPanelPage.tsx
+var import_jsx_runtime11 = __toESM(require_jsx_runtime());
+var noop = () => {
 };
-var onAddAgentClick = (_repoId) => {
-};
-var onRemoveRepoClick = (_repoId) => {
-};
-var onToggleRepoClick = (_repoId) => {
-};
-var onAgentClick = (_agentId) => {
-};
-var onCloneAgentClick = (_agentId) => {
-};
-var onStopAgentClick = (_agentId) => {
-};
-var onRemoveAgentClick = (_agentId) => {
-};
-var onClearAgentClick = (_agentId) => {
+var noopId = (_id) => {
 };
 var AgentPanelPage = () => {
-  return /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
+  const repos = useAgentPanel();
+  const onToggleRepoClick = (0, import_react3.useCallback)((repoId) => {
+    vscode.postMessage({ type: "command", command: "toggleRepoExpanded", data: { repoId } });
+  }, []);
+  return /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(
     AgentPanelView,
     {
-      repos: placeholderRepos,
-      expandedRepoIds: /* @__PURE__ */ new Set(),
-      onRootClick,
-      onAddRepoClick,
-      onRepoRootClick,
-      onAddAgentClick,
-      onRemoveRepoClick,
+      repos,
+      onRootClick: noop,
+      onAddRepoClick: noop,
+      onRepoRootClick: noopId,
+      onAddAgentClick: noopId,
+      onRemoveRepoClick: noopId,
       onToggleRepoClick,
-      onAgentClick,
-      onCloneAgentClick,
-      onStopAgentClick,
-      onRemoveAgentClick,
-      onClearAgentClick
+      onAgentClick: noopId,
+      onCloneAgentClick: noopId,
+      onStopAgentClick: noopId,
+      onRemoveAgentClick: noopId,
+      onClearAgentClick: noopId
     }
   );
 };
 
 // src/ui/App.tsx
-var import_jsx_runtime11 = __toESM(require_jsx_runtime());
+var import_jsx_runtime12 = __toESM(require_jsx_runtime());
 var App = () => {
-  return /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(AgentPanelPage, {});
+  return /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(AgentPanelPage, {});
 };
 
 // src/ui/index.tsx
-var import_jsx_runtime12 = __toESM(require_jsx_runtime());
+var import_jsx_runtime13 = __toESM(require_jsx_runtime());
+var vscode = acquireVsCodeApi();
 var root = (0, import_client.createRoot)(document.getElementById("root"));
-root.render(/* @__PURE__ */ (0, import_jsx_runtime12.jsx)(App, {}));
+root.render(/* @__PURE__ */ (0, import_jsx_runtime13.jsx)(App, {}));
+export {
+  vscode
+};
 /*! Bundled license information:
 
 scheduler/cjs/scheduler.development.js:

@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import type { Sequelize } from 'sequelize';
 import { RepositoryModel, AgentModel, WorktreeModel } from './models';
 import type { Repository, Worktree, Agent } from './models';
+import type { RepoWithAgents } from '../types';
 import type { AgentCli } from '../types/agent';
 
 const BACKUP_KEYS = {
@@ -63,6 +64,7 @@ export class StateStorage implements vscode.Disposable {
       name: trimmedName,
       localPath: trimmedPath,
       stagingBranch: stagingBranch.trim() || 'staging',
+      isExpanded: true,
       createdAt: Date.now(),
     };
 
@@ -79,6 +81,27 @@ export class StateStorage implements vscode.Disposable {
   getAllRepositories = async (): Promise<Repository[]> => {
     const rows = await RepositoryModel.findAll({ order: [['createdAt', 'ASC']] });
     return rows.map((r) => r.get({ plain: true }));
+  };
+
+  getAllReposWithAgents = async (): Promise<RepoWithAgents[]> => {
+    const repos = await RepositoryModel.findAll({ order: [['createdAt', 'ASC']] });
+    const agents = await AgentModel.findAll({ order: [['createdAt', 'ASC']] });
+
+    const agentsByRepo = new Map<string, Agent[]>();
+    for (const agent of agents) {
+      const plain = agent.get({ plain: true });
+      const list = agentsByRepo.get(plain.repoId);
+      if (list) {
+        list.push(plain);
+      } else {
+        agentsByRepo.set(plain.repoId, [plain]);
+      }
+    }
+
+    return repos.map((r) => {
+      const repo = r.get({ plain: true });
+      return { ...repo, agents: agentsByRepo.get(repo.repositoryId) ?? [] };
+    });
   };
 
   updateRepository = async (
@@ -112,6 +135,17 @@ export class StateStorage implements vscode.Disposable {
     }
 
     return repo.get({ plain: true });
+  };
+
+  toggleRepoExpanded = async (id: string): Promise<void> => {
+    const repo = await RepositoryModel.findByPk(id);
+    if (!repo) {
+      throw new Error(`Repository ${id} not found`);
+    }
+
+    repo.isExpanded = !repo.isExpanded;
+    await repo.save();
+    await this._changed(['repositories']);
   };
 
   removeRepository = async (id: string): Promise<void> => {
