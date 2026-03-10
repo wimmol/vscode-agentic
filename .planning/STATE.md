@@ -4,8 +4,8 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Completed 05-04-PLAN.md (checkpoint pending)
-last_updated: "2026-03-09T18:36:30.221Z"
-last_activity: 2026-03-10 - Completed 05-04-PLAN.md (Integration wiring, dead code removal, checkpoint pending)
+last_updated: "2026-03-10T07:40:28Z"
+last_activity: 2026-03-10 - Completed quick task 1 (UI refactor to smart container/dumb components)
 progress:
   total_phases: 5
   completed_phases: 3
@@ -118,6 +118,8 @@ Recent decisions affecting current work:
 - [Phase 05]: extension.ts is a thin wiring layer: create stores, register features, dispose on deactivation
 - [Phase 05]: sidebar-provider sends initial data via postMessage after setting HTML (no data baked into HTML)
 - [Phase 05]: Agent reconciliation inline in activate() (reset running->created) instead of delegating to service
+- [Quick-1]: Collapse state centralized in useRepoActions hook (Record<string, boolean>) instead of per-RepoSection useState
+- [Quick-1]: Excluded src/ui/**/*.ts from base tsconfig to avoid DOM type errors in extension-host type check pass
 
 ### Pending Todos
 
@@ -140,9 +142,10 @@ None yet.
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
+| 1 | Refactor UI atoms/components to pure presentational (smart container pattern) | 2026-03-10 | fe485b8 | 1-refactor-ui-atoms-components-pure-presen |
 
 ## Session Continuity
 
-Last session: 2026-03-09T18:36:30.218Z
-Stopped at: Completed 05-04-PLAN.md (checkpoint pending)
+Last session: 2026-03-10T07:40:28Z
+Stopped at: Completed quick task 1 (UI refactor to smart container/dumb components)
 Resume file: None
