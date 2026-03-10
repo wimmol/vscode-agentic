@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../src/extension.ts"],
+  "sourcesContent": ["import * as vscode from 'vscode';\n\nexport const activate = (_context: vscode.ExtensionContext) => {\n  // TODO: register providers and commands\n};\n\nexport const deactivate = () => {\n  // TODO: cleanup\n};\n"],
+  "mappings": ";;;;;;;;;;;;;;;;;;;;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAEO,IAAM,WAAW,CAAC,aAAsC;AAE/D;AAEO,IAAM,aAAa,MAAM;AAEhC;",
+  "names": []
+}

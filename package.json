@@ -7,8 +7,9 @@
   "engines": {
     "vscode": "^1.74.0"
   },
-  "type": "module",
-  "categories": ["Other"],
+  "categories": [
+    "Other"
+  ],
   "activationEvents": [
     "onView:vscode-agentic.agents"
   ],
@@ -34,8 +35,8 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "build:ui": "tsc -p tsconfig.webview.json",
+    "compile": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --sourcemap && esbuild src/ui/index.tsx --bundle --outfile=out/ui/index.js --format=esm --jsx=automatic --sourcemap",
+    "watch": "npm run compile -- --watch",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
@@ -45,6 +46,7 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/vscode": "^1.74.0",
+    "esbuild": "^0.27.3",
     "eslint": "^9.0.0",
     "eslint-config-prettier": "^10.0.0",
     "eslint-plugin-react": "^7.37.0",
