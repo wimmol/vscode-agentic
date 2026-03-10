@@ -34,3 +34,4 @@
 - Keep the codebase consistent.
 - Add `console.log` calls to see function call chains.
 - All functions declaration must be `const <name> = (<args>) => {}`
+- Each class create should has md file with explanation: what, where and why this class do. And description of alternative solutions.

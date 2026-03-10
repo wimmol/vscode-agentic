@@ -80,12 +80,13 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
 
 		webviewView.webview.html = getWebviewHtml(webviewView.webview, this.extensionUri);
 
-		const data = this._buildDashboardData();
-		webviewView.webview.postMessage({ type: "update", data });
-
 		webviewView.webview.onDidReceiveMessage((message) => {
 			console.log("[SidebarViewProvider._handleMessage]", message.command, message);
 			const { command, repoPath, agentName } = message;
+			if (command === "webviewReady") {
+				this.refresh();
+				return;
+			}
 			const args = [repoPath, agentName].filter(Boolean);
 			vscode.commands.executeCommand(`vscode-agentic.${command}`, ...args);
 		});

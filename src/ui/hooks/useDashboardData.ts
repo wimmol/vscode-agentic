@@ -14,6 +14,7 @@ export const useDashboardData = () => {
 			}
 		};
 		window.addEventListener("message", handleMessage);
+		postCommand("webviewReady");
 		return () => window.removeEventListener("message", handleMessage);
 	}, []);
 
