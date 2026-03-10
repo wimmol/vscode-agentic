@@ -21849,7 +21849,7 @@ var AgentTile = ({
     /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "agent-tile-header", children: [
       /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(StatusIcon, { status }),
       /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: "agent-tile-name", children: name }),
-      status === "running" && startedAt !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Timer, { startedAt })
+      status === "running" && startedAt !== null && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Timer, { startedAt })
     ] }),
     /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "agent-tile-prompt", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(TruncatedText, { text: lastPrompt }) }),
     /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("nav", { className: "agent-tile-actions", onClick: stopPropagation, children: [
@@ -21871,6 +21871,7 @@ var EmptyState = ({ text }) => {
 var import_jsx_runtime9 = __toESM(require_jsx_runtime());
 var AgentPanelView = ({
   repos,
+  expandedRepoIds,
   onRootClick: onRootClick2,
   onAddRepoClick: onAddRepoClick2,
   onRepoRootClick: onRepoRootClick2,
@@ -21890,29 +21891,29 @@ var AgentPanelView = ({
         RepoHeader,
         {
           name: repo.name,
-          expanded: repo.expanded,
-          onRootClick: () => onRepoRootClick2(repo.id),
-          onAddAgentClick: () => onAddAgentClick2(repo.id),
-          onRemoveClick: () => onRemoveRepoClick2(repo.id),
-          onToggleClick: () => onToggleRepoClick2(repo.id)
+          expanded: expandedRepoIds.has(repo.repositoryId),
+          onRootClick: () => onRepoRootClick2(repo.repositoryId),
+          onAddAgentClick: () => onAddAgentClick2(repo.repositoryId),
+          onRemoveClick: () => onRemoveRepoClick2(repo.repositoryId),
+          onToggleClick: () => onToggleRepoClick2(repo.repositoryId)
         }
       ),
-      repo.expanded && /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("div", { className: "repo-agents", children: repo.agents.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(EmptyState, { text: "press + to add agent" }) : repo.agents.map((agent) => /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
+      expandedRepoIds.has(repo.repositoryId) && /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("div", { className: "repo-agents", children: repo.agents.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(EmptyState, { text: "press + to add agent" }) : repo.agents.map((agent) => /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
         AgentTile,
         {
           name: agent.name,
           status: agent.status,
           lastPrompt: agent.lastPrompt,
           startedAt: agent.startedAt,
-          onClick: () => onAgentClick2(agent.id),
-          onCloneClick: () => onCloneAgentClick2(agent.id),
-          onStopClick: () => onStopAgentClick2(agent.id),
-          onRemoveClick: () => onRemoveAgentClick2(agent.id),
-          onClearClick: () => onClearAgentClick2(agent.id)
+          onClick: () => onAgentClick2(agent.agentId),
+          onCloneClick: () => onCloneAgentClick2(agent.agentId),
+          onStopClick: () => onStopAgentClick2(agent.agentId),
+          onRemoveClick: () => onRemoveAgentClick2(agent.agentId),
+          onClearClick: () => onClearAgentClick2(agent.agentId)
         },
-        agent.id
+        agent.agentId
       )) })
-    ] }, repo.id))
+    ] }, repo.repositoryId))
   ] });
 };
 
@@ -21946,6 +21947,7 @@ var AgentPanelPage = () => {
     AgentPanelView,
     {
       repos: placeholderRepos,
+      expandedRepoIds: /* @__PURE__ */ new Set(),
       onRootClick,
       onAddRepoClick,
       onRepoRootClick,

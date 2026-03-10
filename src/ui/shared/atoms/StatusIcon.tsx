@@ -1,4 +1,4 @@
-import type { AgentStatus } from '../types';
+import type { AgentStatus } from '../../../types';
 
 const STATUS_ICONS: Record<AgentStatus, string> = {
   created: 'circle-outline',

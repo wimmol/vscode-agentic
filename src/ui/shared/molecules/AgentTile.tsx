@@ -2,7 +2,7 @@ import { IconButton } from '../atoms/IconButton';
 import { StatusIcon } from '../atoms/StatusIcon';
 import { Timer } from './Timer';
 import { TruncatedText } from '../atoms/TruncatedText';
-import type { AgentStatus } from '../types';
+import type { AgentStatus } from '../../../types';
 import type { MouseEvent } from 'react';
 
 const stopPropagation = (e: MouseEvent) => e.stopPropagation();
@@ -10,8 +10,8 @@ const stopPropagation = (e: MouseEvent) => e.stopPropagation();
 interface AgentTileProps {
   name: string;
   status: AgentStatus;
-  lastPrompt: string;
-  startedAt?: number;
+  lastPrompt: string | null;
+  startedAt: number | null;
   onClick: () => void;
   onCloneClick: () => void;
   onStopClick: () => void;
@@ -35,7 +35,7 @@ export const AgentTile = ({
       <div className="agent-tile-header">
         <StatusIcon status={status} />
         <span className="agent-tile-name">{name}</span>
-        {status === 'running' && startedAt !== undefined && <Timer startedAt={startedAt} />}
+        {status === 'running' && startedAt !== null && <Timer startedAt={startedAt} />}
       </div>
       <div className="agent-tile-prompt">
         <TruncatedText text={lastPrompt} />

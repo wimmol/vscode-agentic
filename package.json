@@ -57,6 +57,8 @@
   },
   "dependencies": {
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "sequelize": "^6.37.8",
+    "sqlite3": "^5.1.7"
   }
 }

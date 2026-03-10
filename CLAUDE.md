@@ -8,7 +8,7 @@
 
 - `CLAUDE.md` — project rules, architecture conventions, coding standards.
 - `markdowns/FILE_STRUCTURE.md` — planned file and folder layout for the codebase.
-- `markdowns/SAVE_DATA.md` — data persistence strategy, storage types, schema versioning.
+- `markdowns/SAVE_DATA.md` — data persistence strategy, storage types, schema versioning, database schema.
 
 ## MAIN RULES
 

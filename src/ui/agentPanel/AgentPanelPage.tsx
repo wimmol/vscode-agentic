@@ -1,7 +1,8 @@
 import { AgentPanelView } from './AgentPanelView';
-import type { Repo } from '../shared/types';
+import type { RepoWithAgents } from '../../types';
 
-const placeholderRepos: Repo[] = [];
+const placeholderRepos: RepoWithAgents[] = [];
+const emptyExpandedIds = new Set<string>();
 
 const onRootClick = () => {};
 const onAddRepoClick = () => {};
@@ -19,6 +20,7 @@ export const AgentPanelPage = () => {
   return (
     <AgentPanelView
       repos={placeholderRepos}
+      expandedRepoIds={emptyExpandedIds}
       onRootClick={onRootClick}
       onAddRepoClick={onAddRepoClick}
       onRepoRootClick={onRepoRootClick}

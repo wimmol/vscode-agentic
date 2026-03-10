@@ -9,7 +9,7 @@ const truncateStyle: CSSProperties = {
 };
 
 interface TruncatedTextProps {
-  text: string;
+  text: string | null;
 }
 
 export const TruncatedText = ({ text }: TruncatedTextProps) => {
