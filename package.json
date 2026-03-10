@@ -1,0 +1,60 @@
+{
+  "name": "vscode-agentic",
+  "displayName": "Agentic",
+  "description": "Work on multiple repositories using AI agents on own worktrees",
+  "version": "0.0.1",
+  "publisher": "norules",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "type": "module",
+  "categories": ["Other"],
+  "activationEvents": [
+    "onView:vscode-agentic.agents"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "vscode-agentic",
+          "title": "Agentic",
+          "icon": "$(hubot)"
+        }
+      ]
+    },
+    "views": {
+      "vscode-agentic": [
+        {
+          "type": "webview",
+          "id": "vscode-agentic.agents",
+          "name": "Agents"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "build:ui": "tsc -p tsconfig.webview.json",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\""
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@types/vscode": "^1.74.0",
+    "eslint": "^9.0.0",
+    "eslint-config-prettier": "^10.0.0",
+    "eslint-plugin-react": "^7.37.0",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "prettier": "^3.4.0",
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8.0.0"
+  },
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  }
+}
