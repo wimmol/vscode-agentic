@@ -1,29 +1,32 @@
-import { useState } from "react";
 import type { RepoData } from "../types";
+import type { AgentCallbacks } from "../hooks/useAgentActions";
 import { AgentTile } from "./AgentTile";
 import { ActionButton } from "../atoms/ActionButton";
-import { postCommand } from "../hooks/useVsCodeApi";
 
-export const RepoSection = ({ repo, scope }: { repo: RepoData; scope: string }) => {
-	const [collapsed, setCollapsed] = useState(false);
+interface RepoSectionProps {
+	repo: RepoData;
+	scope: string;
+	collapsed: boolean;
+	onRoot: () => void;
+	onCreate: () => void;
+	onRemove: () => void;
+	onToggleCollapse: () => void;
+	getAgentCallbacks: (repoPath: string, agentName: string) => AgentCallbacks;
+}
+
+export const RepoSection = ({
+	repo,
+	scope,
+	collapsed,
+	onRoot,
+	onCreate,
+	onRemove,
+	onToggleCollapse,
+	getAgentCallbacks,
+}: RepoSectionProps) => {
 	const isScopeActive = scope === `repo:${repo.path}`;
 
 	console.log("[RepoSection] render", repo.name, repo.agents.length, "agents");
-
-	const handleRoot = () => {
-		console.log("[RepoSection] rootRepo", repo.path);
-		postCommand("rootRepo", { repoPath: repo.path });
-	};
-
-	const handleCreate = () => {
-		console.log("[RepoSection] createAgent", repo.path);
-		postCommand("createAgent", { repoPath: repo.path });
-	};
-
-	const handleRemove = () => {
-		console.log("[RepoSection] removeRepo", repo.path);
-		postCommand("removeRepo", { repoPath: repo.path });
-	};
 
 	return (
 		<div className={`repo-section${collapsed ? " collapsed" : ""}`}>
@@ -31,7 +34,7 @@ export const RepoSection = ({ repo, scope }: { repo: RepoData; scope: string }) 
 				<button
 					className="collapse-btn"
 					title="Toggle section"
-					onClick={() => setCollapsed(!collapsed)}
+					onClick={onToggleCollapse}
 				>
 					<span className="codicon codicon-chevron-down" />
 				</button>
@@ -43,12 +46,12 @@ export const RepoSection = ({ repo, scope }: { repo: RepoData; scope: string }) 
 					<button
 						className={`repo-action-btn${isScopeActive ? " scope-active" : ""}`}
 						title="Show Repo Root"
-						onClick={handleRoot}
+						onClick={onRoot}
 					>
 						<span className="codicon codicon-root-folder" />
 					</button>
-					<ActionButton icon="add" title="Create Agent" onClick={handleCreate} />
-					<ActionButton icon="close" title="Remove Repository" onClick={handleRemove} />
+					<ActionButton icon="add" title="Create Agent" onClick={onCreate} />
+					<ActionButton icon="close" title="Remove Repository" onClick={onRemove} />
 				</div>
 			</div>
 			{!collapsed && (
@@ -57,7 +60,11 @@ export const RepoSection = ({ repo, scope }: { repo: RepoData; scope: string }) 
 						<div className="no-agents">No agents yet</div>
 					) : (
 						repo.agents.map((agent) => (
-							<AgentTile key={agent.agentName} agent={agent} />
+							<AgentTile
+								key={agent.agentName}
+								agent={agent}
+								{...getAgentCallbacks(agent.repoPath, agent.agentName)}
+							/>
 						))
 					)}
 				</div>
