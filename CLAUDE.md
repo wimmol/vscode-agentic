@@ -7,7 +7,8 @@
 ## DOCS MAP
 
 - `CLAUDE.md` — project rules, architecture conventions, coding standards.
-- `FILE_STRUCTURE.md` — planned file and folder layout for the codebase.
+- `markdowns/FILE_STRUCTURE.md` — planned file and folder layout for the codebase.
+- `markdowns/SAVE_DATA.md` — data persistence strategy, storage types, schema versioning.
 
 ## MAIN RULES
 
