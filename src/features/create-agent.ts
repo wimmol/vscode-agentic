@@ -16,7 +16,7 @@ import { createTerminal } from "../utils/terminal";
 /** Per-repo mutex: queues worktree operations so only one runs at a time per repo. */
 const locks = new Map<string, Promise<void>>();
 
-async function withLock<T>(repoPath: string, fn: () => Promise<T>): Promise<T> {
+const withLock = async <T>(repoPath: string, fn: () => Promise<T>): Promise<T> => {
 	const pending = locks.get(repoPath) ?? Promise.resolve();
 	let resolve!: () => void;
 	const next = new Promise<void>((r) => {
@@ -30,15 +30,15 @@ async function withLock<T>(repoPath: string, fn: () => Promise<T>): Promise<T> {
 	} finally {
 		resolve();
 	}
-}
+};
 
-function getWorktreeLimit(): number {
+const getWorktreeLimit = (): number => {
 	return vscode.workspace.getConfiguration("vscode-agentic").get<number>("maxWorktreesPerRepo", 5);
-}
+};
 
-function getWorktreeDirName(): string {
+const getWorktreeDirName = (): string => {
 	return vscode.workspace.getConfiguration("vscode-agentic").get<string>("worktreeDirectoryName", ".worktrees");
-}
+};
 
 interface WorktreePickItem extends vscode.QuickPickItem {
 	agentName: string;
@@ -48,13 +48,13 @@ interface WorktreePickItem extends vscode.QuickPickItem {
  * When the worktree limit is reached, offer to delete an existing worktree.
  * Returns true if a worktree was deleted (caller can retry), false if user cancelled.
  */
-async function handleWorktreeLimitError(
+const handleWorktreeLimitError = async (
 	repoPath: string,
 	limit: number,
 	existingEntries: WorktreeEntry[],
 	gitService: GitService,
 	globalState: vscode.Memento,
-): Promise<boolean> {
+): Promise<boolean> => {
 	console.log("[feature:createAgent] handleWorktreeLimitError", { repoPath, limit });
 	const items: WorktreePickItem[] = existingEntries.map((entry) => ({
 		label: entry.agentName,
@@ -98,14 +98,14 @@ async function handleWorktreeLimitError(
 	);
 
 	return true;
-}
+};
 
-export function registerCreateAgent(
+export const registerCreateAgent = (
 	context: vscode.ExtensionContext,
 	agentsStore: AgentsStore,
 	reposStore: ReposStore,
 	gitService: GitService,
-): void {
+): void => {
 	const disposable = vscode.commands.registerCommand(
 		"vscode-agentic.createAgent",
 		async (repoPath?: string) => {
@@ -276,4 +276,4 @@ export function registerCreateAgent(
 	);
 
 	context.subscriptions.push(disposable);
-}
+};

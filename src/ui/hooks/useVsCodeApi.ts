@@ -9,11 +9,11 @@ declare function acquireVsCodeApi(): {
 const vsCodeApi = acquireVsCodeApi();
 console.log("[useVsCodeApi] acquireVsCodeApi called and cached");
 
-export function getVsCodeApi() {
+export const getVsCodeApi = () => {
 	return vsCodeApi;
-}
+};
 
-export function postCommand(command: string, data?: Record<string, string>) {
+export const postCommand = (command: string, data?: Record<string, string>) => {
 	console.log("[postCommand]", command, data);
 	vsCodeApi.postMessage({ command, ...data });
-}
+};

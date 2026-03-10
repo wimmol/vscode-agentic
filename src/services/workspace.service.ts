@@ -18,9 +18,9 @@ interface WorkspaceFileContent {
 }
 
 /** Extract the last segment of a path (like path.basename but without node:path). */
-function basename(p: string): string {
+const basename = (p: string): string => {
 	return p.split("/").pop() ?? p;
-}
+};
 
 export class WorkspaceService {
 	private readonly workspaceDirUri: vscode.Uri;

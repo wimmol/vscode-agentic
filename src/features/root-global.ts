@@ -6,10 +6,10 @@ import type { WorkspaceService } from "../services/workspace.service";
  *
  * Absorbs: workspace.commands.ts rootGlobal handler
  */
-export function registerRootGlobal(
+export const registerRootGlobal = (
 	context: vscode.ExtensionContext,
 	workspaceService: WorkspaceService,
-): void {
+): void => {
 	const disposable = vscode.commands.registerCommand(
 		"vscode-agentic.rootGlobal",
 		() => {
@@ -19,4 +19,4 @@ export function registerRootGlobal(
 	);
 
 	context.subscriptions.push(disposable);
-}
+};

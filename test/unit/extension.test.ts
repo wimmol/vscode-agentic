@@ -114,7 +114,7 @@ vi.mock("../../src/features/root-repo", () => ({
 	registerRootRepo: vi.fn(),
 }));
 
-vi.mock("../../src/views/sidebar-provider", () => {
+vi.mock("../../src/ui/view", () => {
 	return {
 		SidebarViewProvider: class MockSidebarViewProvider {
 			static viewType = "vscode-agentic.agents";

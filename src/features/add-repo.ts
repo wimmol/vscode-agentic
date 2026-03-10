@@ -15,24 +15,24 @@ interface RepoPickItem extends vscode.QuickPickItem {
 	_path: string;
 }
 
-function getDefaultStagingBranch(): string {
+const getDefaultStagingBranch = (): string => {
 	return vscode.workspace
 		.getConfiguration("vscode-agentic")
 		.get<string>("defaultStagingBranch", "staging");
-}
+};
 
-function getWorktreeLimit(): number {
+const getWorktreeLimit = (): number => {
 	return vscode.workspace
 		.getConfiguration("vscode-agentic")
 		.get<number>("maxWorktreesPerRepo", 5);
-}
+};
 
-export function registerAddRepo(
+export const registerAddRepo = (
 	context: vscode.ExtensionContext,
 	reposStore: ReposStore,
 	gitService: GitService,
 	workspaceService: WorkspaceService,
-): void {
+): void => {
 	const disposable = vscode.commands.registerCommand(
 		"vscode-agentic.addRepo",
 		async () => {
@@ -167,4 +167,4 @@ export function registerAddRepo(
 	);
 
 	context.subscriptions.push(disposable);
-}
+};

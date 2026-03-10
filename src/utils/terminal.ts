@@ -13,11 +13,11 @@ let onStatusChange:
 	| ((agentName: string, repoPath: string, status: AgentStatus, exitCode?: number) => void)
 	| undefined;
 
-function terminalKey(repoPath: string, agentName: string): string {
+const terminalKey = (repoPath: string, agentName: string): string => {
 	return `${repoPath}::${agentName}`;
-}
+};
 
-function handleTerminalClose(terminal: vscode.Terminal): void {
+const handleTerminalClose = (terminal: vscode.Terminal): void => {
 	console.log("[terminal.handleTerminalClose]", terminal.name);
 	for (const [key, t] of terminals.entries()) {
 		if (t === terminal) {
@@ -34,15 +34,15 @@ function handleTerminalClose(terminal: vscode.Terminal): void {
 			break;
 		}
 	}
-}
+};
 
 /**
  * Initialize terminal management. Must be called once from extension.ts.
  * Registers the close handler and sets the status callback.
  */
-export function initTerminals(
+export const initTerminals = (
 	statusCallback: typeof onStatusChange,
-): vscode.Disposable[] {
+): vscode.Disposable[] => {
 	console.log("[terminal.initTerminals]");
 	onStatusChange = statusCallback;
 
@@ -52,17 +52,17 @@ export function initTerminals(
 	disposables.push(closeListener);
 
 	return disposables;
-}
+};
 
 /**
  * Create a new terminal for an agent. If one already exists, shows it and returns it.
  */
-export function createTerminal(
+export const createTerminal = (
 	repoPath: string,
 	agentName: string,
 	worktreePath: string,
 	initialPrompt?: string,
-): vscode.Terminal {
+): vscode.Terminal => {
 	console.log("[terminal.createTerminal]", { repoPath, agentName, worktreePath, initialPrompt });
 	const key = terminalKey(repoPath, agentName);
 
@@ -88,13 +88,13 @@ export function createTerminal(
 
 	terminals.set(key, terminal);
 	return terminal;
-}
+};
 
 /**
  * Dispose (close) a specific agent terminal.
  * Removes from map BEFORE dispose to prevent close handler race condition.
  */
-export function disposeTerminal(repoPath: string, agentName: string): void {
+export const disposeTerminal = (repoPath: string, agentName: string): void => {
 	console.log("[terminal.disposeTerminal]", { repoPath, agentName });
 	const key = terminalKey(repoPath, agentName);
 	const terminal = terminals.get(key);
@@ -102,30 +102,30 @@ export function disposeTerminal(repoPath: string, agentName: string): void {
 		terminals.delete(key);
 		terminal.dispose();
 	}
-}
+};
 
 /**
  * Show an existing terminal for an agent.
  */
-export function showTerminal(repoPath: string, agentName: string): void {
+export const showTerminal = (repoPath: string, agentName: string): void => {
 	console.log("[terminal.showTerminal]", { repoPath, agentName });
 	const terminal = terminals.get(terminalKey(repoPath, agentName));
 	if (terminal) {
 		terminal.show();
 	}
-}
+};
 
 /**
  * Check if a terminal exists for an agent.
  */
-export function hasTerminal(repoPath: string, agentName: string): boolean {
+export const hasTerminal = (repoPath: string, agentName: string): boolean => {
 	return terminals.has(terminalKey(repoPath, agentName));
-}
+};
 
 /**
  * Dispose all agent terminals. Called on extension deactivation.
  */
-export function disposeAllTerminals(): void {
+export const disposeAllTerminals = (): void => {
 	console.log("[terminal.disposeAllTerminals]", { count: terminals.size });
 	for (const [key, terminal] of terminals.entries()) {
 		terminals.delete(key);
@@ -135,4 +135,4 @@ export function disposeAllTerminals(): void {
 		d.dispose();
 	}
 	disposables.length = 0;
-}
+};

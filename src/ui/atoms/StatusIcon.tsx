@@ -7,6 +7,6 @@ const iconMap: Record<AgentData["status"], string> = {
 	error: "codicon codicon-error",
 };
 
-export function StatusIcon({ status }: { status: AgentData["status"] }) {
+export const StatusIcon = ({ status }: { status: AgentData["status"] }) => {
 	return <span className={`status-icon ${iconMap[status]} status-${status}`} />;
-}
+};

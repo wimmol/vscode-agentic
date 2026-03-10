@@ -2,7 +2,7 @@
  * Validates a string as a legal git branch name per git-check-ref-format rules.
  * See: https://git-scm.com/docs/git-check-ref-format
  */
-export function isValidBranchName(name: string): boolean {
+export const isValidBranchName = (name: string): boolean => {
 	// Reject empty or whitespace-only
 	if (!name || name.trim().length === 0) return false;
 
@@ -31,4 +31,4 @@ export function isValidBranchName(name: string): boolean {
 	if (name.split("/").some((part) => part.startsWith("."))) return false;
 
 	return true;
-}
+};

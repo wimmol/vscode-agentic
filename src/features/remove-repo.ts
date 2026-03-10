@@ -7,11 +7,11 @@ import type { WorkspaceService } from "../services/workspace.service";
  *
  * Absorbs: repo.commands.ts removeRepo handler + RepoConfigService.removeRepo
  */
-export function registerRemoveRepo(
+export const registerRemoveRepo = (
 	context: vscode.ExtensionContext,
 	reposStore: ReposStore,
 	workspaceService: WorkspaceService,
-): void {
+): void => {
 	const disposable = vscode.commands.registerCommand(
 		"vscode-agentic.removeRepo",
 		async (repoPath: string) => {
@@ -43,4 +43,4 @@ export function registerRemoveRepo(
 	);
 
 	context.subscriptions.push(disposable);
-}
+};

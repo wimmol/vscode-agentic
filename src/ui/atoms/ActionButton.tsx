@@ -5,7 +5,7 @@ interface ActionButtonProps {
 	onClick: () => void;
 }
 
-export function ActionButton({ icon, title, disabled, onClick }: ActionButtonProps) {
+export const ActionButton = ({ icon, title, disabled, onClick }: ActionButtonProps) => {
 	return (
 		<button
 			className="action-button"
@@ -19,4 +19,4 @@ export function ActionButton({ icon, title, disabled, onClick }: ActionButtonPro
 			<span className={`codicon codicon-${icon}`} />
 		</button>
 	);
-}
+};

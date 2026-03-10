@@ -9,11 +9,11 @@ import { disposeTerminal } from "../utils/terminal";
  *
  * Absorbs: agent.commands.ts deleteAgent handler + AgentService.deleteAgent + WorktreeService.removeWorktree
  */
-export function registerDeleteAgent(
+export const registerDeleteAgent = (
 	context: vscode.ExtensionContext,
 	agentsStore: AgentsStore,
 	gitService: GitService,
-): void {
+): void => {
 	const disposable = vscode.commands.registerCommand(
 		"vscode-agentic.deleteAgent",
 		async (repoPath: string, agentName: string) => {
@@ -86,4 +86,4 @@ export function registerDeleteAgent(
 	);
 
 	context.subscriptions.push(disposable);
-}
+};

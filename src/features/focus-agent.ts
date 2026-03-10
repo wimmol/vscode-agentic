@@ -10,11 +10,11 @@ import { createTerminal, showTerminal } from "../utils/terminal";
  *
  * Absorbs: agent.commands.ts focusAgent handler + AgentService.focusAgent logic
  */
-export function registerFocusAgent(
+export const registerFocusAgent = (
 	context: vscode.ExtensionContext,
 	agentsStore: AgentsStore,
 	workspaceService: WorkspaceService,
-): void {
+): void => {
 	const disposable = vscode.commands.registerCommand(
 		"vscode-agentic.focusAgent",
 		async (repoPath: string, agentName: string) => {
@@ -75,4 +75,4 @@ export function registerFocusAgent(
 	);
 
 	context.subscriptions.push(disposable);
-}
+};

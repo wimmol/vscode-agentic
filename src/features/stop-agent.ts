@@ -8,10 +8,10 @@ import { disposeTerminal } from "../utils/terminal";
  *
  * Absorbs: agent.commands.ts stopAgent handler + AgentService.updateStatus
  */
-export function registerStopAgent(
+export const registerStopAgent = (
 	context: vscode.ExtensionContext,
 	agentsStore: AgentsStore,
-): void {
+): void => {
 	const disposable = vscode.commands.registerCommand(
 		"vscode-agentic.stopAgent",
 		async (repoPath: string, agentName: string) => {
@@ -40,4 +40,4 @@ export function registerStopAgent(
 	);
 
 	context.subscriptions.push(disposable);
-}
+};

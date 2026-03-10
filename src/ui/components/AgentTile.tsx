@@ -4,23 +4,23 @@ import { ActionButton } from "../atoms/ActionButton";
 import { ElapsedTimer } from "../atoms/ElapsedTimer";
 import { postCommand } from "../hooks/useVsCodeApi";
 
-export function AgentTile({ agent }: { agent: AgentData }) {
+export const AgentTile = ({ agent }: { agent: AgentData }) => {
 	const isRunning = agent.status === "running";
 
-	function handleTileClick() {
+	const handleTileClick = () => {
 		console.log("[AgentTile] click -> focusAgent", agent.repoPath, agent.agentName);
 		postCommand("focusAgent", { repoPath: agent.repoPath, agentName: agent.agentName });
-	}
+	};
 
-	function handleStop() {
+	const handleStop = () => {
 		console.log("[AgentTile] stopAgent", agent.repoPath, agent.agentName);
 		postCommand("stopAgent", { repoPath: agent.repoPath, agentName: agent.agentName });
-	}
+	};
 
-	function handleDelete() {
+	const handleDelete = () => {
 		console.log("[AgentTile] deleteAgent", agent.repoPath, agent.agentName);
 		postCommand("deleteAgent", { repoPath: agent.repoPath, agentName: agent.agentName });
-	}
+	};
 
 	return (
 		<div
@@ -57,4 +57,4 @@ export function AgentTile({ agent }: { agent: AgentData }) {
 			</div>
 		</div>
 	);
-}
+};

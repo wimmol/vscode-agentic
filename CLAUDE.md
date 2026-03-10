@@ -33,3 +33,4 @@
 - Try not to split code of one feature across many separate files and functions.
 - Keep the codebase consistent.
 - Add `console.log` calls to see function call chains.
+- All functions declaration must be `const <name> = (<args>) => {}`

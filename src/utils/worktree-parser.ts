@@ -12,7 +12,7 @@ import type { WorktreeOnDisk } from "../models/worktree";
  *
  * Entries are separated by blank lines.
  */
-export function parseWorktreeList(output: string): WorktreeOnDisk[] {
+export const parseWorktreeList = (output: string): WorktreeOnDisk[] => {
 	const trimmed = output.trim();
 	if (!trimmed) {
 		return [];
@@ -55,4 +55,4 @@ export function parseWorktreeList(output: string): WorktreeOnDisk[] {
 	}
 
 	return results;
-}
+};

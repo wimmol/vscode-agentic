@@ -4,7 +4,7 @@ import { ReposStore } from "./services/repos-store";
 import { GitService } from "./services/git.service";
 import { WorkspaceService } from "./services/workspace.service";
 import { initTerminals, disposeAllTerminals } from "./utils/terminal";
-import { SidebarViewProvider } from "./views/sidebar-provider";
+import { SidebarViewProvider } from "./ui/view";
 import { registerCreateAgent } from "./features/create-agent";
 import { registerDeleteAgent } from "./features/delete-agent";
 import { registerFocusAgent } from "./features/focus-agent";
@@ -14,7 +14,7 @@ import { registerRemoveRepo } from "./features/remove-repo";
 import { registerRootGlobal } from "./features/root-global";
 import { registerRootRepo } from "./features/root-repo";
 
-export function activate(context: vscode.ExtensionContext): void {
+export const activate = (context: vscode.ExtensionContext): void => {
 	console.log("[extension.activate]");
 
 	// 1. Create shared services and thin stores
@@ -92,6 +92,6 @@ export function activate(context: vscode.ExtensionContext): void {
 	}).catch((err: Error) => {
 		vscode.window.showErrorMessage(`Agentic: Failed to create workspace file: ${err.message}`);
 	});
-}
+};
 
-export function deactivate(): void {}
+export const deactivate = (): void => {};

@@ -6,10 +6,10 @@ import type { WorkspaceService } from "../services/workspace.service";
  *
  * Absorbs: workspace.commands.ts rootRepo handler
  */
-export function registerRootRepo(
+export const registerRootRepo = (
 	context: vscode.ExtensionContext,
 	workspaceService: WorkspaceService,
-): void {
+): void => {
 	const disposable = vscode.commands.registerCommand(
 		"vscode-agentic.rootRepo",
 		(repoPath: string) => {
@@ -19,4 +19,4 @@ export function registerRootRepo(
 	);
 
 	context.subscriptions.push(disposable);
-}
+};

@@ -7,7 +7,7 @@ import * as vscode from "vscode";
  *
  * Uses vscode.workspace.fs instead of node:fs per CLAUDE.md.
  */
-export async function ensureGitignoreEntry(repoPath: string): Promise<void> {
+export const ensureGitignoreEntry = async (repoPath: string): Promise<void> => {
 	console.log("[gitignore.ensureGitignoreEntry]", { repoPath });
 
 	const worktreeDirName = vscode.workspace
@@ -48,4 +48,4 @@ export async function ensureGitignoreEntry(repoPath: string): Promise<void> {
 	}
 
 	await vscode.workspace.fs.writeFile(gitignoreUri, new TextEncoder().encode(newContent));
-}
+};

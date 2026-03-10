@@ -3,17 +3,17 @@ import type { DashboardData } from "../types";
 import { RepoSection } from "./RepoSection";
 import { postCommand } from "../hooks/useVsCodeApi";
 
-export function Dashboard() {
+export const Dashboard = () => {
 	const [data, setData] = useState<DashboardData | null>(null);
 
 	useEffect(() => {
-		function handleMessage(event: MessageEvent) {
+		const handleMessage = (event: MessageEvent) => {
 			const msg = event.data;
 			if (msg.type === "update") {
 				console.log("[Dashboard] received update", msg.data);
 				setData(msg.data);
 			}
-		}
+		};
 		window.addEventListener("message", handleMessage);
 		return () => window.removeEventListener("message", handleMessage);
 	}, []);
@@ -51,4 +51,4 @@ export function Dashboard() {
 			))}
 		</div>
 	);
-}
+};

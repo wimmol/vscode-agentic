@@ -6,7 +6,7 @@ interface ElapsedTimerProps {
 	isRunning: boolean;
 }
 
-export function ElapsedTimer({ startedAt, finishedAt, isRunning }: ElapsedTimerProps) {
+export const ElapsedTimer = ({ startedAt, finishedAt, isRunning }: ElapsedTimerProps) => {
 	const elapsed = useElapsedTime(startedAt, finishedAt, isRunning);
 	return <span className="elapsed-time">{elapsed}</span>;
-}
+};

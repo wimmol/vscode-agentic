@@ -4,26 +4,26 @@ import { AgentTile } from "./AgentTile";
 import { ActionButton } from "../atoms/ActionButton";
 import { postCommand } from "../hooks/useVsCodeApi";
 
-export function RepoSection({ repo, scope }: { repo: RepoData; scope: string }) {
+export const RepoSection = ({ repo, scope }: { repo: RepoData; scope: string }) => {
 	const [collapsed, setCollapsed] = useState(false);
 	const isScopeActive = scope === `repo:${repo.path}`;
 
 	console.log("[RepoSection] render", repo.name, repo.agents.length, "agents");
 
-	function handleRoot() {
+	const handleRoot = () => {
 		console.log("[RepoSection] rootRepo", repo.path);
 		postCommand("rootRepo", { repoPath: repo.path });
-	}
+	};
 
-	function handleCreate() {
+	const handleCreate = () => {
 		console.log("[RepoSection] createAgent", repo.path);
 		postCommand("createAgent", { repoPath: repo.path });
-	}
+	};
 
-	function handleRemove() {
+	const handleRemove = () => {
 		console.log("[RepoSection] removeRepo", repo.path);
 		postCommand("removeRepo", { repoPath: repo.path });
-	}
+	};
 
 	return (
 		<div className={`repo-section${collapsed ? " collapsed" : ""}`}>
@@ -64,4 +64,4 @@ export function RepoSection({ repo, scope }: { repo: RepoData; scope: string }) 
 			)}
 		</div>
 	);
-}
+};
