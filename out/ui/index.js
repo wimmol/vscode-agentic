@@ -21720,28 +21720,257 @@ var require_jsx_runtime = __commonJS({
 // src/ui/index.tsx
 var import_client = __toESM(require_client());
 
-// src/ui/agentPanel/AgentPanelView.tsx
+// src/ui/shared/atoms/IconButton.tsx
 var import_jsx_runtime = __toESM(require_jsx_runtime());
-var AgentPanelView = () => {
-  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("section", { children: "Agentic" });
+var IconButton = ({ icon, onClick, disabled, title }) => {
+  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+    "button",
+    {
+      className: "icon-button",
+      onClick,
+      disabled,
+      title,
+      "aria-label": title,
+      children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", { className: `codicon codicon-${icon}` })
+    }
+  );
+};
+
+// src/ui/shared/molecules/TabHeader.tsx
+var import_jsx_runtime2 = __toESM(require_jsx_runtime());
+var TabHeader = ({ onRootClick: onRootClick2, onAddRepoClick: onAddRepoClick2 }) => {
+  return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("header", { className: "tab-header", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "tab-header-title", children: "Agentic" }),
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("nav", { className: "tab-header-actions", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(IconButton, { icon: "root-folder", onClick: onRootClick2, title: "Navigate to workspace" }),
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(IconButton, { icon: "add", onClick: onAddRepoClick2, title: "Add repo" })
+    ] })
+  ] });
+};
+
+// src/ui/shared/molecules/RepoHeader.tsx
+var import_jsx_runtime3 = __toESM(require_jsx_runtime());
+var RepoHeader = ({
+  name,
+  expanded,
+  onRootClick: onRootClick2,
+  onAddAgentClick: onAddAgentClick2,
+  onRemoveClick,
+  onToggleClick
+}) => {
+  return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("header", { className: "repo-header", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { className: "repo-header-name", children: name }),
+    /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("nav", { className: "repo-header-actions", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(IconButton, { icon: "root-folder", onClick: onRootClick2, title: "Navigate to repo" }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(IconButton, { icon: "add", onClick: onAddAgentClick2, title: "Add agent" }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(IconButton, { icon: "close", onClick: onRemoveClick, title: "Remove repo" }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+        IconButton,
+        {
+          icon: expanded ? "chevron-down" : "chevron-right",
+          onClick: onToggleClick,
+          title: expanded ? "Collapse" : "Expand"
+        }
+      )
+    ] })
+  ] });
+};
+
+// src/ui/shared/atoms/StatusIcon.tsx
+var import_jsx_runtime4 = __toESM(require_jsx_runtime());
+var STATUS_ICONS = {
+  created: "circle-outline",
+  running: "sync~spin",
+  completed: "check",
+  error: "error"
+};
+var StatusIcon = ({ status }) => {
+  return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+    "i",
+    {
+      className: `codicon codicon-${STATUS_ICONS[status]}`,
+      title: status,
+      "aria-label": status
+    }
+  );
+};
+
+// src/ui/shared/molecules/Timer.tsx
+var import_react = __toESM(require_react());
+var import_jsx_runtime5 = __toESM(require_jsx_runtime());
+var formatTime = (seconds) => {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  if (mins === 0) {
+    return `${secs}s`;
+  }
+  return `${mins}m ${secs}s`;
+};
+var Timer = ({ startedAt }) => {
+  const [elapsed, setElapsed] = (0, import_react.useState)(() => Math.max(0, Math.floor((Date.now() - startedAt) / 1e3)));
+  (0, import_react.useEffect)(() => {
+    const interval = setInterval(() => {
+      const next = Math.max(0, Math.floor((Date.now() - startedAt) / 1e3));
+      setElapsed((prev) => prev === next ? prev : next);
+    }, 1e3);
+    return () => clearInterval(interval);
+  }, [startedAt]);
+  return /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: "timer", children: formatTime(elapsed) });
+};
+
+// src/ui/shared/atoms/TruncatedText.tsx
+var import_jsx_runtime6 = __toESM(require_jsx_runtime());
+var truncateStyle = {
+  display: "-webkit-box",
+  WebkitLineClamp: 1,
+  WebkitBoxOrient: "vertical",
+  overflow: "hidden",
+  textOverflow: "ellipsis"
+};
+var TruncatedText = ({ text }) => {
+  return /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "truncated-text", style: truncateStyle, title: text, children: text });
+};
+
+// src/ui/shared/molecules/AgentTile.tsx
+var import_jsx_runtime7 = __toESM(require_jsx_runtime());
+var stopPropagation = (e) => e.stopPropagation();
+var AgentTile = ({
+  name,
+  status,
+  lastPrompt,
+  startedAt,
+  onClick,
+  onCloneClick,
+  onStopClick,
+  onRemoveClick,
+  onClearClick
+}) => {
+  return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("article", { className: "agent-tile", onClick, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "agent-tile-header", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(StatusIcon, { status }),
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: "agent-tile-name", children: name }),
+      status === "running" && startedAt !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Timer, { startedAt })
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "agent-tile-prompt", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(TruncatedText, { text: lastPrompt }) }),
+    /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("nav", { className: "agent-tile-actions", onClick: stopPropagation, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(IconButton, { icon: "copy", onClick: onCloneClick, title: "Clone agent" }),
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(IconButton, { icon: "debug-stop", onClick: onStopClick, title: "Stop agent" }),
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(IconButton, { icon: "trash", onClick: onRemoveClick, title: "Remove agent", disabled: status === "running" }),
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(IconButton, { icon: "clear-all", onClick: onClearClick, title: "Clear context" })
+    ] })
+  ] });
+};
+
+// src/ui/shared/atoms/EmptyState.tsx
+var import_jsx_runtime8 = __toESM(require_jsx_runtime());
+var EmptyState = ({ text }) => {
+  return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("p", { className: "empty-state", children: text });
+};
+
+// src/ui/agentPanel/AgentPanelView.tsx
+var import_jsx_runtime9 = __toESM(require_jsx_runtime());
+var AgentPanelView = ({
+  repos,
+  onRootClick: onRootClick2,
+  onAddRepoClick: onAddRepoClick2,
+  onRepoRootClick: onRepoRootClick2,
+  onAddAgentClick: onAddAgentClick2,
+  onRemoveRepoClick: onRemoveRepoClick2,
+  onToggleRepoClick: onToggleRepoClick2,
+  onAgentClick: onAgentClick2,
+  onCloneAgentClick: onCloneAgentClick2,
+  onStopAgentClick: onStopAgentClick2,
+  onRemoveAgentClick: onRemoveAgentClick2,
+  onClearAgentClick: onClearAgentClick2
+}) => {
+  return /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("section", { className: "agent-panel", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(TabHeader, { onRootClick: onRootClick2, onAddRepoClick: onAddRepoClick2 }),
+    repos.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(EmptyState, { text: "press + to add repo" }) : repos.map((repo) => /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("section", { className: "repo-section", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
+        RepoHeader,
+        {
+          name: repo.name,
+          expanded: repo.expanded,
+          onRootClick: () => onRepoRootClick2(repo.id),
+          onAddAgentClick: () => onAddAgentClick2(repo.id),
+          onRemoveClick: () => onRemoveRepoClick2(repo.id),
+          onToggleClick: () => onToggleRepoClick2(repo.id)
+        }
+      ),
+      repo.expanded && /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("div", { className: "repo-agents", children: repo.agents.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(EmptyState, { text: "press + to add agent" }) : repo.agents.map((agent) => /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
+        AgentTile,
+        {
+          name: agent.name,
+          status: agent.status,
+          lastPrompt: agent.lastPrompt,
+          startedAt: agent.startedAt,
+          onClick: () => onAgentClick2(agent.id),
+          onCloneClick: () => onCloneAgentClick2(agent.id),
+          onStopClick: () => onStopAgentClick2(agent.id),
+          onRemoveClick: () => onRemoveAgentClick2(agent.id),
+          onClearClick: () => onClearAgentClick2(agent.id)
+        },
+        agent.id
+      )) })
+    ] }, repo.id))
+  ] });
 };
 
 // src/ui/agentPanel/AgentPanelPage.tsx
-var import_jsx_runtime2 = __toESM(require_jsx_runtime());
+var import_jsx_runtime10 = __toESM(require_jsx_runtime());
+var placeholderRepos = [];
+var onRootClick = () => {
+};
+var onAddRepoClick = () => {
+};
+var onRepoRootClick = (_repoId) => {
+};
+var onAddAgentClick = (_repoId) => {
+};
+var onRemoveRepoClick = (_repoId) => {
+};
+var onToggleRepoClick = (_repoId) => {
+};
+var onAgentClick = (_agentId) => {
+};
+var onCloneAgentClick = (_agentId) => {
+};
+var onStopAgentClick = (_agentId) => {
+};
+var onRemoveAgentClick = (_agentId) => {
+};
+var onClearAgentClick = (_agentId) => {
+};
 var AgentPanelPage = () => {
-  return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(AgentPanelView, {});
+  return /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
+    AgentPanelView,
+    {
+      repos: placeholderRepos,
+      onRootClick,
+      onAddRepoClick,
+      onRepoRootClick,
+      onAddAgentClick,
+      onRemoveRepoClick,
+      onToggleRepoClick,
+      onAgentClick,
+      onCloneAgentClick,
+      onStopAgentClick,
+      onRemoveAgentClick,
+      onClearAgentClick
+    }
+  );
 };
 
 // src/ui/App.tsx
-var import_jsx_runtime3 = __toESM(require_jsx_runtime());
+var import_jsx_runtime11 = __toESM(require_jsx_runtime());
 var App = () => {
-  return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(AgentPanelPage, {});
+  return /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(AgentPanelPage, {});
 };
 
 // src/ui/index.tsx
-var import_jsx_runtime4 = __toESM(require_jsx_runtime());
+var import_jsx_runtime12 = __toESM(require_jsx_runtime());
 var root = (0, import_client.createRoot)(document.getElementById("root"));
-root.render(/* @__PURE__ */ (0, import_jsx_runtime4.jsx)(App, {}));
+root.render(/* @__PURE__ */ (0, import_jsx_runtime12.jsx)(App, {}));
 /*! Bundled license information:
 
 scheduler/cjs/scheduler.development.js:
