@@ -49560,10 +49560,11 @@ var StateStorage = class {
     }
     return repo.get({ plain: true });
   };
-  toggleRepoExpanded = async (id) => {
-    const repo = await RepositoryModel.findByPk(id);
+  toggleRepoExpanded = async (args) => {
+    const { repoId } = args;
+    const repo = await RepositoryModel.findByPk(repoId);
     if (!repo) {
-      throw new Error(`Repository ${id} not found`);
+      throw new Error(`Repository ${repoId} not found`);
     }
     repo.isExpanded = !repo.isExpanded;
     await repo.save();
@@ -49776,20 +49777,19 @@ var WebviewCommandHandler = class {
       provider.onDidResolveView((view) => {
         this.messageDisposable?.dispose();
         this.messageDisposable = view.webview.onDidReceiveMessage(
-          (message) => this.handle(message)
+          (message) => this.handler(message)
         );
       })
     );
   }
   disposables = [];
   messageDisposable;
-  handle = async (message) => {
-    switch (message.command) {
+  handler(message) {
+    switch (message.function) {
       case "toggleRepoExpanded":
-        await this.storage.toggleRepoExpanded(message.data.repoId);
-        break;
+        this.storage.toggleRepoExpanded(message.args);
     }
-  };
+  }
   dispose() {
     this.messageDisposable?.dispose();
     for (const d of this.disposables) {

@@ -21968,6 +21968,12 @@ var useAgentPanel = () => {
   return repos;
 };
 
+// src/services/WebviewCommandHandler.ts
+var toggleRepoExpandedMessage = (repoId) => ({
+  function: "toggleRepoExpanded",
+  args: { repoId }
+});
+
 // src/ui/agentPanel/AgentPanelPage.tsx
 var import_jsx_runtime11 = __toESM(require_jsx_runtime());
 var noop = () => {
@@ -21977,7 +21983,7 @@ var noopId = (_id) => {
 var AgentPanelPage = () => {
   const repos = useAgentPanel();
   const onToggleRepoClick = (0, import_react3.useCallback)((repoId) => {
-    vscode.postMessage({ type: "command", command: "toggleRepoExpanded", data: { repoId } });
+    vscode.postMessage(toggleRepoExpandedMessage(repoId));
   }, []);
   return /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(
     AgentPanelView,

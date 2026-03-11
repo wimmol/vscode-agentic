@@ -11,18 +11,14 @@ export type ExtensionToWebviewMessage = StateUpdateMessage;
 
 // ── Webview → Extension ───────────────────────────────────────────
 
-export interface ToggleRepoExpandedMessage {
-  type: 'command';
-  command: 'toggleRepoExpanded';
-  data: { repoId: string };
+export interface WebviewToExtensionMessage {
+  function: string;
+  args: any;
 }
 
-export type WebviewToExtensionMessage = ToggleRepoExpandedMessage;
+// ── Message creators ─────────────────────────────────────────────
 
-// ── Message creators (shared between UI and extension) ───────────
-
-export const createToggleRepoExpanded = (repoId: string): ToggleRepoExpandedMessage => ({
-  type: 'command',
-  command: 'toggleRepoExpanded',
-  data: { repoId },
+export const toggleRepoExpandedMessage = (repoId: string): WebviewToExtensionMessage => ({
+  function: 'toggleRepoExpanded',
+  args: { repoId },
 });

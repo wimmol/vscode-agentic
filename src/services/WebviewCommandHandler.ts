@@ -1,14 +1,13 @@
 import * as vscode from 'vscode';
 import type { StateStorage } from '../db';
 import type { AgentPanelProvider } from './AgentPanelProvider';
-import { createToggleRepoExpanded } from '../types/messages';
-import type { ToggleRepoExpandedMessage, WebviewToExtensionMessage } from '../types/messages';
+import type { WebviewToExtensionMessage } from '../types/messages';
 
 /**
  * Handles all webview → extension communication.
  *
  * Subscribes to the webview once it resolves, listens for incoming
- * commands via onDidReceiveMessage, and routes them to StateStorage.
+ * commands via onDidReceiveMessage, and routes them by function name.
  */
 export class WebviewCommandHandler implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
@@ -22,24 +21,22 @@ export class WebviewCommandHandler implements vscode.Disposable {
       provider.onDidResolveView((view) => {
         this.messageDisposable?.dispose();
         this.messageDisposable = view.webview.onDidReceiveMessage(
-          (message: WebviewToExtensionMessage) => this.handle(message),
+          (message: WebviewToExtensionMessage) => this.handler(message)
         );
       }),
     );
   }
 
-  toggleRepoExpanded = () => ({
-    onClick: (repoId: string): ToggleRepoExpandedMessage => createToggleRepoExpanded(repoId),
-    onReceive: async (data: { repoId: string }): Promise<void> => {
-      await this.storage.toggleRepoExpanded(data.repoId);
-    },
-  });
-
-  private handle = async (message: WebviewToExtensionMessage): Promise<void> => {
-    switch (message.command) {
-      case 'toggleRepoExpanded':
-        await this.toggleRepoExpanded().onReceive(message.data);
-        break;
+  private handler = async (message: WebviewToExtensionMessage): Promise<void> => {
+    try {
+      switch (message.function) {
+        case 'toggleRepoExpanded':
+          await this.storage.toggleRepoExpanded(message.args.repoId);
+          break;
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      vscode.window.showErrorMessage(msg);
     }
   };
 
