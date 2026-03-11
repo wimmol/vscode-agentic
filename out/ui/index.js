@@ -21742,12 +21742,9 @@ var IconButton = ({ icon, onClick, disabled, title }) => {
 // src/ui/shared/molecules/TabHeader.tsx
 var import_jsx_runtime2 = __toESM(require_jsx_runtime());
 var TabHeader = ({ onRootClick, onAddRepoClick }) => {
-  return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("header", { className: "tab-header", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "tab-header-title", children: "Agentic" }),
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("nav", { className: "tab-header-actions", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(IconButton, { icon: "root-folder", onClick: onRootClick, title: "Navigate to workspace" }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(IconButton, { icon: "add", onClick: onAddRepoClick, title: "Add repo" })
-    ] })
+  return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("nav", { className: "tab-header", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(IconButton, { icon: "root-folder", onClick: onRootClick, title: "Navigate to workspace" }),
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(IconButton, { icon: "add", onClick: onAddRepoClick, title: "Add repo" })
   ] });
 };
 
@@ -21823,15 +21820,8 @@ var Timer = ({ startedAt }) => {
 
 // src/ui/shared/atoms/TruncatedText.tsx
 var import_jsx_runtime6 = __toESM(require_jsx_runtime());
-var truncateStyle = {
-  display: "-webkit-box",
-  WebkitLineClamp: 1,
-  WebkitBoxOrient: "vertical",
-  overflow: "hidden",
-  textOverflow: "ellipsis"
-};
 var TruncatedText = ({ text }) => {
-  return /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "truncated-text", style: truncateStyle, title: text, children: text });
+  return /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "truncated-text", title: text ?? void 0, children: text });
 };
 
 // src/ui/shared/molecules/AgentTile.tsx
@@ -21848,7 +21838,7 @@ var AgentTile = ({
   onRemoveClick,
   onClearClick
 }) => {
-  return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("article", { className: "agent-tile", onClick, children: [
+  return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("article", { className: "agent-tile", onClick, tabIndex: 0, children: [
     /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "agent-tile-header", children: [
       /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(StatusIcon, { status }),
       /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: "agent-tile-name", children: name }),

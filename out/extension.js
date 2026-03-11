@@ -49744,14 +49744,18 @@ var AgentPanelProvider = class {
     const scriptUri = webview.asWebviewUri(
       vscode2.Uri.joinPath(this.extensionUri, "out", "ui", "index.js")
     );
+    const styleUri = webview.asWebviewUri(
+      vscode2.Uri.joinPath(this.extensionUri, "out", "ui", "index.css")
+    );
     const nonce = getNonce();
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy"
-    content="default-src 'none'; script-src 'nonce-${nonce}'; style-src ${webview.cspSource} 'unsafe-inline';" />
+    content="default-src 'none'; script-src 'nonce-${nonce}'; style-src ${webview.cspSource}; font-src ${webview.cspSource};" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="${styleUri}" />
 </head>
 <body>
   <div id="root"></div>

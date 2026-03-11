@@ -29,13 +29,13 @@
         {
           "type": "webview",
           "id": "vscode-agentic.agents",
-          "name": "Agents"
+          "name": "Agentic"
         }
       ]
     }
   },
   "scripts": {
-    "compile": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --external:pg-hstore --format=cjs --platform=node --sourcemap && esbuild src/ui/index.tsx --bundle --outfile=out/ui/index.js --format=esm --jsx=automatic --sourcemap",
+    "compile": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --external:pg-hstore --format=cjs --platform=node --sourcemap && esbuild src/ui/index.tsx --bundle --outfile=out/ui/index.js --format=esm --jsx=automatic --loader:.ttf=file --sourcemap",
     "watch": "npm run compile -- --watch",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
@@ -46,6 +46,7 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/vscode": "^1.74.0",
+    "@vscode/codicons": "^0.0.44",
     "esbuild": "^0.27.3",
     "eslint": "^9.0.0",
     "eslint-config-prettier": "^10.0.0",

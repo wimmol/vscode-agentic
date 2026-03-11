@@ -1,0 +1,13 @@
+.agent-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.repo-section {
+  border-top: 1px solid var(--vscode-sideBarSectionHeader-border);
+}
+
+.repo-agents {
+  padding-bottom: 4px;
+}

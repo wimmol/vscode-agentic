@@ -31,7 +31,7 @@ export const AgentTile = ({
   onClearClick,
 }: AgentTileProps) => {
   return (
-    <article className="agent-tile" onClick={onClick}>
+    <article className="agent-tile" onClick={onClick} tabIndex={0}>
       <div className="agent-tile-header">
         <StatusIcon status={status} />
         <span className="agent-tile-name">{name}</span>
