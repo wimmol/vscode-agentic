@@ -29,7 +29,11 @@
         {
           "type": "webview",
           "id": "vscode-agentic.agents",
-          "name": "Agentic"
+          "name": "Agents"
+        },
+        {
+          "id": "vscode-agentic.explorer",
+          "name": "Explorer"
         }
       ]
     }

@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import type { StateStorage } from '../db';
 import type { AgentPanelProvider } from './AgentPanelProvider';
+import type { FileExplorerProvider } from './FileExplorerProvider';
 import type { WebviewToExtensionMessage } from '../types/messages';
 import { addRepo } from '../features/addRepo';
 import { removeRepo } from '../features/removeRepo';
@@ -20,6 +21,7 @@ export class WebviewCommandHandler implements vscode.Disposable {
   constructor(
     provider: AgentPanelProvider,
     private readonly storage: StateStorage,
+    private readonly explorer: FileExplorerProvider,
   ) {
     this.disposables.push(
       provider.onDidResolveView((view) => {
@@ -45,10 +47,10 @@ export class WebviewCommandHandler implements vscode.Disposable {
           await this.storage.toggleRepoExpanded(message.args.repoId);
           break;
         case 'rootClick':
-          await rootClick(this.storage);
+          await rootClick(this.storage, this.explorer);
           break;
         case 'repoRootClick':
-          await repoRootClick(this.storage, message.args.repoId);
+          await repoRootClick(this.storage, this.explorer, message.args.repoId);
           break;
       }
       console.log('[WebviewCommandHandler] handled "%s" successfully', message.function);

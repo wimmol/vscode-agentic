@@ -90,15 +90,15 @@ var require_pg_connection_string = __commonJS({
       if (config.sslcert || config.sslkey || config.sslrootcert || config.sslmode) {
         config.ssl = {};
       }
-      const fs = config.sslcert || config.sslkey || config.sslrootcert ? require("fs") : null;
+      const fs2 = config.sslcert || config.sslkey || config.sslrootcert ? require("fs") : null;
       if (config.sslcert) {
-        config.ssl.cert = fs.readFileSync(config.sslcert).toString();
+        config.ssl.cert = fs2.readFileSync(config.sslcert).toString();
       }
       if (config.sslkey) {
-        config.ssl.key = fs.readFileSync(config.sslkey).toString();
+        config.ssl.key = fs2.readFileSync(config.sslkey).toString();
       }
       if (config.sslrootcert) {
-        config.ssl.ca = fs.readFileSync(config.sslrootcert).toString();
+        config.ssl.ca = fs2.readFileSync(config.sslrootcert).toString();
       }
       if (options.useLibpqCompat && config.uselibpqcompat) {
         throw new Error("Both useLibpqCompat and uselibpqcompat are set. Please use only one of them.");
@@ -1659,11 +1659,11 @@ var require_lodash = __commonJS({
             return isFunction(object[key]);
           });
         }
-        function baseGet(object, path2) {
-          path2 = castPath(path2, object);
-          var index = 0, length = path2.length;
+        function baseGet(object, path3) {
+          path3 = castPath(path3, object);
+          var index = 0, length = path3.length;
           while (object != null && index < length) {
-            object = object[toKey(path2[index++])];
+            object = object[toKey(path3[index++])];
           }
           return index && index == length ? object : undefined2;
         }
@@ -1727,10 +1727,10 @@ var require_lodash = __commonJS({
           });
           return accumulator;
         }
-        function baseInvoke(object, path2, args) {
-          path2 = castPath(path2, object);
-          object = parent(object, path2);
-          var func = object == null ? object : object[toKey(last(path2))];
+        function baseInvoke(object, path3, args) {
+          path3 = castPath(path3, object);
+          object = parent(object, path3);
+          var func = object == null ? object : object[toKey(last(path3))];
           return func == null ? undefined2 : apply(func, object, args);
         }
         function baseIsArguments(value) {
@@ -1886,13 +1886,13 @@ var require_lodash = __commonJS({
             return object === source || baseIsMatch(object, source, matchData);
           };
         }
-        function baseMatchesProperty(path2, srcValue) {
-          if (isKey(path2) && isStrictComparable(srcValue)) {
-            return matchesStrictComparable(toKey(path2), srcValue);
+        function baseMatchesProperty(path3, srcValue) {
+          if (isKey(path3) && isStrictComparable(srcValue)) {
+            return matchesStrictComparable(toKey(path3), srcValue);
           }
           return function(object) {
-            var objValue = get(object, path2);
-            return objValue === undefined2 && objValue === srcValue ? hasIn(object, path2) : baseIsEqual(srcValue, objValue, COMPARE_PARTIAL_FLAG | COMPARE_UNORDERED_FLAG);
+            var objValue = get(object, path3);
+            return objValue === undefined2 && objValue === srcValue ? hasIn(object, path3) : baseIsEqual(srcValue, objValue, COMPARE_PARTIAL_FLAG | COMPARE_UNORDERED_FLAG);
           };
         }
         function baseMerge(object, source, srcIndex, customizer, stack) {
@@ -1989,23 +1989,23 @@ var require_lodash = __commonJS({
           });
         }
         function basePick(object, paths) {
-          return basePickBy(object, paths, function(value, path2) {
-            return hasIn(object, path2);
+          return basePickBy(object, paths, function(value, path3) {
+            return hasIn(object, path3);
           });
         }
         function basePickBy(object, paths, predicate) {
           var index = -1, length = paths.length, result2 = {};
           while (++index < length) {
-            var path2 = paths[index], value = baseGet(object, path2);
-            if (predicate(value, path2)) {
-              baseSet(result2, castPath(path2, object), value);
+            var path3 = paths[index], value = baseGet(object, path3);
+            if (predicate(value, path3)) {
+              baseSet(result2, castPath(path3, object), value);
             }
           }
           return result2;
         }
-        function basePropertyDeep(path2) {
+        function basePropertyDeep(path3) {
           return function(object) {
-            return baseGet(object, path2);
+            return baseGet(object, path3);
           };
         }
         function basePullAll(array, values2, iteratee2, comparator) {
@@ -2079,14 +2079,14 @@ var require_lodash = __commonJS({
           var array = values(collection);
           return shuffleSelf(array, baseClamp(n, 0, array.length));
         }
-        function baseSet(object, path2, value, customizer) {
+        function baseSet(object, path3, value, customizer) {
           if (!isObject(object)) {
             return object;
           }
-          path2 = castPath(path2, object);
-          var index = -1, length = path2.length, lastIndex = length - 1, nested = object;
+          path3 = castPath(path3, object);
+          var index = -1, length = path3.length, lastIndex = length - 1, nested = object;
           while (nested != null && ++index < length) {
-            var key = toKey(path2[index]), newValue = value;
+            var key = toKey(path3[index]), newValue = value;
             if (key === "__proto__" || key === "constructor" || key === "prototype") {
               return object;
             }
@@ -2094,7 +2094,7 @@ var require_lodash = __commonJS({
               var objValue = nested[key];
               newValue = customizer ? customizer(objValue, key, nested) : undefined2;
               if (newValue === undefined2) {
-                newValue = isObject(objValue) ? objValue : isIndex(path2[index + 1]) ? [] : {};
+                newValue = isObject(objValue) ? objValue : isIndex(path3[index + 1]) ? [] : {};
               }
             }
             assignValue(nested, key, newValue);
@@ -2260,33 +2260,33 @@ var require_lodash = __commonJS({
             }
           return result2;
         }
-        function baseUnset(object, path2) {
-          path2 = castPath(path2, object);
-          var index = -1, length = path2.length;
+        function baseUnset(object, path3) {
+          path3 = castPath(path3, object);
+          var index = -1, length = path3.length;
           if (!length) {
             return true;
           }
           var isRootPrimitive = object == null || typeof object !== "object" && typeof object !== "function";
           while (++index < length) {
-            var key = path2[index];
+            var key = path3[index];
             if (typeof key !== "string") {
               continue;
             }
             if (key === "__proto__" && !hasOwnProperty.call(object, "__proto__")) {
               return false;
             }
-            if (key === "constructor" && index + 1 < length && typeof path2[index + 1] === "string" && path2[index + 1] === "prototype") {
+            if (key === "constructor" && index + 1 < length && typeof path3[index + 1] === "string" && path3[index + 1] === "prototype") {
               if (isRootPrimitive && index === 0) {
                 continue;
               }
               return false;
             }
           }
-          var obj = parent(object, path2);
-          return obj == null || delete obj[toKey(last(path2))];
+          var obj = parent(object, path3);
+          return obj == null || delete obj[toKey(last(path3))];
         }
-        function baseUpdate(object, path2, updater, customizer) {
-          return baseSet(object, path2, updater(baseGet(object, path2)), customizer);
+        function baseUpdate(object, path3, updater, customizer) {
+          return baseSet(object, path3, updater(baseGet(object, path3)), customizer);
         }
         function baseWhile(array, predicate, isDrop, fromRight) {
           var length = array.length, index = fromRight ? length : -1;
@@ -3169,11 +3169,11 @@ var require_lodash = __commonJS({
           var match = source.match(reWrapDetails);
           return match ? match[1].split(reSplitDetails) : [];
         }
-        function hasPath(object, path2, hasFunc) {
-          path2 = castPath(path2, object);
-          var index = -1, length = path2.length, result2 = false;
+        function hasPath(object, path3, hasFunc) {
+          path3 = castPath(path3, object);
+          var index = -1, length = path3.length, result2 = false;
           while (++index < length) {
-            var key = toKey(path2[index]);
+            var key = toKey(path3[index]);
             if (!(result2 = object != null && hasFunc(object, key))) {
               break;
             }
@@ -3375,8 +3375,8 @@ var require_lodash = __commonJS({
             return apply(func, this, otherArgs);
           };
         }
-        function parent(object, path2) {
-          return path2.length < 2 ? object : baseGet(object, baseSlice(path2, 0, -1));
+        function parent(object, path3) {
+          return path3.length < 2 ? object : baseGet(object, baseSlice(path3, 0, -1));
         }
         function reorder(array, indexes) {
           var arrLength = array.length, length = nativeMin(indexes.length, arrLength), oldArray = copyArray(array);
@@ -3653,7 +3653,7 @@ var require_lodash = __commonJS({
           }
           return mapped.length && mapped[0] === arrays[0] ? baseIntersection(mapped, undefined2, comparator) : [];
         });
-        function join2(array, separator) {
+        function join3(array, separator) {
           return array == null ? "" : nativeJoin.call(array, separator);
         }
         function last(array) {
@@ -4011,10 +4011,10 @@ var require_lodash = __commonJS({
           }
           return isString(collection) ? fromIndex <= length && collection.indexOf(value, fromIndex) > -1 : !!length && baseIndexOf(collection, value, fromIndex) > -1;
         }
-        var invokeMap = baseRest(function(collection, path2, args) {
-          var index = -1, isFunc = typeof path2 == "function", result2 = isArrayLike(collection) ? Array2(collection.length) : [];
+        var invokeMap = baseRest(function(collection, path3, args) {
+          var index = -1, isFunc = typeof path3 == "function", result2 = isArrayLike(collection) ? Array2(collection.length) : [];
           baseEach(collection, function(value) {
-            result2[++index] = isFunc ? apply(path2, value, args) : baseInvoke(value, path2, args);
+            result2[++index] = isFunc ? apply(path3, value, args) : baseInvoke(value, path3, args);
           });
           return result2;
         });
@@ -4666,15 +4666,15 @@ var require_lodash = __commonJS({
         function functionsIn(object) {
           return object == null ? [] : baseFunctions(object, keysIn(object));
         }
-        function get(object, path2, defaultValue) {
-          var result2 = object == null ? undefined2 : baseGet(object, path2);
+        function get(object, path3, defaultValue) {
+          var result2 = object == null ? undefined2 : baseGet(object, path3);
           return result2 === undefined2 ? defaultValue : result2;
         }
-        function has(object, path2) {
-          return object != null && hasPath(object, path2, baseHas);
+        function has(object, path3) {
+          return object != null && hasPath(object, path3, baseHas);
         }
-        function hasIn(object, path2) {
-          return object != null && hasPath(object, path2, baseHasIn);
+        function hasIn(object, path3) {
+          return object != null && hasPath(object, path3, baseHasIn);
         }
         var invert = createInverter(function(result2, value, key) {
           if (value != null && typeof value.toString != "function") {
@@ -4727,10 +4727,10 @@ var require_lodash = __commonJS({
             return result2;
           }
           var isDeep = false;
-          paths = arrayMap(paths, function(path2) {
-            path2 = castPath(path2, object);
-            isDeep || (isDeep = path2.length > 1);
-            return path2;
+          paths = arrayMap(paths, function(path3) {
+            path3 = castPath(path3, object);
+            isDeep || (isDeep = path3.length > 1);
+            return path3;
           });
           copyObject(object, getAllKeysIn(object), result2);
           if (isDeep) {
@@ -4756,19 +4756,19 @@ var require_lodash = __commonJS({
             return [prop];
           });
           predicate = getIteratee(predicate);
-          return basePickBy(object, props, function(value, path2) {
-            return predicate(value, path2[0]);
+          return basePickBy(object, props, function(value, path3) {
+            return predicate(value, path3[0]);
           });
         }
-        function result(object, path2, defaultValue) {
-          path2 = castPath(path2, object);
-          var index = -1, length = path2.length;
+        function result(object, path3, defaultValue) {
+          path3 = castPath(path3, object);
+          var index = -1, length = path3.length;
           if (!length) {
             length = 1;
             object = undefined2;
           }
           while (++index < length) {
-            var value = object == null ? undefined2 : object[toKey(path2[index])];
+            var value = object == null ? undefined2 : object[toKey(path3[index])];
             if (value === undefined2) {
               index = length;
               value = defaultValue;
@@ -4777,12 +4777,12 @@ var require_lodash = __commonJS({
           }
           return object;
         }
-        function set(object, path2, value) {
-          return object == null ? object : baseSet(object, path2, value);
+        function set(object, path3, value) {
+          return object == null ? object : baseSet(object, path3, value);
         }
-        function setWith(object, path2, value, customizer) {
+        function setWith(object, path3, value, customizer) {
           customizer = typeof customizer == "function" ? customizer : undefined2;
-          return object == null ? object : baseSet(object, path2, value, customizer);
+          return object == null ? object : baseSet(object, path3, value, customizer);
         }
         var toPairs = createToPairs(keys);
         var toPairsIn = createToPairs(keysIn);
@@ -4804,15 +4804,15 @@ var require_lodash = __commonJS({
           });
           return accumulator;
         }
-        function unset(object, path2) {
-          return object == null ? true : baseUnset(object, path2);
+        function unset(object, path3) {
+          return object == null ? true : baseUnset(object, path3);
         }
-        function update(object, path2, updater) {
-          return object == null ? object : baseUpdate(object, path2, castFunction(updater));
+        function update(object, path3, updater) {
+          return object == null ? object : baseUpdate(object, path3, castFunction(updater));
         }
-        function updateWith(object, path2, updater, customizer) {
+        function updateWith(object, path3, updater, customizer) {
           customizer = typeof customizer == "function" ? customizer : undefined2;
-          return object == null ? object : baseUpdate(object, path2, castFunction(updater), customizer);
+          return object == null ? object : baseUpdate(object, path3, castFunction(updater), customizer);
         }
         function values(object) {
           return object == null ? [] : baseValues(object, keys(object));
@@ -5193,17 +5193,17 @@ var require_lodash = __commonJS({
         function matches(source) {
           return baseMatches(baseClone(source, CLONE_DEEP_FLAG));
         }
-        function matchesProperty(path2, srcValue) {
-          return baseMatchesProperty(path2, baseClone(srcValue, CLONE_DEEP_FLAG));
+        function matchesProperty(path3, srcValue) {
+          return baseMatchesProperty(path3, baseClone(srcValue, CLONE_DEEP_FLAG));
         }
-        var method = baseRest(function(path2, args) {
+        var method = baseRest(function(path3, args) {
           return function(object) {
-            return baseInvoke(object, path2, args);
+            return baseInvoke(object, path3, args);
           };
         });
         var methodOf = baseRest(function(object, args) {
-          return function(path2) {
-            return baseInvoke(object, path2, args);
+          return function(path3) {
+            return baseInvoke(object, path3, args);
           };
         });
         function mixin(object, source, options) {
@@ -5250,12 +5250,12 @@ var require_lodash = __commonJS({
         var over = createOver(arrayMap);
         var overEvery = createOver(arrayEvery);
         var overSome = createOver(arraySome);
-        function property(path2) {
-          return isKey(path2) ? baseProperty(toKey(path2)) : basePropertyDeep(path2);
+        function property(path3) {
+          return isKey(path3) ? baseProperty(toKey(path3)) : basePropertyDeep(path3);
         }
         function propertyOf(object) {
-          return function(path2) {
-            return object == null ? undefined2 : baseGet(object, path2);
+          return function(path3) {
+            return object == null ? undefined2 : baseGet(object, path3);
           };
         }
         var range = createRange();
@@ -5572,7 +5572,7 @@ var require_lodash = __commonJS({
         lodash.isUndefined = isUndefined;
         lodash.isWeakMap = isWeakMap;
         lodash.isWeakSet = isWeakSet;
-        lodash.join = join2;
+        lodash.join = join3;
         lodash.kebabCase = kebabCase;
         lodash.last = last;
         lodash.lastIndexOf = lastIndexOf;
@@ -5708,12 +5708,12 @@ var require_lodash = __commonJS({
         LazyWrapper.prototype.findLast = function(predicate) {
           return this.reverse().find(predicate);
         };
-        LazyWrapper.prototype.invokeMap = baseRest(function(path2, args) {
-          if (typeof path2 == "function") {
+        LazyWrapper.prototype.invokeMap = baseRest(function(path3, args) {
+          if (typeof path3 == "function") {
             return new LazyWrapper(this);
           }
           return this.map(function(value) {
-            return baseInvoke(value, path2, args);
+            return baseInvoke(value, path3, args);
           });
         });
         LazyWrapper.prototype.reject = function(predicate) {
@@ -8083,7 +8083,7 @@ var require_validation_error = __commonJS({
       return ValidationErrorItemOrigin22;
     })(ValidationErrorItemOrigin2 || {});
     var ValidationErrorItem2 = class {
-      constructor(message, type, path2, value, instance, validatorKey, fnName, fnArgs) {
+      constructor(message, type, path3, value, instance, validatorKey, fnName, fnArgs) {
         __publicField(this, "message");
         __publicField(this, "type");
         __publicField(this, "path");
@@ -8095,7 +8095,7 @@ var require_validation_error = __commonJS({
         __publicField(this, "validatorArgs");
         this.message = message || "";
         this.type = null;
-        this.path = path2 || null;
+        this.path = path3 || null;
         this.value = value !== void 0 ? value : null;
         this.origin = null;
         this.instance = instance || null;
@@ -8154,9 +8154,9 @@ var require_validation_error = __commonJS({
           this.stack = options.stack;
         }
       }
-      get(path2) {
+      get(path3) {
         return this.errors.reduce((reduced, error) => {
-          if (error.path === path2) {
+          if (error.path === path3) {
             reduced.push(error);
           }
           return reduced;
@@ -26828,39 +26828,39 @@ var require_dottie = __commonJS({
         }
         return Dottie.transform.apply(this, args);
       };
-      Dottie.find = function(path2, object) {
-        return Dottie.get(object, path2);
+      Dottie.find = function(path3, object) {
+        return Dottie.get(object, path3);
       };
       Dottie.memoizePath = true;
       var memoized = {};
-      Dottie.get = function(object, path2, defaultVal) {
-        if (object === undefined2 || object === null || path2 === undefined2 || path2 === null) {
+      Dottie.get = function(object, path3, defaultVal) {
+        if (object === undefined2 || object === null || path3 === undefined2 || path3 === null) {
           return defaultVal;
         }
         var names;
-        if (typeof path2 === "string") {
+        if (typeof path3 === "string") {
           if (Dottie.memoizePath) {
-            if (memoized[path2]) {
-              names = memoized[path2].slice(0);
+            if (memoized[path3]) {
+              names = memoized[path3].slice(0);
             } else {
-              names = path2.split(".").reverse();
-              memoized[path2] = names.slice(0);
+              names = path3.split(".").reverse();
+              memoized[path3] = names.slice(0);
             }
           } else {
-            names = path2.split(".").reverse();
+            names = path3.split(".").reverse();
           }
-        } else if (Array.isArray(path2)) {
-          names = reverseDupArray(path2);
+        } else if (Array.isArray(path3)) {
+          names = reverseDupArray(path3);
         }
         while (names.length && (object = object[names.pop()]) !== undefined2 && object !== null) ;
         if (object === null && names.length) object = undefined2;
         return object === undefined2 ? defaultVal : object;
       };
-      Dottie.exists = function(object, path2) {
-        return Dottie.get(object, path2) !== undefined2;
+      Dottie.exists = function(object, path3) {
+        return Dottie.get(object, path3) !== undefined2;
       };
-      Dottie.set = function(object, path2, value, options) {
-        var pieces = Array.isArray(path2) ? path2 : path2.split("."), current = object, piece, length = pieces.length;
+      Dottie.set = function(object, path3, value, options) {
+        var pieces = Array.isArray(path3) ? path3 : path3.split("."), current = object, piece, length = pieces.length;
         var DANGEROUS_KEYS = ["__proto__", "constructor", "prototype"];
         if (pieces.some(function(p) {
           return DANGEROUS_KEYS.indexOf(p) !== -1;
@@ -26884,9 +26884,9 @@ var require_dottie = __commonJS({
         }
         current[piece] = value;
       };
-      Dottie["default"] = function(object, path2, value) {
-        if (Dottie.get(object, path2) === undefined2) {
-          Dottie.set(object, path2, value);
+      Dottie["default"] = function(object, path3, value) {
+        if (Dottie.get(object, path3) === undefined2) {
+          Dottie.set(object, path3, value);
         }
       };
       Dottie.transform = function Dottie$transformfunction(object, options) {
@@ -37407,8 +37407,8 @@ var require_query_generator = __commonJS({
                   const itemSplit = item2.split(".");
                   if (previousModel.rawAttributes[itemSplit[0]].type instanceof DataTypes2.JSON) {
                     const identifier2 = this.quoteIdentifiers(`${previousModel.name}.${previousModel.rawAttributes[itemSplit[0]].field}`);
-                    const path2 = itemSplit.slice(1);
-                    item2 = this.jsonPathExtractionQuery(identifier2, path2);
+                    const path3 = itemSplit.slice(1);
+                    item2 = this.jsonPathExtractionQuery(identifier2, path3);
                     item2 = this.sequelize.literal(item2);
                   }
                 }
@@ -37569,8 +37569,8 @@ var require_query_generator = __commonJS({
       isIdentifierQuoted(identifier2) {
         return /^\s*(?:([`"'])(?:(?!\1).|\1{2})*\1\.?)+\s*$/i.test(identifier2);
       }
-      jsonPathExtractionQuery(column, path2, isJson) {
-        let paths = _.toPath(path2);
+      jsonPathExtractionQuery(column, path3, isJson) {
+        let paths = _.toPath(path3);
         let pathStr;
         const quotedColumn = this.isIdentifierQuoted(column) ? column : this.quoteIdentifier(column);
         switch (this.dialect) {
@@ -37588,9 +37588,9 @@ var require_query_generator = __commonJS({
             }
             return `json_unquote(json_extract(${quotedColumn},${pathStr}))`;
           case "postgres":
-            const join2 = isJson ? "#>" : "#>>";
+            const join3 = isJson ? "#>" : "#>>";
             pathStr = this.escape(`{${paths.join(",")}}`);
-            return `(${quotedColumn}${join2}${pathStr})`;
+            return `(${quotedColumn}${join3}${pathStr})`;
           default:
             throw new Error(`Unsupported ${this.dialect} for JSON operations`);
         }
@@ -38278,7 +38278,7 @@ https://github.com/sequelize/sequelize/discussions/15694`);
           const isBelongsTo = topAssociation.associationType === "BelongsTo";
           const sourceField = isBelongsTo ? topAssociation.identifierField : topAssociation.sourceKeyField || topParent.model.primaryKeyField;
           const targetField = isBelongsTo ? topAssociation.sourceKeyField || topInclude.model.primaryKeyField : topAssociation.identifierField;
-          const join2 = [
+          const join3 = [
             `${this.quoteIdentifier(topInclude.as)}.${this.quoteIdentifier(targetField)}`,
             `${this.quoteTable(topParent.as || topParent.model.name)}.${this.quoteIdentifier(sourceField)}`
           ].join(" = ");
@@ -38289,7 +38289,7 @@ https://github.com/sequelize/sequelize/discussions/15694`);
             where: {
               [Op2.and]: [
                 topInclude.where,
-                { [Op2.join]: this.sequelize.literal(join2) }
+                { [Op2.join]: this.sequelize.literal(join3) }
               ]
             },
             limit: 1,
@@ -38651,15 +38651,15 @@ https://github.com/sequelize/sequelize/discussions/15694`);
         const result = items.join(this.OperatorMap[Op2.and]);
         return items.length > 1 ? `(${result})` : result;
       }
-      _traverseJSON(items, baseKey, prop, item, path2) {
+      _traverseJSON(items, baseKey, prop, item, path3) {
         let cast2;
-        if (path2[path2.length - 1].includes("::")) {
-          const tmp = path2[path2.length - 1].split("::");
+        if (path3[path3.length - 1].includes("::")) {
+          const tmp = path3[path3.length - 1].split("::");
           cast2 = tmp[1];
-          path2[path2.length - 1] = tmp[0];
+          path3[path3.length - 1] = tmp[0];
           this._validateCastType(cast2);
         }
-        let pathKey = this.jsonPathExtractionQuery(baseKey, path2);
+        let pathKey = this.jsonPathExtractionQuery(baseKey, path3);
         if (_.isPlainObject(item)) {
           Utils2.getOperators(item).forEach((op) => {
             const value = this._toJSONValue(item[op]);
@@ -38671,11 +38671,11 @@ https://github.com/sequelize/sequelize/discussions/15694`);
               } catch (e) {
               }
             }
-            pathKey = this.jsonPathExtractionQuery(baseKey, path2, isJson);
+            pathKey = this.jsonPathExtractionQuery(baseKey, path3, isJson);
             items.push(this.whereItemQuery(this._castKey(pathKey, value, cast2), { [op]: value }));
           });
           _.forOwn(item, (value, itemProp) => {
-            this._traverseJSON(items, baseKey, itemProp, value, path2.concat([itemProp]));
+            this._traverseJSON(items, baseKey, itemProp, value, path3.concat([itemProp]));
           });
           return;
         }
@@ -38888,13 +38888,13 @@ https://github.com/sequelize/sequelize/discussions/15694`);
         }
         throw new Error(`Unsupported where option value: ${util.inspect(smth)}. Please refer to the Sequelize documentation to learn more about which values are accepted as part of the where option.`);
       }
-      parseConditionObject(conditions, path2) {
-        path2 = path2 || [];
+      parseConditionObject(conditions, path3) {
+        path3 = path3 || [];
         return _.reduce(conditions, (result, value, key) => {
           if (_.isObject(value)) {
-            return result.concat(this.parseConditionObject(value, path2.concat(key)));
+            return result.concat(this.parseConditionObject(value, path3.concat(key)));
           }
-          result.push({ path: path2.concat(key), value });
+          result.push({ path: path3.concat(key), value });
           return result;
         }, []);
       }
@@ -43055,8 +43055,8 @@ var require_query_generator5 = __commonJS({
         }
         return hasJsonFunction;
       }
-      jsonPathExtractionQuery(column, path2) {
-        let paths = _.toPath(path2);
+      jsonPathExtractionQuery(column, path3) {
+        let paths = _.toPath(path3);
         const quotedColumn = this.isIdentifierQuoted(column) ? column : this.quoteIdentifier(column);
         paths = paths.map((subPath) => {
           return /\D/.test(subPath) ? Utils2.addTicks(subPath, '"') : subPath;
@@ -44776,8 +44776,8 @@ var require_postgres = __commonJS({
 var require_connection_manager7 = __commonJS({
   "node_modules/sequelize/lib/dialects/sqlite/connection-manager.js"(exports2, module2) {
     "use strict";
-    var fs = require("fs");
-    var path2 = require("path");
+    var fs2 = require("fs");
+    var path3 = require("path");
     var AbstractConnectionManager = require_connection_manager();
     var { logger } = require_logger();
     var debug = logger.debugContext("connection:sqlite");
@@ -44821,7 +44821,7 @@ var require_connection_manager7 = __commonJS({
           return this.connections[options.inMemory || options.uuid];
         }
         if (!options.inMemory && (options.readWriteMode & this.lib.OPEN_CREATE) !== 0) {
-          fs.mkdirSync(path2.dirname(options.storage), { recursive: true });
+          fs2.mkdirSync(path3.dirname(options.storage), { recursive: true });
         }
         const connection = await new Promise((resolve, reject) => {
           this.connections[options.inMemory || options.uuid] = new this.lib.Database(options.storage, options.readWriteMode, (err) => {
@@ -48674,7 +48674,7 @@ var require_sequelize = __commonJS({
     };
     var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     var url = require("url");
-    var path2 = require("path");
+    var path3 = require("path");
     var pgConnectionString = require_pg_connection_string();
     var retry = require_dist().default;
     var _ = require_lodash();
@@ -48713,8 +48713,8 @@ var require_sequelize = __commonJS({
           options.dialect = urlParts.protocol.replace(/:$/, "");
           options.host = urlParts.hostname;
           if (options.dialect === "sqlite" && urlParts.pathname && !urlParts.pathname.startsWith("/:memory")) {
-            const storagePath = path2.join(options.host, urlParts.pathname);
-            options.storage = path2.resolve(options.storage || storagePath);
+            const storagePath = path3.join(options.host, urlParts.pathname);
+            options.storage = path3.resolve(options.storage || storagePath);
           }
           if (urlParts.pathname) {
             config.database = urlParts.pathname.replace(/^\//, "");
@@ -49315,7 +49315,7 @@ __export(extension_exports, {
   deactivate: () => deactivate
 });
 module.exports = __toCommonJS(extension_exports);
-var vscode9 = __toESM(require("vscode"));
+var vscode10 = __toESM(require("vscode"));
 
 // src/db/index.ts
 var vscode2 = __toESM(require("vscode"));
@@ -49418,6 +49418,8 @@ var ValidationErrorItemOrigin = import_index.default.ValidationErrorItemOrigin;
 var ValidationErrorItemType = import_index.default.ValidationErrorItemType;
 
 // src/db/models.ts
+var ExplorerStateModel = class extends Model {
+};
 var RepositoryModel = class extends Model {
 };
 var AgentModel = class extends Model {
@@ -49457,6 +49459,13 @@ var initModels = (sequelize) => {
       path: { type: DataTypes.TEXT, allowNull: false }
     },
     { sequelize, tableName: "worktrees", timestamps: false }
+  );
+  ExplorerStateModel.init(
+    {
+      scopeKey: { type: DataTypes.TEXT, primaryKey: true },
+      expandedPaths: { type: DataTypes.TEXT, allowNull: false, defaultValue: "[]" }
+    },
+    { sequelize, tableName: "explorer_state", timestamps: false }
   );
   RepositoryModel.hasMany(AgentModel, { foreignKey: "repoId", onDelete: "CASCADE" });
   AgentModel.belongsTo(RepositoryModel, { foreignKey: "repoId" });
@@ -49651,6 +49660,22 @@ var StateStorage = class {
     const worktree = await WorktreeModel.findOne({ where: { agentId } });
     return worktree?.get({ plain: true });
   };
+  // ── Explorer state ───────────────────────────────────────────
+  getExpandedPaths = async (scopeKey) => {
+    const row = await ExplorerStateModel.findByPk(scopeKey);
+    if (!row) return [];
+    try {
+      return JSON.parse(row.expandedPaths);
+    } catch {
+      return [];
+    }
+  };
+  setExpandedPaths = async (scopeKey, paths) => {
+    await ExplorerStateModel.upsert({
+      scopeKey,
+      expandedPaths: JSON.stringify(paths)
+    });
+  };
   // ── Internal ───────────────────────────────────────────────────
   dispose = () => {
     this._onDidChange.dispose();
@@ -49760,24 +49785,159 @@ var AgentPanelProvider = class {
 };
 var getNonce = () => (0, import_crypto5.randomBytes)(16).toString("hex");
 
+// src/services/FileExplorerProvider.ts
+var vscode4 = __toESM(require("vscode"));
+var path = __toESM(require("path"));
+var fs = __toESM(require("fs/promises"));
+var WORKSPACE_SCOPE_KEY = "workspace";
+var PERSIST_DEBOUNCE_MS = 500;
+var FileExplorerProvider = class {
+  constructor(storage) {
+    this.storage = storage;
+    this.disposables.push(
+      storage.onDidChange(() => {
+        if (this.mode === "all") {
+          void this.loadAndRefresh();
+        }
+      })
+    );
+    void this.loadAndRefresh();
+  }
+  roots = [];
+  mode = "all";
+  scopeKey = WORKSPACE_SCOPE_KEY;
+  expandedPaths = /* @__PURE__ */ new Set();
+  generation = 0;
+  persistTimer;
+  _onDidChangeTreeData = new vscode4.EventEmitter();
+  onDidChangeTreeData = this._onDidChangeTreeData.event;
+  disposables = [];
+  attachTreeView(treeView) {
+    this.disposables.push(
+      treeView.onDidExpandElement((e) => {
+        this.expandedPaths.add(e.element.filePath);
+        this.debouncePersist();
+      }),
+      treeView.onDidCollapseElement((e) => {
+        this.expandedPaths.delete(e.element.filePath);
+        this.debouncePersist();
+      })
+    );
+  }
+  showAllRepos(repoPaths) {
+    this.mode = "all";
+    this.scopeKey = WORKSPACE_SCOPE_KEY;
+    if (repoPaths) {
+      this.roots = repoPaths;
+      void this.loadExpandedAndRefresh();
+    } else {
+      void this.loadAndRefresh();
+    }
+  }
+  showRepo(repoId, repoPath) {
+    this.mode = "scoped";
+    this.scopeKey = repoId;
+    this.roots = [repoPath];
+    void this.loadExpandedAndRefresh();
+  }
+  getTreeItem(element) {
+    return element;
+  }
+  async getChildren(element) {
+    if (!element) {
+      if (this.mode === "scoped" && this.roots.length === 1) {
+        return this.readDirectory(this.roots[0]);
+      }
+      return this.roots.map((r) => this.createItem(r, true));
+    }
+    if (!element.isDir) {
+      return [];
+    }
+    return this.readDirectory(element.filePath);
+  }
+  async loadAndRefresh() {
+    const gen = ++this.generation;
+    const repos = await this.storage.getAllRepositories();
+    if (gen !== this.generation) return;
+    this.roots = repos.map((r) => r.localPath);
+    await this.loadExpandedAndRefresh(gen);
+  }
+  async loadExpandedAndRefresh(gen) {
+    gen ??= ++this.generation;
+    const paths = await this.storage.getExpandedPaths(this.scopeKey);
+    if (gen !== this.generation) return;
+    this.expandedPaths = new Set(paths);
+    this._onDidChangeTreeData.fire(void 0);
+  }
+  debouncePersist() {
+    clearTimeout(this.persistTimer);
+    this.persistTimer = setTimeout(() => {
+      void this.storage.setExpandedPaths(this.scopeKey, [...this.expandedPaths]);
+    }, PERSIST_DEBOUNCE_MS);
+  }
+  async readDirectory(dirPath) {
+    try {
+      const entries = await fs.readdir(dirPath, { withFileTypes: true });
+      return entries.filter((e) => e.name !== ".git").sort((a, b) => {
+        if (a.isDirectory() !== b.isDirectory()) {
+          return a.isDirectory() ? -1 : 1;
+        }
+        return a.name.localeCompare(b.name);
+      }).map((e) => this.createItem(path.join(dirPath, e.name), e.isDirectory()));
+    } catch (err) {
+      console.error("[FileExplorerProvider] readDirectory failed:", dirPath, err);
+      return [];
+    }
+  }
+  createItem(filePath, isDir) {
+    const expanded = isDir && this.expandedPaths.has(filePath);
+    return new FileItem(filePath, isDir, expanded);
+  }
+  dispose() {
+    clearTimeout(this.persistTimer);
+    this._onDidChangeTreeData.dispose();
+    for (const d of this.disposables) {
+      d.dispose();
+    }
+  }
+};
+var FileItem = class extends vscode4.TreeItem {
+  constructor(filePath, isDir, expanded) {
+    super(
+      path.basename(filePath),
+      isDir ? expanded ? vscode4.TreeItemCollapsibleState.Expanded : vscode4.TreeItemCollapsibleState.Collapsed : vscode4.TreeItemCollapsibleState.None
+    );
+    this.filePath = filePath;
+    this.isDir = isDir;
+    this.resourceUri = vscode4.Uri.file(filePath);
+    if (!isDir) {
+      this.command = {
+        command: "vscode.open",
+        title: "Open File",
+        arguments: [this.resourceUri]
+      };
+    }
+  }
+};
+
 // src/services/WebviewCommandHandler.ts
-var vscode8 = __toESM(require("vscode"));
+var vscode9 = __toESM(require("vscode"));
 
 // src/features/addRepo.ts
 var import_fs = require("fs");
-var path = __toESM(require("path"));
-var vscode4 = __toESM(require("vscode"));
+var path2 = __toESM(require("path"));
+var vscode5 = __toESM(require("vscode"));
 var BROWSE_LABEL = "$(folder-opened) Browse\u2026";
 var getWorkspaceGitFolders = () => {
-  const folders = vscode4.workspace.workspaceFolders ?? [];
-  return folders.filter((wf) => (0, import_fs.existsSync)(path.join(wf.uri.fsPath, ".git"))).map((wf) => ({
+  const folders = vscode5.workspace.workspaceFolders ?? [];
+  return folders.filter((wf) => (0, import_fs.existsSync)(path2.join(wf.uri.fsPath, ".git"))).map((wf) => ({
     label: wf.name,
     description: wf.uri.fsPath,
     folderPath: wf.uri.fsPath
   }));
 };
 var pickViaOsDialog = async () => {
-  const result = await vscode4.window.showOpenDialog({
+  const result = await vscode5.window.showOpenDialog({
     canSelectFiles: false,
     canSelectFolders: true,
     canSelectMany: false,
@@ -49787,8 +49947,8 @@ var pickViaOsDialog = async () => {
     return void 0;
   }
   const folderPath = result[0].fsPath;
-  if (!(0, import_fs.existsSync)(path.join(folderPath, ".git"))) {
-    vscode4.window.showErrorMessage("Selected folder is not a git repository (no .git found).");
+  if (!(0, import_fs.existsSync)(path2.join(folderPath, ".git"))) {
+    vscode5.window.showErrorMessage("Selected folder is not a git repository (no .git found).");
     return void 0;
   }
   return folderPath;
@@ -49799,10 +49959,10 @@ var addRepo = async (storage) => {
   const suggestions = getWorkspaceGitFolders().filter((f) => !existingPaths.has(f.folderPath));
   const items = [
     ...suggestions,
-    ...suggestions.length > 0 ? [{ label: "", kind: vscode4.QuickPickItemKind.Separator }] : [],
+    ...suggestions.length > 0 ? [{ label: "", kind: vscode5.QuickPickItemKind.Separator }] : [],
     { label: BROWSE_LABEL, alwaysShow: true }
   ];
-  const picked = await vscode4.window.showQuickPick(items, {
+  const picked = await vscode5.window.showQuickPick(items, {
     placeHolder: suggestions.length > 0 ? "Select a workspace repository or browse\u2026" : "No workspace repositories found \u2014 browse to add one",
     title: "Add Repository"
   });
@@ -49814,29 +49974,22 @@ var addRepo = async (storage) => {
     return;
   }
   if (existingPaths.has(folderPath)) {
-    vscode4.window.showInformationMessage("Repository is already added.");
+    vscode5.window.showInformationMessage("Repository is already added.");
     return;
   }
-  const name = path.basename(folderPath);
+  const name = path2.basename(folderPath);
   await storage.addRepository(name, folderPath, "staging");
-  const alreadyInWorkspace = (vscode4.workspace.workspaceFolders ?? []).some(
-    (wf) => wf.uri.fsPath === folderPath
-  );
-  if (!alreadyInWorkspace) {
-    const index = vscode4.workspace.workspaceFolders?.length ?? 0;
-    vscode4.workspace.updateWorkspaceFolders(index, 0, { uri: vscode4.Uri.file(folderPath) });
-  }
 };
 
 // src/features/removeRepo.ts
-var vscode5 = __toESM(require("vscode"));
+var vscode6 = __toESM(require("vscode"));
 var removeRepo = async (storage, repoId) => {
   const repo = await storage.getRepository(repoId);
   if (!repo) {
-    vscode5.window.showErrorMessage("Repository not found.");
+    vscode6.window.showErrorMessage("Repository not found.");
     return;
   }
-  const confirm = await vscode5.window.showWarningMessage(
+  const confirm = await vscode6.window.showWarningMessage(
     `Remove repository "${repo.name}"? This will also delete all its agents and worktrees.`,
     { modal: true },
     "Remove"
@@ -49848,47 +50001,32 @@ var removeRepo = async (storage, repoId) => {
 };
 
 // src/features/rootClick.ts
-var vscode6 = __toESM(require("vscode"));
-var rootClick = async (storage) => {
+var vscode7 = __toESM(require("vscode"));
+var rootClick = async (storage, explorer) => {
   const repos = await storage.getAllRepositories();
   if (repos.length === 0) {
-    vscode6.window.showInformationMessage("No repositories added.");
+    vscode7.window.showInformationMessage("No repositories added.");
     return;
   }
-  const current = vscode6.workspace.workspaceFolders ?? [];
-  const currentPaths = new Set(current.map((f) => f.uri.fsPath));
-  const missing = repos.filter((r) => !currentPaths.has(r.localPath));
-  if (missing.length === 0) {
-    return;
-  }
-  const newFolders = missing.map((r) => ({ uri: vscode6.Uri.file(r.localPath) }));
-  vscode6.workspace.updateWorkspaceFolders(current.length, 0, ...newFolders);
+  explorer.showAllRepos(repos.map((r) => r.localPath));
 };
 
 // src/features/repoRootClick.ts
-var vscode7 = __toESM(require("vscode"));
-var repoRootClick = async (storage, repoId) => {
+var vscode8 = __toESM(require("vscode"));
+var repoRootClick = async (storage, explorer, repoId) => {
   const repo = await storage.getRepository(repoId);
   if (!repo) {
-    vscode7.window.showErrorMessage("Repository not found.");
+    vscode8.window.showErrorMessage("Repository not found.");
     return;
   }
-  const current = vscode7.workspace.workspaceFolders ?? [];
-  const repoIndex = current.findIndex((f) => f.uri.fsPath === repo.localPath);
-  if (repoIndex !== -1 && current.length === 1) {
-    return;
-  }
-  if (repoIndex === 0) {
-    vscode7.workspace.updateWorkspaceFolders(1, current.length - 1);
-  } else {
-    vscode7.workspace.updateWorkspaceFolders(0, current.length, { uri: vscode7.Uri.file(repo.localPath) });
-  }
+  explorer.showRepo(repoId, repo.localPath);
 };
 
 // src/services/WebviewCommandHandler.ts
 var WebviewCommandHandler = class {
-  constructor(provider, storage) {
+  constructor(provider, storage, explorer) {
     this.storage = storage;
+    this.explorer = explorer;
     this.disposables.push(
       provider.onDidResolveView((view) => {
         this.messageDisposable?.dispose();
@@ -49914,17 +50052,17 @@ var WebviewCommandHandler = class {
           await this.storage.toggleRepoExpanded(message.args.repoId);
           break;
         case "rootClick":
-          await rootClick(this.storage);
+          await rootClick(this.storage, this.explorer);
           break;
         case "repoRootClick":
-          await repoRootClick(this.storage, message.args.repoId);
+          await repoRootClick(this.storage, this.explorer, message.args.repoId);
           break;
       }
       console.log('[WebviewCommandHandler] handled "%s" successfully', message.function);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error('[WebviewCommandHandler] error handling "%s":', message.function, msg);
-      vscode8.window.showErrorMessage(msg);
+      vscode9.window.showErrorMessage(msg);
     }
   };
   dispose() {
@@ -49941,10 +50079,17 @@ var activate = async (context) => {
   context.subscriptions.push(storage);
   const provider = new AgentPanelProvider(context.extensionUri, storage);
   context.subscriptions.push(provider);
-  const commandHandler = new WebviewCommandHandler(provider, storage);
+  const explorer = new FileExplorerProvider(storage);
+  context.subscriptions.push(explorer);
+  const treeView = vscode10.window.createTreeView("vscode-agentic.explorer", {
+    treeDataProvider: explorer
+  });
+  explorer.attachTreeView(treeView);
+  context.subscriptions.push(treeView);
+  const commandHandler = new WebviewCommandHandler(provider, storage, explorer);
   context.subscriptions.push(commandHandler);
   context.subscriptions.push(
-    vscode9.window.registerWebviewViewProvider(AgentPanelProvider.viewType, provider)
+    vscode10.window.registerWebviewViewProvider(AgentPanelProvider.viewType, provider)
   );
 };
 var deactivate = () => {

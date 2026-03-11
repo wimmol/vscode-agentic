@@ -30,7 +30,17 @@ export interface Agent {
   createdAt: number;
 }
 
+export interface ExplorerState {
+  scopeKey: string;
+  expandedPaths: string;
+}
+
 // ── Sequelize models ────────────────────────────────────────────────
+
+export class ExplorerStateModel extends Model<ExplorerState> implements ExplorerState {
+  declare scopeKey: string;
+  declare expandedPaths: string;
+}
 
 export class RepositoryModel extends Model<Repository> implements Repository {
   declare repositoryId: string;
@@ -96,6 +106,14 @@ export const initModels = (sequelize: Sequelize): void => {
       path: { type: DataTypes.TEXT, allowNull: false },
     },
     { sequelize, tableName: 'worktrees', timestamps: false },
+  );
+
+  ExplorerStateModel.init(
+    {
+      scopeKey: { type: DataTypes.TEXT, primaryKey: true },
+      expandedPaths: { type: DataTypes.TEXT, allowNull: false, defaultValue: '[]' },
+    },
+    { sequelize, tableName: 'explorer_state', timestamps: false },
   );
 
   RepositoryModel.hasMany(AgentModel, { foreignKey: 'repoId', onDelete: 'CASCADE' });

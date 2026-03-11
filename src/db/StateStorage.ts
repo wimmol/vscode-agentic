@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import * as vscode from 'vscode';
 import type { Sequelize } from 'sequelize';
-import { RepositoryModel, AgentModel, WorktreeModel } from './models';
+import { RepositoryModel, AgentModel, WorktreeModel, ExplorerStateModel } from './models';
 import type { Repository, Worktree, Agent } from './models';
 import type { RepoWithAgents } from '../types';
 import type { AgentCli } from '../types/agent';
@@ -238,6 +238,25 @@ export class StateStorage implements vscode.Disposable {
   getWorktree = async (agentId: string): Promise<Worktree | undefined> => {
     const worktree = await WorktreeModel.findOne({ where: { agentId } });
     return worktree?.get({ plain: true });
+  };
+
+  // ── Explorer state ───────────────────────────────────────────
+
+  getExpandedPaths = async (scopeKey: string): Promise<string[]> => {
+    const row = await ExplorerStateModel.findByPk(scopeKey);
+    if (!row) return [];
+    try {
+      return JSON.parse(row.expandedPaths);
+    } catch {
+      return [];
+    }
+  };
+
+  setExpandedPaths = async (scopeKey: string, paths: string[]): Promise<void> => {
+    await ExplorerStateModel.upsert({
+      scopeKey,
+      expandedPaths: JSON.stringify(paths),
+    });
   };
 
   // ── Internal ───────────────────────────────────────────────────

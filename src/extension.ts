@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { createStateStorage } from './db';
 import { AgentPanelProvider } from './services/AgentPanelProvider';
+import { FileExplorerProvider } from './services/FileExplorerProvider';
 import { WebviewCommandHandler } from './services/WebviewCommandHandler';
 
 export const activate = async (context: vscode.ExtensionContext) => {
@@ -10,7 +11,16 @@ export const activate = async (context: vscode.ExtensionContext) => {
   const provider = new AgentPanelProvider(context.extensionUri, storage);
   context.subscriptions.push(provider);
 
-  const commandHandler = new WebviewCommandHandler(provider, storage);
+  const explorer = new FileExplorerProvider(storage);
+  context.subscriptions.push(explorer);
+
+  const treeView = vscode.window.createTreeView('vscode-agentic.explorer', {
+    treeDataProvider: explorer,
+  });
+  explorer.attachTreeView(treeView);
+  context.subscriptions.push(treeView);
+
+  const commandHandler = new WebviewCommandHandler(provider, storage, explorer);
   context.subscriptions.push(commandHandler);
 
   context.subscriptions.push(

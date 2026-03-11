@@ -78,13 +78,4 @@ export const addRepo = async (storage: StateStorage): Promise<void> => {
 
   const name = path.basename(folderPath);
   await storage.addRepository(name, folderPath, 'staging');
-
-  const alreadyInWorkspace = (vscode.workspace.workspaceFolders ?? []).some(
-    (wf) => wf.uri.fsPath === folderPath,
-  );
-
-  if (!alreadyInWorkspace) {
-    const index = vscode.workspace.workspaceFolders?.length ?? 0;
-    vscode.workspace.updateWorkspaceFolders(index, 0, { uri: vscode.Uri.file(folderPath) });
-  }
 };
