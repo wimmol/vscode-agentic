@@ -277,6 +277,11 @@ export class StateStorage implements vscode.Disposable {
     return worktree?.get({ plain: true });
   };
 
+  /** Flushes all tables to workspaceState. Call before operations that trigger extension reactivation. */
+  persistAll = async (): Promise<void> => {
+    await this._persist(['repositories', 'agents', 'worktrees']);
+  };
+
   // ── Internal ───────────────────────────────────────────────────
 
   private _changed = async (tables: TableName[], action?: string): Promise<void> => {

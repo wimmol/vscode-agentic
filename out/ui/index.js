@@ -21943,8 +21943,12 @@ var AgentPanelView = ({
 
 // src/ui/agentPanel/useAgentPanel.ts
 var import_react2 = __toESM(require_react());
+var getCachedRepos = () => {
+  const state = vscode.getState();
+  return state?.repos ?? [];
+};
 var useAgentPanel = () => {
-  const [repos, setRepos] = (0, import_react2.useState)([]);
+  const [repos, setRepos] = (0, import_react2.useState)(getCachedRepos);
   (0, import_react2.useEffect)(() => {
     const handler = (event) => {
       const message = event.data;
@@ -21952,6 +21956,7 @@ var useAgentPanel = () => {
       if (message.type === "update") {
         console.log("[useAgentPanel] setting repos:", message.repos);
         setRepos(message.repos);
+        vscode.setState({ repos: message.repos });
       }
     };
     window.addEventListener("message", handler);
@@ -21978,6 +21983,10 @@ var rootClickMessage = () => ({
   function: "rootClick",
   args: {}
 });
+var repoRootClickMessage = (repoId) => ({
+  function: "repoRootClick",
+  args: { repoId }
+});
 
 // src/ui/agentPanel/AgentPanelPage.tsx
 var import_jsx_runtime11 = __toESM(require_jsx_runtime());
@@ -21987,6 +21996,9 @@ var AgentPanelPage = () => {
   const repos = useAgentPanel();
   const onRootClick = (0, import_react3.useCallback)(() => {
     vscode.postMessage(rootClickMessage());
+  }, []);
+  const onRepoRootClick = (0, import_react3.useCallback)((repoId) => {
+    vscode.postMessage(repoRootClickMessage(repoId));
   }, []);
   const onAddRepoClick = (0, import_react3.useCallback)(() => {
     vscode.postMessage(addRepoMessage());
@@ -22003,7 +22015,7 @@ var AgentPanelPage = () => {
       repos,
       onRootClick,
       onAddRepoClick,
-      onRepoRootClick: noopId,
+      onRepoRootClick,
       onAddAgentClick: noopId,
       onRemoveRepoClick,
       onToggleRepoClick,

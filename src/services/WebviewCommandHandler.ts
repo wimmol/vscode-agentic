@@ -5,6 +5,7 @@ import type { WebviewToExtensionMessage } from '../types/messages';
 import { addRepo } from '../features/addRepo';
 import { removeRepo } from '../features/removeRepo';
 import { rootClick } from '../features/rootClick';
+import { repoRootClick } from '../features/repoRootClick';
 
 /**
  * Handles all webview → extension communication.
@@ -44,7 +45,10 @@ export class WebviewCommandHandler implements vscode.Disposable {
           await this.storage.toggleRepoExpanded(message.args.repoId);
           break;
         case 'rootClick':
-          await rootClick();
+          await rootClick(this.storage);
+          break;
+        case 'repoRootClick':
+          await repoRootClick(this.storage, message.args.repoId);
           break;
       }
       console.log('[WebviewCommandHandler] handled "%s" successfully', message.function);

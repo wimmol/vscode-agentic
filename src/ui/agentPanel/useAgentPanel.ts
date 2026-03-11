@@ -3,8 +3,13 @@ import { vscode } from '../index';
 import type { RepoWithAgents } from '../../types';
 import type { ExtensionToWebviewMessage } from '../../types/messages';
 
+const getCachedRepos = (): RepoWithAgents[] => {
+  const state = vscode.getState();
+  return state?.repos ?? [];
+};
+
 export const useAgentPanel = (): RepoWithAgents[] => {
-  const [repos, setRepos] = useState<RepoWithAgents[]>([]);
+  const [repos, setRepos] = useState<RepoWithAgents[]>(getCachedRepos);
 
   useEffect(() => {
     const handler = (event: MessageEvent<ExtensionToWebviewMessage>) => {
@@ -13,6 +18,7 @@ export const useAgentPanel = (): RepoWithAgents[] => {
       if (message.type === 'update') {
         console.log('[useAgentPanel] setting repos:', message.repos);
         setRepos(message.repos);
+        vscode.setState({ repos: message.repos });
       }
     };
 

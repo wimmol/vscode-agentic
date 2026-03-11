@@ -37,3 +37,8 @@ export const rootClickMessage = (): WebviewToExtensionMessage => ({
   function: 'rootClick',
   args: {},
 });
+
+export const repoRootClickMessage = (repoId: string): WebviewToExtensionMessage => ({
+  function: 'repoRootClick',
+  args: { repoId },
+});

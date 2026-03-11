@@ -1,10 +1,23 @@
 import * as vscode from 'vscode';
+import type { StateStorage } from '../db';
 
-export const rootClick = async (): Promise<void> => {
-  const folder = vscode.workspace.workspaceFolders?.[0];
-  if (folder) {
-    await vscode.commands.executeCommand('revealInExplorer', folder.uri);
-  } else {
-    vscode.window.showInformationMessage('No workspace folder is open.');
+export const rootClick = async (storage: StateStorage): Promise<void> => {
+  const repos = await storage.getAllRepositories();
+  if (repos.length === 0) {
+    vscode.window.showInformationMessage('No repositories added.');
+    return;
   }
+
+  const current = vscode.workspace.workspaceFolders ?? [];
+  const currentPaths = new Set(current.map((f) => f.uri.fsPath));
+  const missing = repos.filter((r) => !currentPaths.has(r.localPath));
+
+  if (missing.length === 0) {
+    return;
+  }
+
+  await storage.persistAll();
+
+  const newFolders = missing.map((r) => ({ uri: vscode.Uri.file(r.localPath) }));
+  vscode.workspace.updateWorkspaceFolders(current.length, 0, ...newFolders);
 };

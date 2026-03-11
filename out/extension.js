@@ -40432,7 +40432,7 @@ var require_query_generator4 = __commonJS({
           const quotedAttributes = allAttributes.map((attr) => this.quoteIdentifier(attr)).join(",");
           allQueries.push((tupleStr) => `INSERT INTO ${quotedTable} (${quotedAttributes})${outputFragment} VALUES ${tupleStr};`);
         }
-        const commands2 = [];
+        const commands = [];
         let offset = 0;
         const batch = Math.floor(250 / (allAttributes.length + 1)) + 1;
         while (offset < Math.max(tuples.length, 1)) {
@@ -40441,10 +40441,10 @@ var require_query_generator4 = __commonJS({
           if (needIdentityInsertWrapper) {
             generatedQuery = `SET IDENTITY_INSERT ${quotedTable} ON; ${generatedQuery}; SET IDENTITY_INSERT ${quotedTable} OFF;`;
           }
-          commands2.push(generatedQuery);
+          commands.push(generatedQuery);
           offset += batch;
         }
-        return commands2.join(";");
+        return commands.join(";");
       }
       updateQuery(tableName, attrValueHash, where2, options, attributes) {
         const sql = super.updateQuery(tableName, attrValueHash, where2, options, attributes);
@@ -49315,7 +49315,7 @@ __export(extension_exports, {
   deactivate: () => deactivate
 });
 module.exports = __toCommonJS(extension_exports);
-var vscode7 = __toESM(require("vscode"));
+var vscode8 = __toESM(require("vscode"));
 
 // node_modules/sequelize/lib/index.mjs
 var import_index = __toESM(require_lib2(), 1);
@@ -49676,6 +49676,10 @@ var StateStorage = class {
     const worktree = await WorktreeModel.findOne({ where: { agentId } });
     return worktree?.get({ plain: true });
   };
+  /** Flushes all tables to workspaceState. Call before operations that trigger extension reactivation. */
+  persistAll = async () => {
+    await this._persist(["repositories", "agents", "worktrees"]);
+  };
   // ── Internal ───────────────────────────────────────────────────
   _changed = async (tables, action) => {
     console.log(`[StateStorage] _changed: action="${action ?? "unknown"}", persisting tables:`, tables);
@@ -49719,19 +49723,19 @@ var createStateStorage = async (context) => {
   initModels(sequelize);
   await sequelize.sync();
   console.log("[createStateStorage] SQLite ready, restoring from workspaceState...");
-  const storage = new StateStorage(sequelize, context.workspaceState);
-  await storage.restore();
+  const storage2 = new StateStorage(sequelize, context.workspaceState);
+  await storage2.restore();
   console.log("[createStateStorage] restore complete");
-  return storage;
+  return storage2;
 };
 
 // src/services/AgentPanelProvider.ts
 var import_crypto5 = require("crypto");
 var vscode2 = __toESM(require("vscode"));
 var AgentPanelProvider = class {
-  constructor(extensionUri, storage) {
+  constructor(extensionUri, storage2) {
     this.extensionUri = extensionUri;
-    this.storage = storage;
+    this.storage = storage2;
     this.disposables.push(
       this.storage.onDidChange(() => this.pushState())
     );
@@ -49807,7 +49811,7 @@ var AgentPanelProvider = class {
 var getNonce = () => (0, import_crypto5.randomBytes)(16).toString("hex");
 
 // src/services/WebviewCommandHandler.ts
-var vscode6 = __toESM(require("vscode"));
+var vscode7 = __toESM(require("vscode"));
 
 // src/features/addRepo.ts
 var import_fs = require("fs");
@@ -49839,8 +49843,8 @@ var pickViaOsDialog = async () => {
   }
   return folderPath;
 };
-var addRepo = async (storage) => {
-  const existingRepos = await storage.getAllRepositories();
+var addRepo = async (storage2) => {
+  const existingRepos = await storage2.getAllRepositories();
   const existingPaths = new Set(existingRepos.map((r) => r.localPath));
   const suggestions = getWorkspaceGitFolders().filter((f) => !existingPaths.has(f.folderPath));
   const items = [
@@ -49864,7 +49868,7 @@ var addRepo = async (storage) => {
     return;
   }
   const name = path.basename(folderPath);
-  await storage.addRepository(name, folderPath, "staging");
+  await storage2.addRepository(name, folderPath, "staging");
   const alreadyInWorkspace = (vscode3.workspace.workspaceFolders ?? []).some(
     (wf) => wf.uri.fsPath === folderPath
   );
@@ -49876,8 +49880,8 @@ var addRepo = async (storage) => {
 
 // src/features/removeRepo.ts
 var vscode4 = __toESM(require("vscode"));
-var removeRepo = async (storage, repoId) => {
-  const repo = await storage.getRepository(repoId);
+var removeRepo = async (storage2, repoId) => {
+  const repo = await storage2.getRepository(repoId);
   if (!repo) {
     vscode4.window.showErrorMessage("Repository not found.");
     return;
@@ -49890,24 +49894,53 @@ var removeRepo = async (storage, repoId) => {
   if (confirm !== "Remove") {
     return;
   }
-  await storage.removeRepository(repoId);
+  await storage2.removeRepository(repoId);
 };
 
 // src/features/rootClick.ts
 var vscode5 = __toESM(require("vscode"));
-var rootClick = async () => {
-  const folder = vscode5.workspace.workspaceFolders?.[0];
-  if (folder) {
-    await vscode5.commands.executeCommand("revealInExplorer", folder.uri);
+var rootClick = async (storage2) => {
+  const repos = await storage2.getAllRepositories();
+  if (repos.length === 0) {
+    vscode5.window.showInformationMessage("No repositories added.");
+    return;
+  }
+  const current = vscode5.workspace.workspaceFolders ?? [];
+  const currentPaths = new Set(current.map((f) => f.uri.fsPath));
+  const missing = repos.filter((r) => !currentPaths.has(r.localPath));
+  if (missing.length === 0) {
+    return;
+  }
+  await storage2.persistAll();
+  const newFolders = missing.map((r) => ({ uri: vscode5.Uri.file(r.localPath) }));
+  vscode5.workspace.updateWorkspaceFolders(current.length, 0, ...newFolders);
+};
+
+// src/features/repoRootClick.ts
+var vscode6 = __toESM(require("vscode"));
+var repoRootClick = async (storage2, repoId) => {
+  const repo = await storage2.getRepository(repoId);
+  if (!repo) {
+    vscode6.window.showErrorMessage("Repository not found.");
+    return;
+  }
+  const current = vscode6.workspace.workspaceFolders ?? [];
+  const repoIndex = current.findIndex((f) => f.uri.fsPath === repo.localPath);
+  if (repoIndex !== -1 && current.length === 1) {
+    return;
+  }
+  await storage2.persistAll();
+  if (repoIndex === 0) {
+    vscode6.workspace.updateWorkspaceFolders(1, current.length - 1);
   } else {
-    vscode5.window.showInformationMessage("No workspace folder is open.");
+    vscode6.workspace.updateWorkspaceFolders(0, current.length, { uri: vscode6.Uri.file(repo.localPath) });
   }
 };
 
 // src/services/WebviewCommandHandler.ts
 var WebviewCommandHandler = class {
-  constructor(provider, storage) {
-    this.storage = storage;
+  constructor(provider, storage2) {
+    this.storage = storage2;
     this.disposables.push(
       provider.onDidResolveView((view) => {
         this.messageDisposable?.dispose();
@@ -49933,14 +49966,17 @@ var WebviewCommandHandler = class {
           await this.storage.toggleRepoExpanded(message.args.repoId);
           break;
         case "rootClick":
-          await rootClick();
+          await rootClick(this.storage);
+          break;
+        case "repoRootClick":
+          await repoRootClick(this.storage, message.args.repoId);
           break;
       }
       console.log('[WebviewCommandHandler] handled "%s" successfully', message.function);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error('[WebviewCommandHandler] error handling "%s":', message.function, msg);
-      vscode6.window.showErrorMessage(msg);
+      vscode7.window.showErrorMessage(msg);
     }
   };
   dispose() {
@@ -49952,15 +49988,21 @@ var WebviewCommandHandler = class {
 };
 
 // src/extension.ts
+var storage;
 var activate = async (context) => {
-  const storage = await createStateStorage(context);
-  context.subscriptions.push(storage);
+  if (!storage) {
+    storage = await createStateStorage(context);
+  }
+  context.subscriptions.push({ dispose: () => {
+    storage?.dispose();
+    storage = void 0;
+  } });
   const provider = new AgentPanelProvider(context.extensionUri, storage);
   context.subscriptions.push(provider);
   const commandHandler = new WebviewCommandHandler(provider, storage);
   context.subscriptions.push(commandHandler);
   context.subscriptions.push(
-    vscode7.window.registerWebviewViewProvider(AgentPanelProvider.viewType, provider)
+    vscode8.window.registerWebviewViewProvider(AgentPanelProvider.viewType, provider)
   );
 };
 var deactivate = () => {
