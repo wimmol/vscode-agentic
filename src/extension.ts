@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { createStateStorage } from './db';
+import { syncWorkspaceRepos } from './features/syncWorkspaceRepos';
 import { AgentPanelProvider } from './services/AgentPanelProvider';
 import { FileExplorerProvider } from './services/FileExplorerProvider';
 import { WebviewCommandHandler } from './services/WebviewCommandHandler';
@@ -26,6 +27,11 @@ export const activate = async (context: vscode.ExtensionContext) => {
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(AgentPanelProvider.viewType, provider),
   );
+
+  // Deferred: sync workspace git folders after all listeners are wired up.
+  setTimeout(() => {
+    syncWorkspaceRepos(storage).catch((err) => console.error('[Agentic] workspace sync failed:', err));
+  }, 0);
 };
 
 export const deactivate = () => {};

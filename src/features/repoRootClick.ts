@@ -14,4 +14,9 @@ export const repoRootClick = async (
   }
 
   explorer.showRepo(repoId, repo.localPath);
+
+  const config = vscode.workspace.getConfiguration('terminal.integrated');
+  config.update('cwd', repo.localPath, vscode.ConfigurationTarget.Workspace).then(undefined, (err) => {
+    console.error('[repoRootClick] Failed to update terminal cwd:', err);
+  });
 };

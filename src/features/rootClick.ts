@@ -10,4 +10,9 @@ export const rootClick = async (storage: StateStorage, explorer: FileExplorerPro
   }
 
   explorer.showAllRepos(repos.map((r) => r.localPath));
+
+  const config = vscode.workspace.getConfiguration('terminal.integrated');
+  config.update('cwd', undefined, vscode.ConfigurationTarget.Workspace).then(undefined, (err) => {
+    console.error('[rootClick] Failed to clear terminal cwd:', err);
+  });
 };
