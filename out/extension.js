@@ -49481,10 +49481,23 @@ var StateStorage = class {
     const repos = this.state.get(BACKUP_KEYS.repositories, []);
     const agents = this.state.get(BACKUP_KEYS.agents, []);
     const worktrees = this.state.get(BACKUP_KEYS.worktrees, []);
+    console.log("[StateStorage] restore: data from workspaceState:", {
+      repositories: repos,
+      agents,
+      worktrees
+    });
     await this.sequelize.transaction(async (t) => {
       await RepositoryModel.bulkCreate(repos, { ignoreDuplicates: true, transaction: t });
       await AgentModel.bulkCreate(agents, { ignoreDuplicates: true, transaction: t });
       await WorktreeModel.bulkCreate(worktrees, { ignoreDuplicates: true, transaction: t });
+    });
+    const dbRepos = (await RepositoryModel.findAll()).map((r) => r.get({ plain: true }));
+    const dbAgents = (await AgentModel.findAll()).map((r) => r.get({ plain: true }));
+    const dbWorktrees = (await WorktreeModel.findAll()).map((r) => r.get({ plain: true }));
+    console.log("[StateStorage] restore: SQLite after hydration:", {
+      repositories: dbRepos,
+      agents: dbAgents,
+      worktrees: dbWorktrees
     });
   };
   // ── Repositories ───────────────────────────────────────────────
@@ -49506,7 +49519,8 @@ var StateStorage = class {
       createdAt: Date.now()
     };
     await RepositoryModel.create(repo);
-    await this._changed(["repositories"]);
+    await this._changed(["repositories"], "addRepository");
+    console.log("[StateStorage] addRepository: result:", repo);
     return repo;
   };
   getRepository = async (id) => {
@@ -49556,9 +49570,11 @@ var StateStorage = class {
     }
     if (repo.changed()) {
       await repo.save();
-      await this._changed(["repositories"]);
+      await this._changed(["repositories"], "updateRepository");
     }
-    return repo.get({ plain: true });
+    const result = repo.get({ plain: true });
+    console.log("[StateStorage] updateRepository: result:", result);
+    return result;
   };
   toggleRepoExpanded = async (id) => {
     const repo = await RepositoryModel.findByPk(id);
@@ -49567,12 +49583,14 @@ var StateStorage = class {
     }
     repo.isExpanded = !repo.isExpanded;
     await repo.save();
-    await this._changed(["repositories"]);
+    await this._changed(["repositories"], "toggleRepoExpanded");
+    console.log("[StateStorage] toggleRepoExpanded:", { id, isExpanded: repo.isExpanded });
   };
   removeRepository = async (id) => {
+    console.log("[StateStorage] removeRepository:", { id });
     const count = await RepositoryModel.destroy({ where: { repositoryId: id } });
     if (count > 0) {
-      await this._changed(["repositories", "agents", "worktrees"]);
+      await this._changed(["repositories", "agents", "worktrees"], "removeRepository");
     }
   };
   // ── Agents ─────────────────────────────────────────────────────
@@ -49607,7 +49625,8 @@ var StateStorage = class {
         { transaction: t }
       );
     });
-    await this._changed(["agents", "worktrees"]);
+    await this._changed(["agents", "worktrees"], "addAgent");
+    console.log("[StateStorage] addAgent: result:", agent);
     return agent;
   };
   getAgent = async (id) => {
@@ -49639,14 +49658,17 @@ var StateStorage = class {
     if (data.startedAt !== void 0) agent.startedAt = data.startedAt;
     if (agent.changed()) {
       await agent.save();
-      await this._changed(["agents"]);
+      await this._changed(["agents"], "updateAgent");
     }
-    return agent.get({ plain: true });
+    const result = agent.get({ plain: true });
+    console.log("[StateStorage] updateAgent: result:", result);
+    return result;
   };
   removeAgent = async (id) => {
+    console.log("[StateStorage] removeAgent:", { id });
     const count = await AgentModel.destroy({ where: { agentId: id } });
     if (count > 0) {
-      await this._changed(["agents", "worktrees"]);
+      await this._changed(["agents", "worktrees"], "removeAgent");
     }
   };
   // ── Worktrees (read-only) ─────────────────────────────────────
@@ -49655,7 +49677,8 @@ var StateStorage = class {
     return worktree?.get({ plain: true });
   };
   // ── Internal ───────────────────────────────────────────────────
-  _changed = async (tables) => {
+  _changed = async (tables, action) => {
+    console.log(`[StateStorage] _changed: action="${action ?? "unknown"}", persisting tables:`, tables);
     await this._persist(tables);
     this._onDidChange.fire();
   };
@@ -49673,6 +49696,7 @@ var StateStorage = class {
     await Promise.all(
       tables.map(async (table) => {
         const rows = await readTable(table);
+        console.log(`[StateStorage] _persist: saving ${BACKUP_KEYS[table]} to workspaceState:`, rows);
         await this.state.update(BACKUP_KEYS[table], rows);
       })
     );
@@ -49685,6 +49709,7 @@ var StateStorage = class {
 
 // src/db/index.ts
 var createStateStorage = async (context) => {
+  console.log("[createStateStorage] initializing in-memory SQLite...");
   const sequelize = new Sequelize({
     dialect: "sqlite",
     storage: ":memory:",
@@ -49693,8 +49718,10 @@ var createStateStorage = async (context) => {
   await sequelize.query("PRAGMA foreign_keys = ON");
   initModels(sequelize);
   await sequelize.sync();
+  console.log("[createStateStorage] SQLite ready, restoring from workspaceState...");
   const storage = new StateStorage(sequelize, context.workspaceState);
   await storage.restore();
+  console.log("[createStateStorage] restore complete");
   return storage;
 };
 
@@ -49726,17 +49753,24 @@ var AgentPanelProvider = class {
         void this.pushState();
       }
     }, null, this.disposables);
+    webviewView.webview.onDidReceiveMessage((message) => {
+      if (message.function === "ready") {
+        console.log("[AgentPanelProvider] webview ready, pushing initial state");
+        void this.pushState();
+      }
+    }, null, this.disposables);
     webviewView.onDidDispose(() => {
       this.view = void 0;
     }, null, this.disposables);
-    void this.pushState();
     this._onDidResolveView.fire(webviewView);
   }
   pushState = async () => {
     if (!this.view) {
+      console.log("[AgentPanelProvider] pushState: no view, skipping");
       return;
     }
     const repos = await this.storage.getAllReposWithAgents();
+    console.log("[AgentPanelProvider] pushState: sending to webview:", JSON.stringify(repos, null, 2));
     const message = { type: "update", repos };
     await this.view.webview.postMessage(message);
   };
@@ -49779,7 +49813,16 @@ var vscode4 = __toESM(require("vscode"));
 var import_fs = require("fs");
 var path = __toESM(require("path"));
 var vscode3 = __toESM(require("vscode"));
-var addRepo = async (storage) => {
+var BROWSE_LABEL = "$(folder-opened) Browse\u2026";
+var getWorkspaceGitFolders = () => {
+  const folders = vscode3.workspace.workspaceFolders ?? [];
+  return folders.filter((wf) => (0, import_fs.existsSync)(path.join(wf.uri.fsPath, ".git"))).map((wf) => ({
+    label: wf.name,
+    description: wf.uri.fsPath,
+    folderPath: wf.uri.fsPath
+  }));
+};
+var pickViaOsDialog = async () => {
   const result = await vscode3.window.showOpenDialog({
     canSelectFiles: false,
     canSelectFolders: true,
@@ -49787,11 +49830,37 @@ var addRepo = async (storage) => {
     openLabel: "Add Repository"
   });
   if (!result || result.length === 0) {
-    return;
+    return void 0;
   }
   const folderPath = result[0].fsPath;
   if (!(0, import_fs.existsSync)(path.join(folderPath, ".git"))) {
     vscode3.window.showErrorMessage("Selected folder is not a git repository (no .git found).");
+    return void 0;
+  }
+  return folderPath;
+};
+var addRepo = async (storage) => {
+  const existingRepos = await storage.getAllRepositories();
+  const existingPaths = new Set(existingRepos.map((r) => r.localPath));
+  const suggestions = getWorkspaceGitFolders().filter((f) => !existingPaths.has(f.folderPath));
+  const items = [
+    ...suggestions,
+    ...suggestions.length > 0 ? [{ label: "", kind: vscode3.QuickPickItemKind.Separator }] : [],
+    { label: BROWSE_LABEL, alwaysShow: true }
+  ];
+  const picked = await vscode3.window.showQuickPick(items, {
+    placeHolder: suggestions.length > 0 ? "Select a workspace repository or browse\u2026" : "No workspace repositories found \u2014 browse to add one",
+    title: "Add Repository"
+  });
+  if (!picked) {
+    return;
+  }
+  const folderPath = picked.folderPath ?? await pickViaOsDialog();
+  if (!folderPath) {
+    return;
+  }
+  if (existingPaths.has(folderPath)) {
+    vscode3.window.showInformationMessage("Repository is already added.");
     return;
   }
   const name = path.basename(folderPath);
@@ -49821,6 +49890,7 @@ var WebviewCommandHandler = class {
   disposables = [];
   messageDisposable;
   handler = async (message) => {
+    console.log("[WebviewCommandHandler] received message:", message);
     try {
       switch (message.function) {
         case "addRepo":
@@ -49830,8 +49900,10 @@ var WebviewCommandHandler = class {
           await this.storage.toggleRepoExpanded(message.args.repoId);
           break;
       }
+      console.log('[WebviewCommandHandler] handled "%s" successfully', message.function);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
+      console.error('[WebviewCommandHandler] error handling "%s":', message.function, msg);
       vscode4.window.showErrorMessage(msg);
     }
   };

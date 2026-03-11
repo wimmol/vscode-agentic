@@ -39,10 +39,25 @@ export class StateStorage implements vscode.Disposable {
     const agents = this.state.get<Agent[]>(BACKUP_KEYS.agents, []);
     const worktrees = this.state.get<Worktree[]>(BACKUP_KEYS.worktrees, []);
 
+    console.log('[StateStorage] restore: data from workspaceState:', {
+      repositories: repos,
+      agents: agents,
+      worktrees: worktrees,
+    });
+
     await this.sequelize.transaction(async (t) => {
       await RepositoryModel.bulkCreate(repos, { ignoreDuplicates: true, transaction: t });
       await AgentModel.bulkCreate(agents, { ignoreDuplicates: true, transaction: t });
       await WorktreeModel.bulkCreate(worktrees, { ignoreDuplicates: true, transaction: t });
+    });
+
+    const dbRepos = (await RepositoryModel.findAll()).map((r) => r.get({ plain: true }));
+    const dbAgents = (await AgentModel.findAll()).map((r) => r.get({ plain: true }));
+    const dbWorktrees = (await WorktreeModel.findAll()).map((r) => r.get({ plain: true }));
+    console.log('[StateStorage] restore: SQLite after hydration:', {
+      repositories: dbRepos,
+      agents: dbAgents,
+      worktrees: dbWorktrees,
     });
   };
 
@@ -69,7 +84,8 @@ export class StateStorage implements vscode.Disposable {
     };
 
     await RepositoryModel.create(repo);
-    await this._changed(['repositories']);
+    await this._changed(['repositories'], 'addRepository');
+    console.log('[StateStorage] addRepository: result:', repo);
     return repo;
   };
 
@@ -131,10 +147,12 @@ export class StateStorage implements vscode.Disposable {
 
     if (repo.changed()) {
       await repo.save();
-      await this._changed(['repositories']);
+      await this._changed(['repositories'], 'updateRepository');
     }
 
-    return repo.get({ plain: true });
+    const result = repo.get({ plain: true });
+    console.log('[StateStorage] updateRepository: result:', result);
+    return result;
   };
 
   toggleRepoExpanded = async (id: string): Promise<void> => {
@@ -145,13 +163,15 @@ export class StateStorage implements vscode.Disposable {
 
     repo.isExpanded = !repo.isExpanded;
     await repo.save();
-    await this._changed(['repositories']);
+    await this._changed(['repositories'], 'toggleRepoExpanded');
+    console.log('[StateStorage] toggleRepoExpanded:', { id, isExpanded: repo.isExpanded });
   };
 
   removeRepository = async (id: string): Promise<void> => {
+    console.log('[StateStorage] removeRepository:', { id });
     const count = await RepositoryModel.destroy({ where: { repositoryId: id } });
     if (count > 0) {
-      await this._changed(['repositories', 'agents', 'worktrees']);
+      await this._changed(['repositories', 'agents', 'worktrees'], 'removeRepository');
     }
   };
 
@@ -192,7 +212,8 @@ export class StateStorage implements vscode.Disposable {
       );
     });
 
-    await this._changed(['agents', 'worktrees']);
+    await this._changed(['agents', 'worktrees'], 'addAgent');
+    console.log('[StateStorage] addAgent: result:', agent);
     return agent;
   };
 
@@ -233,16 +254,19 @@ export class StateStorage implements vscode.Disposable {
 
     if (agent.changed()) {
       await agent.save();
-      await this._changed(['agents']);
+      await this._changed(['agents'], 'updateAgent');
     }
 
-    return agent.get({ plain: true });
+    const result = agent.get({ plain: true });
+    console.log('[StateStorage] updateAgent: result:', result);
+    return result;
   };
 
   removeAgent = async (id: string): Promise<void> => {
+    console.log('[StateStorage] removeAgent:', { id });
     const count = await AgentModel.destroy({ where: { agentId: id } });
     if (count > 0) {
-      await this._changed(['agents', 'worktrees']);
+      await this._changed(['agents', 'worktrees'], 'removeAgent');
     }
   };
 
@@ -255,7 +279,8 @@ export class StateStorage implements vscode.Disposable {
 
   // ── Internal ───────────────────────────────────────────────────
 
-  private _changed = async (tables: TableName[]): Promise<void> => {
+  private _changed = async (tables: TableName[], action?: string): Promise<void> => {
+    console.log(`[StateStorage] _changed: action="${action ?? 'unknown'}", persisting tables:`, tables);
     await this._persist(tables);
     this._onDidChange.fire();
   };
@@ -272,6 +297,7 @@ export class StateStorage implements vscode.Disposable {
     await Promise.all(
       tables.map(async (table) => {
         const rows = await readTable(table);
+        console.log(`[StateStorage] _persist: saving ${BACKUP_KEYS[table]} to workspaceState:`, rows);
         await this.state.update(BACKUP_KEYS[table], rows);
       }),
     );

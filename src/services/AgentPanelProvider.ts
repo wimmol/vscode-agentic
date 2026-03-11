@@ -45,20 +45,28 @@ export class AgentPanelProvider implements vscode.WebviewViewProvider, vscode.Di
       }
     }, null, this.disposables);
 
+    webviewView.webview.onDidReceiveMessage((message) => {
+      if (message.function === 'ready') {
+        console.log('[AgentPanelProvider] webview ready, pushing initial state');
+        void this.pushState();
+      }
+    }, null, this.disposables);
+
     webviewView.onDidDispose(() => {
       this.view = undefined;
     }, null, this.disposables);
 
-    void this.pushState();
     this._onDidResolveView.fire(webviewView);
   }
 
   private pushState = async (): Promise<void> => {
     if (!this.view) {
+      console.log('[AgentPanelProvider] pushState: no view, skipping');
       return;
     }
 
     const repos = await this.storage.getAllReposWithAgents();
+    console.log('[AgentPanelProvider] pushState: sending to webview:', JSON.stringify(repos, null, 2));
     const message: ExtensionToWebviewMessage = { type: 'update', repos };
     await this.view.webview.postMessage(message);
   };

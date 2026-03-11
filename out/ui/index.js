@@ -21948,11 +21948,14 @@ var useAgentPanel = () => {
   (0, import_react2.useEffect)(() => {
     const handler = (event) => {
       const message = event.data;
+      console.log("[useAgentPanel] received message:", message);
       if (message.type === "update") {
+        console.log("[useAgentPanel] setting repos:", message.repos);
         setRepos(message.repos);
       }
     };
     window.addEventListener("message", handler);
+    vscode.postMessage({ function: "ready", args: {} });
     return () => window.removeEventListener("message", handler);
   }, []);
   return repos;

@@ -29,6 +29,7 @@ export class WebviewCommandHandler implements vscode.Disposable {
   }
 
   private handler = async (message: WebviewToExtensionMessage): Promise<void> => {
+    console.log('[WebviewCommandHandler] received message:', message);
     try {
       switch (message.function) {
         case 'addRepo':
@@ -38,8 +39,10 @@ export class WebviewCommandHandler implements vscode.Disposable {
           await this.storage.toggleRepoExpanded(message.args.repoId);
           break;
       }
+      console.log('[WebviewCommandHandler] handled "%s" successfully', message.function);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
+      console.error('[WebviewCommandHandler] error handling "%s":', message.function, msg);
       vscode.window.showErrorMessage(msg);
     }
   };
