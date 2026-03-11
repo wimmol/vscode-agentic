@@ -4,6 +4,7 @@ import type { AgentPanelProvider } from './AgentPanelProvider';
 import type { WebviewToExtensionMessage } from '../types/messages';
 import { addRepo } from '../features/addRepo';
 import { removeRepo } from '../features/removeRepo';
+import { rootClick } from '../features/rootClick';
 
 /**
  * Handles all webview → extension communication.
@@ -41,6 +42,9 @@ export class WebviewCommandHandler implements vscode.Disposable {
           break;
         case 'toggleRepoExpanded':
           await this.storage.toggleRepoExpanded(message.args.repoId);
+          break;
+        case 'rootClick':
+          await rootClick();
           break;
       }
       console.log('[WebviewCommandHandler] handled "%s" successfully', message.function);

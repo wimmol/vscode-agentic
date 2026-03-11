@@ -32,3 +32,8 @@ export const removeRepoMessage = (repoId: string): WebviewToExtensionMessage => 
   function: 'removeRepo',
   args: { repoId },
 });
+
+export const rootClickMessage = (): WebviewToExtensionMessage => ({
+  function: 'rootClick',
+  args: {},
+});

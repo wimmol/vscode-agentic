@@ -340,7 +340,7 @@ var require_react_development = __commonJS({
         this.refs = emptyObject;
         this.updater = updater || ReactNoopUpdateQueue;
       }
-      function noop2() {
+      function noop() {
       }
       function testStringCoercion(value) {
         return "" + value;
@@ -531,7 +531,7 @@ var require_react_development = __commonJS({
           case "rejected":
             throw thenable.reason;
           default:
-            switch ("string" === typeof thenable.status ? thenable.then(noop2, noop2) : (thenable.status = "pending", thenable.then(
+            switch ("string" === typeof thenable.status ? thenable.then(noop, noop) : (thenable.status = "pending", thenable.then(
               function(fulfilledValue) {
                 "pending" === thenable.status && (thenable.status = "fulfilled", thenable.value = fulfilledValue);
               },
@@ -1169,7 +1169,7 @@ var require_react_development = __commonJS({
         try {
           var returnValue = scope(), onStartTransitionFinish = ReactSharedInternals.S;
           null !== onStartTransitionFinish && onStartTransitionFinish(currentTransition, returnValue);
-          "object" === typeof returnValue && null !== returnValue && "function" === typeof returnValue.then && (ReactSharedInternals.asyncTransitions++, returnValue.then(releaseAsyncTransition, releaseAsyncTransition), returnValue.then(noop2, reportGlobalError));
+          "object" === typeof returnValue && null !== returnValue && "function" === typeof returnValue.then && (ReactSharedInternals.asyncTransitions++, returnValue.then(releaseAsyncTransition, releaseAsyncTransition), returnValue.then(noop, reportGlobalError));
         } catch (error) {
           reportGlobalError(error);
         } finally {
@@ -1284,7 +1284,7 @@ var require_react_dom_development = __commonJS({
   "node_modules/react-dom/cjs/react-dom.development.js"(exports) {
     "use strict";
     (function() {
-      function noop2() {
+      function noop() {
       }
       function testStringCoercion(value) {
         return "" + value;
@@ -1330,19 +1330,19 @@ var require_react_dom_development = __commonJS({
       "undefined" !== typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ && "function" === typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart && __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart(Error());
       var React = require_react(), Internals = {
         d: {
-          f: noop2,
+          f: noop,
           r: function() {
             throw Error(
               "Invalid form element. requestFormReset must be passed a form that was rendered by React."
             );
           },
-          D: noop2,
-          C: noop2,
-          L: noop2,
-          m: noop2,
-          X: noop2,
-          S: noop2,
-          M: noop2
+          D: noop,
+          C: noop,
+          L: noop,
+          m: noop,
+          X: noop,
+          S: noop,
+          M: noop
         },
         p: 0,
         findDOMNode: null
@@ -1599,7 +1599,7 @@ var require_react_dom_client_development = __commonJS({
           "Context can only be read while React is rendering. In classes, you can read it in the render method or getDerivedStateFromProps. In function components, you can read it directly in the function body, but not inside Hooks like useReducer() or useMemo()."
         );
       }
-      function noop2() {
+      function noop() {
       }
       function warnForMissingKey() {
       }
@@ -7914,7 +7914,7 @@ var require_react_dom_client_development = __commonJS({
           queue,
           pendingState,
           NotPendingTransition,
-          null === action ? noop2 : function() {
+          null === action ? noop : function() {
             requestFormReset$1(formFiber);
             return action(formData);
           }
@@ -21974,15 +21974,20 @@ var removeRepoMessage = (repoId) => ({
   function: "removeRepo",
   args: { repoId }
 });
+var rootClickMessage = () => ({
+  function: "rootClick",
+  args: {}
+});
 
 // src/ui/agentPanel/AgentPanelPage.tsx
 var import_jsx_runtime11 = __toESM(require_jsx_runtime());
-var noop = () => {
-};
 var noopId = (_id) => {
 };
 var AgentPanelPage = () => {
   const repos = useAgentPanel();
+  const onRootClick = (0, import_react3.useCallback)(() => {
+    vscode.postMessage(rootClickMessage());
+  }, []);
   const onAddRepoClick = (0, import_react3.useCallback)(() => {
     vscode.postMessage(addRepoMessage());
   }, []);
@@ -21996,7 +22001,7 @@ var AgentPanelPage = () => {
     AgentPanelView,
     {
       repos,
-      onRootClick: noop,
+      onRootClick,
       onAddRepoClick,
       onRepoRootClick: noopId,
       onAddAgentClick: noopId,

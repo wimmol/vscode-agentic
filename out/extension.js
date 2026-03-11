@@ -40432,7 +40432,7 @@ var require_query_generator4 = __commonJS({
           const quotedAttributes = allAttributes.map((attr) => this.quoteIdentifier(attr)).join(",");
           allQueries.push((tupleStr) => `INSERT INTO ${quotedTable} (${quotedAttributes})${outputFragment} VALUES ${tupleStr};`);
         }
-        const commands = [];
+        const commands2 = [];
         let offset = 0;
         const batch = Math.floor(250 / (allAttributes.length + 1)) + 1;
         while (offset < Math.max(tuples.length, 1)) {
@@ -40441,10 +40441,10 @@ var require_query_generator4 = __commonJS({
           if (needIdentityInsertWrapper) {
             generatedQuery = `SET IDENTITY_INSERT ${quotedTable} ON; ${generatedQuery}; SET IDENTITY_INSERT ${quotedTable} OFF;`;
           }
-          commands.push(generatedQuery);
+          commands2.push(generatedQuery);
           offset += batch;
         }
-        return commands.join(";");
+        return commands2.join(";");
       }
       updateQuery(tableName, attrValueHash, where2, options, attributes) {
         const sql = super.updateQuery(tableName, attrValueHash, where2, options, attributes);
@@ -49315,7 +49315,7 @@ __export(extension_exports, {
   deactivate: () => deactivate
 });
 module.exports = __toCommonJS(extension_exports);
-var vscode6 = __toESM(require("vscode"));
+var vscode7 = __toESM(require("vscode"));
 
 // node_modules/sequelize/lib/index.mjs
 var import_index = __toESM(require_lib2(), 1);
@@ -49807,7 +49807,7 @@ var AgentPanelProvider = class {
 var getNonce = () => (0, import_crypto5.randomBytes)(16).toString("hex");
 
 // src/services/WebviewCommandHandler.ts
-var vscode5 = __toESM(require("vscode"));
+var vscode6 = __toESM(require("vscode"));
 
 // src/features/addRepo.ts
 var import_fs = require("fs");
@@ -49893,6 +49893,17 @@ var removeRepo = async (storage, repoId) => {
   await storage.removeRepository(repoId);
 };
 
+// src/features/rootClick.ts
+var vscode5 = __toESM(require("vscode"));
+var rootClick = async () => {
+  const folder = vscode5.workspace.workspaceFolders?.[0];
+  if (folder) {
+    await vscode5.commands.executeCommand("revealInExplorer", folder.uri);
+  } else {
+    vscode5.window.showInformationMessage("No workspace folder is open.");
+  }
+};
+
 // src/services/WebviewCommandHandler.ts
 var WebviewCommandHandler = class {
   constructor(provider, storage) {
@@ -49921,12 +49932,15 @@ var WebviewCommandHandler = class {
         case "toggleRepoExpanded":
           await this.storage.toggleRepoExpanded(message.args.repoId);
           break;
+        case "rootClick":
+          await rootClick();
+          break;
       }
       console.log('[WebviewCommandHandler] handled "%s" successfully', message.function);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error('[WebviewCommandHandler] error handling "%s":', message.function, msg);
-      vscode5.window.showErrorMessage(msg);
+      vscode6.window.showErrorMessage(msg);
     }
   };
   dispose() {
@@ -49946,7 +49960,7 @@ var activate = async (context) => {
   const commandHandler = new WebviewCommandHandler(provider, storage);
   context.subscriptions.push(commandHandler);
   context.subscriptions.push(
-    vscode6.window.registerWebviewViewProvider(AgentPanelProvider.viewType, provider)
+    vscode7.window.registerWebviewViewProvider(AgentPanelProvider.viewType, provider)
   );
 };
 var deactivate = () => {
