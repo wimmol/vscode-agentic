@@ -1659,11 +1659,11 @@ var require_lodash = __commonJS({
             return isFunction(object[key]);
           });
         }
-        function baseGet(object, path) {
-          path = castPath(path, object);
-          var index = 0, length = path.length;
+        function baseGet(object, path2) {
+          path2 = castPath(path2, object);
+          var index = 0, length = path2.length;
           while (object != null && index < length) {
-            object = object[toKey(path[index++])];
+            object = object[toKey(path2[index++])];
           }
           return index && index == length ? object : undefined2;
         }
@@ -1727,10 +1727,10 @@ var require_lodash = __commonJS({
           });
           return accumulator;
         }
-        function baseInvoke(object, path, args) {
-          path = castPath(path, object);
-          object = parent(object, path);
-          var func = object == null ? object : object[toKey(last(path))];
+        function baseInvoke(object, path2, args) {
+          path2 = castPath(path2, object);
+          object = parent(object, path2);
+          var func = object == null ? object : object[toKey(last(path2))];
           return func == null ? undefined2 : apply(func, object, args);
         }
         function baseIsArguments(value) {
@@ -1886,13 +1886,13 @@ var require_lodash = __commonJS({
             return object === source || baseIsMatch(object, source, matchData);
           };
         }
-        function baseMatchesProperty(path, srcValue) {
-          if (isKey(path) && isStrictComparable(srcValue)) {
-            return matchesStrictComparable(toKey(path), srcValue);
+        function baseMatchesProperty(path2, srcValue) {
+          if (isKey(path2) && isStrictComparable(srcValue)) {
+            return matchesStrictComparable(toKey(path2), srcValue);
           }
           return function(object) {
-            var objValue = get(object, path);
-            return objValue === undefined2 && objValue === srcValue ? hasIn(object, path) : baseIsEqual(srcValue, objValue, COMPARE_PARTIAL_FLAG | COMPARE_UNORDERED_FLAG);
+            var objValue = get(object, path2);
+            return objValue === undefined2 && objValue === srcValue ? hasIn(object, path2) : baseIsEqual(srcValue, objValue, COMPARE_PARTIAL_FLAG | COMPARE_UNORDERED_FLAG);
           };
         }
         function baseMerge(object, source, srcIndex, customizer, stack) {
@@ -1989,23 +1989,23 @@ var require_lodash = __commonJS({
           });
         }
         function basePick(object, paths) {
-          return basePickBy(object, paths, function(value, path) {
-            return hasIn(object, path);
+          return basePickBy(object, paths, function(value, path2) {
+            return hasIn(object, path2);
           });
         }
         function basePickBy(object, paths, predicate) {
           var index = -1, length = paths.length, result2 = {};
           while (++index < length) {
-            var path = paths[index], value = baseGet(object, path);
-            if (predicate(value, path)) {
-              baseSet(result2, castPath(path, object), value);
+            var path2 = paths[index], value = baseGet(object, path2);
+            if (predicate(value, path2)) {
+              baseSet(result2, castPath(path2, object), value);
             }
           }
           return result2;
         }
-        function basePropertyDeep(path) {
+        function basePropertyDeep(path2) {
           return function(object) {
-            return baseGet(object, path);
+            return baseGet(object, path2);
           };
         }
         function basePullAll(array, values2, iteratee2, comparator) {
@@ -2079,14 +2079,14 @@ var require_lodash = __commonJS({
           var array = values(collection);
           return shuffleSelf(array, baseClamp(n, 0, array.length));
         }
-        function baseSet(object, path, value, customizer) {
+        function baseSet(object, path2, value, customizer) {
           if (!isObject(object)) {
             return object;
           }
-          path = castPath(path, object);
-          var index = -1, length = path.length, lastIndex = length - 1, nested = object;
+          path2 = castPath(path2, object);
+          var index = -1, length = path2.length, lastIndex = length - 1, nested = object;
           while (nested != null && ++index < length) {
-            var key = toKey(path[index]), newValue = value;
+            var key = toKey(path2[index]), newValue = value;
             if (key === "__proto__" || key === "constructor" || key === "prototype") {
               return object;
             }
@@ -2094,7 +2094,7 @@ var require_lodash = __commonJS({
               var objValue = nested[key];
               newValue = customizer ? customizer(objValue, key, nested) : undefined2;
               if (newValue === undefined2) {
-                newValue = isObject(objValue) ? objValue : isIndex(path[index + 1]) ? [] : {};
+                newValue = isObject(objValue) ? objValue : isIndex(path2[index + 1]) ? [] : {};
               }
             }
             assignValue(nested, key, newValue);
@@ -2260,33 +2260,33 @@ var require_lodash = __commonJS({
             }
           return result2;
         }
-        function baseUnset(object, path) {
-          path = castPath(path, object);
-          var index = -1, length = path.length;
+        function baseUnset(object, path2) {
+          path2 = castPath(path2, object);
+          var index = -1, length = path2.length;
           if (!length) {
             return true;
           }
           var isRootPrimitive = object == null || typeof object !== "object" && typeof object !== "function";
           while (++index < length) {
-            var key = path[index];
+            var key = path2[index];
             if (typeof key !== "string") {
               continue;
             }
             if (key === "__proto__" && !hasOwnProperty.call(object, "__proto__")) {
               return false;
             }
-            if (key === "constructor" && index + 1 < length && typeof path[index + 1] === "string" && path[index + 1] === "prototype") {
+            if (key === "constructor" && index + 1 < length && typeof path2[index + 1] === "string" && path2[index + 1] === "prototype") {
               if (isRootPrimitive && index === 0) {
                 continue;
               }
               return false;
             }
           }
-          var obj = parent(object, path);
-          return obj == null || delete obj[toKey(last(path))];
+          var obj = parent(object, path2);
+          return obj == null || delete obj[toKey(last(path2))];
         }
-        function baseUpdate(object, path, updater, customizer) {
-          return baseSet(object, path, updater(baseGet(object, path)), customizer);
+        function baseUpdate(object, path2, updater, customizer) {
+          return baseSet(object, path2, updater(baseGet(object, path2)), customizer);
         }
         function baseWhile(array, predicate, isDrop, fromRight) {
           var length = array.length, index = fromRight ? length : -1;
@@ -3169,11 +3169,11 @@ var require_lodash = __commonJS({
           var match = source.match(reWrapDetails);
           return match ? match[1].split(reSplitDetails) : [];
         }
-        function hasPath(object, path, hasFunc) {
-          path = castPath(path, object);
-          var index = -1, length = path.length, result2 = false;
+        function hasPath(object, path2, hasFunc) {
+          path2 = castPath(path2, object);
+          var index = -1, length = path2.length, result2 = false;
           while (++index < length) {
-            var key = toKey(path[index]);
+            var key = toKey(path2[index]);
             if (!(result2 = object != null && hasFunc(object, key))) {
               break;
             }
@@ -3375,8 +3375,8 @@ var require_lodash = __commonJS({
             return apply(func, this, otherArgs);
           };
         }
-        function parent(object, path) {
-          return path.length < 2 ? object : baseGet(object, baseSlice(path, 0, -1));
+        function parent(object, path2) {
+          return path2.length < 2 ? object : baseGet(object, baseSlice(path2, 0, -1));
         }
         function reorder(array, indexes) {
           var arrLength = array.length, length = nativeMin(indexes.length, arrLength), oldArray = copyArray(array);
@@ -3653,7 +3653,7 @@ var require_lodash = __commonJS({
           }
           return mapped.length && mapped[0] === arrays[0] ? baseIntersection(mapped, undefined2, comparator) : [];
         });
-        function join(array, separator) {
+        function join2(array, separator) {
           return array == null ? "" : nativeJoin.call(array, separator);
         }
         function last(array) {
@@ -4011,10 +4011,10 @@ var require_lodash = __commonJS({
           }
           return isString(collection) ? fromIndex <= length && collection.indexOf(value, fromIndex) > -1 : !!length && baseIndexOf(collection, value, fromIndex) > -1;
         }
-        var invokeMap = baseRest(function(collection, path, args) {
-          var index = -1, isFunc = typeof path == "function", result2 = isArrayLike(collection) ? Array2(collection.length) : [];
+        var invokeMap = baseRest(function(collection, path2, args) {
+          var index = -1, isFunc = typeof path2 == "function", result2 = isArrayLike(collection) ? Array2(collection.length) : [];
           baseEach(collection, function(value) {
-            result2[++index] = isFunc ? apply(path, value, args) : baseInvoke(value, path, args);
+            result2[++index] = isFunc ? apply(path2, value, args) : baseInvoke(value, path2, args);
           });
           return result2;
         });
@@ -4666,15 +4666,15 @@ var require_lodash = __commonJS({
         function functionsIn(object) {
           return object == null ? [] : baseFunctions(object, keysIn(object));
         }
-        function get(object, path, defaultValue) {
-          var result2 = object == null ? undefined2 : baseGet(object, path);
+        function get(object, path2, defaultValue) {
+          var result2 = object == null ? undefined2 : baseGet(object, path2);
           return result2 === undefined2 ? defaultValue : result2;
         }
-        function has(object, path) {
-          return object != null && hasPath(object, path, baseHas);
+        function has(object, path2) {
+          return object != null && hasPath(object, path2, baseHas);
         }
-        function hasIn(object, path) {
-          return object != null && hasPath(object, path, baseHasIn);
+        function hasIn(object, path2) {
+          return object != null && hasPath(object, path2, baseHasIn);
         }
         var invert = createInverter(function(result2, value, key) {
           if (value != null && typeof value.toString != "function") {
@@ -4727,10 +4727,10 @@ var require_lodash = __commonJS({
             return result2;
           }
           var isDeep = false;
-          paths = arrayMap(paths, function(path) {
-            path = castPath(path, object);
-            isDeep || (isDeep = path.length > 1);
-            return path;
+          paths = arrayMap(paths, function(path2) {
+            path2 = castPath(path2, object);
+            isDeep || (isDeep = path2.length > 1);
+            return path2;
           });
           copyObject(object, getAllKeysIn(object), result2);
           if (isDeep) {
@@ -4756,19 +4756,19 @@ var require_lodash = __commonJS({
             return [prop];
           });
           predicate = getIteratee(predicate);
-          return basePickBy(object, props, function(value, path) {
-            return predicate(value, path[0]);
+          return basePickBy(object, props, function(value, path2) {
+            return predicate(value, path2[0]);
           });
         }
-        function result(object, path, defaultValue) {
-          path = castPath(path, object);
-          var index = -1, length = path.length;
+        function result(object, path2, defaultValue) {
+          path2 = castPath(path2, object);
+          var index = -1, length = path2.length;
           if (!length) {
             length = 1;
             object = undefined2;
           }
           while (++index < length) {
-            var value = object == null ? undefined2 : object[toKey(path[index])];
+            var value = object == null ? undefined2 : object[toKey(path2[index])];
             if (value === undefined2) {
               index = length;
               value = defaultValue;
@@ -4777,12 +4777,12 @@ var require_lodash = __commonJS({
           }
           return object;
         }
-        function set(object, path, value) {
-          return object == null ? object : baseSet(object, path, value);
+        function set(object, path2, value) {
+          return object == null ? object : baseSet(object, path2, value);
         }
-        function setWith(object, path, value, customizer) {
+        function setWith(object, path2, value, customizer) {
           customizer = typeof customizer == "function" ? customizer : undefined2;
-          return object == null ? object : baseSet(object, path, value, customizer);
+          return object == null ? object : baseSet(object, path2, value, customizer);
         }
         var toPairs = createToPairs(keys);
         var toPairsIn = createToPairs(keysIn);
@@ -4804,15 +4804,15 @@ var require_lodash = __commonJS({
           });
           return accumulator;
         }
-        function unset(object, path) {
-          return object == null ? true : baseUnset(object, path);
+        function unset(object, path2) {
+          return object == null ? true : baseUnset(object, path2);
         }
-        function update(object, path, updater) {
-          return object == null ? object : baseUpdate(object, path, castFunction(updater));
+        function update(object, path2, updater) {
+          return object == null ? object : baseUpdate(object, path2, castFunction(updater));
         }
-        function updateWith(object, path, updater, customizer) {
+        function updateWith(object, path2, updater, customizer) {
           customizer = typeof customizer == "function" ? customizer : undefined2;
-          return object == null ? object : baseUpdate(object, path, castFunction(updater), customizer);
+          return object == null ? object : baseUpdate(object, path2, castFunction(updater), customizer);
         }
         function values(object) {
           return object == null ? [] : baseValues(object, keys(object));
@@ -5193,17 +5193,17 @@ var require_lodash = __commonJS({
         function matches(source) {
           return baseMatches(baseClone(source, CLONE_DEEP_FLAG));
         }
-        function matchesProperty(path, srcValue) {
-          return baseMatchesProperty(path, baseClone(srcValue, CLONE_DEEP_FLAG));
+        function matchesProperty(path2, srcValue) {
+          return baseMatchesProperty(path2, baseClone(srcValue, CLONE_DEEP_FLAG));
         }
-        var method = baseRest(function(path, args) {
+        var method = baseRest(function(path2, args) {
           return function(object) {
-            return baseInvoke(object, path, args);
+            return baseInvoke(object, path2, args);
           };
         });
         var methodOf = baseRest(function(object, args) {
-          return function(path) {
-            return baseInvoke(object, path, args);
+          return function(path2) {
+            return baseInvoke(object, path2, args);
           };
         });
         function mixin(object, source, options) {
@@ -5250,12 +5250,12 @@ var require_lodash = __commonJS({
         var over = createOver(arrayMap);
         var overEvery = createOver(arrayEvery);
         var overSome = createOver(arraySome);
-        function property(path) {
-          return isKey(path) ? baseProperty(toKey(path)) : basePropertyDeep(path);
+        function property(path2) {
+          return isKey(path2) ? baseProperty(toKey(path2)) : basePropertyDeep(path2);
         }
         function propertyOf(object) {
-          return function(path) {
-            return object == null ? undefined2 : baseGet(object, path);
+          return function(path2) {
+            return object == null ? undefined2 : baseGet(object, path2);
           };
         }
         var range = createRange();
@@ -5572,7 +5572,7 @@ var require_lodash = __commonJS({
         lodash.isUndefined = isUndefined;
         lodash.isWeakMap = isWeakMap;
         lodash.isWeakSet = isWeakSet;
-        lodash.join = join;
+        lodash.join = join2;
         lodash.kebabCase = kebabCase;
         lodash.last = last;
         lodash.lastIndexOf = lastIndexOf;
@@ -5708,12 +5708,12 @@ var require_lodash = __commonJS({
         LazyWrapper.prototype.findLast = function(predicate) {
           return this.reverse().find(predicate);
         };
-        LazyWrapper.prototype.invokeMap = baseRest(function(path, args) {
-          if (typeof path == "function") {
+        LazyWrapper.prototype.invokeMap = baseRest(function(path2, args) {
+          if (typeof path2 == "function") {
             return new LazyWrapper(this);
           }
           return this.map(function(value) {
-            return baseInvoke(value, path, args);
+            return baseInvoke(value, path2, args);
           });
         });
         LazyWrapper.prototype.reject = function(predicate) {
@@ -8083,7 +8083,7 @@ var require_validation_error = __commonJS({
       return ValidationErrorItemOrigin22;
     })(ValidationErrorItemOrigin2 || {});
     var ValidationErrorItem2 = class {
-      constructor(message, type, path, value, instance, validatorKey, fnName, fnArgs) {
+      constructor(message, type, path2, value, instance, validatorKey, fnName, fnArgs) {
         __publicField(this, "message");
         __publicField(this, "type");
         __publicField(this, "path");
@@ -8095,7 +8095,7 @@ var require_validation_error = __commonJS({
         __publicField(this, "validatorArgs");
         this.message = message || "";
         this.type = null;
-        this.path = path || null;
+        this.path = path2 || null;
         this.value = value !== void 0 ? value : null;
         this.origin = null;
         this.instance = instance || null;
@@ -8154,9 +8154,9 @@ var require_validation_error = __commonJS({
           this.stack = options.stack;
         }
       }
-      get(path) {
+      get(path2) {
         return this.errors.reduce((reduced, error) => {
-          if (error.path === path) {
+          if (error.path === path2) {
             reduced.push(error);
           }
           return reduced;
@@ -26828,39 +26828,39 @@ var require_dottie = __commonJS({
         }
         return Dottie.transform.apply(this, args);
       };
-      Dottie.find = function(path, object) {
-        return Dottie.get(object, path);
+      Dottie.find = function(path2, object) {
+        return Dottie.get(object, path2);
       };
       Dottie.memoizePath = true;
       var memoized = {};
-      Dottie.get = function(object, path, defaultVal) {
-        if (object === undefined2 || object === null || path === undefined2 || path === null) {
+      Dottie.get = function(object, path2, defaultVal) {
+        if (object === undefined2 || object === null || path2 === undefined2 || path2 === null) {
           return defaultVal;
         }
         var names;
-        if (typeof path === "string") {
+        if (typeof path2 === "string") {
           if (Dottie.memoizePath) {
-            if (memoized[path]) {
-              names = memoized[path].slice(0);
+            if (memoized[path2]) {
+              names = memoized[path2].slice(0);
             } else {
-              names = path.split(".").reverse();
-              memoized[path] = names.slice(0);
+              names = path2.split(".").reverse();
+              memoized[path2] = names.slice(0);
             }
           } else {
-            names = path.split(".").reverse();
+            names = path2.split(".").reverse();
           }
-        } else if (Array.isArray(path)) {
-          names = reverseDupArray(path);
+        } else if (Array.isArray(path2)) {
+          names = reverseDupArray(path2);
         }
         while (names.length && (object = object[names.pop()]) !== undefined2 && object !== null) ;
         if (object === null && names.length) object = undefined2;
         return object === undefined2 ? defaultVal : object;
       };
-      Dottie.exists = function(object, path) {
-        return Dottie.get(object, path) !== undefined2;
+      Dottie.exists = function(object, path2) {
+        return Dottie.get(object, path2) !== undefined2;
       };
-      Dottie.set = function(object, path, value, options) {
-        var pieces = Array.isArray(path) ? path : path.split("."), current = object, piece, length = pieces.length;
+      Dottie.set = function(object, path2, value, options) {
+        var pieces = Array.isArray(path2) ? path2 : path2.split("."), current = object, piece, length = pieces.length;
         var DANGEROUS_KEYS = ["__proto__", "constructor", "prototype"];
         if (pieces.some(function(p) {
           return DANGEROUS_KEYS.indexOf(p) !== -1;
@@ -26884,9 +26884,9 @@ var require_dottie = __commonJS({
         }
         current[piece] = value;
       };
-      Dottie["default"] = function(object, path, value) {
-        if (Dottie.get(object, path) === undefined2) {
-          Dottie.set(object, path, value);
+      Dottie["default"] = function(object, path2, value) {
+        if (Dottie.get(object, path2) === undefined2) {
+          Dottie.set(object, path2, value);
         }
       };
       Dottie.transform = function Dottie$transformfunction(object, options) {
@@ -37407,8 +37407,8 @@ var require_query_generator = __commonJS({
                   const itemSplit = item2.split(".");
                   if (previousModel.rawAttributes[itemSplit[0]].type instanceof DataTypes2.JSON) {
                     const identifier2 = this.quoteIdentifiers(`${previousModel.name}.${previousModel.rawAttributes[itemSplit[0]].field}`);
-                    const path = itemSplit.slice(1);
-                    item2 = this.jsonPathExtractionQuery(identifier2, path);
+                    const path2 = itemSplit.slice(1);
+                    item2 = this.jsonPathExtractionQuery(identifier2, path2);
                     item2 = this.sequelize.literal(item2);
                   }
                 }
@@ -37569,8 +37569,8 @@ var require_query_generator = __commonJS({
       isIdentifierQuoted(identifier2) {
         return /^\s*(?:([`"'])(?:(?!\1).|\1{2})*\1\.?)+\s*$/i.test(identifier2);
       }
-      jsonPathExtractionQuery(column, path, isJson) {
-        let paths = _.toPath(path);
+      jsonPathExtractionQuery(column, path2, isJson) {
+        let paths = _.toPath(path2);
         let pathStr;
         const quotedColumn = this.isIdentifierQuoted(column) ? column : this.quoteIdentifier(column);
         switch (this.dialect) {
@@ -37588,9 +37588,9 @@ var require_query_generator = __commonJS({
             }
             return `json_unquote(json_extract(${quotedColumn},${pathStr}))`;
           case "postgres":
-            const join = isJson ? "#>" : "#>>";
+            const join2 = isJson ? "#>" : "#>>";
             pathStr = this.escape(`{${paths.join(",")}}`);
-            return `(${quotedColumn}${join}${pathStr})`;
+            return `(${quotedColumn}${join2}${pathStr})`;
           default:
             throw new Error(`Unsupported ${this.dialect} for JSON operations`);
         }
@@ -38278,7 +38278,7 @@ https://github.com/sequelize/sequelize/discussions/15694`);
           const isBelongsTo = topAssociation.associationType === "BelongsTo";
           const sourceField = isBelongsTo ? topAssociation.identifierField : topAssociation.sourceKeyField || topParent.model.primaryKeyField;
           const targetField = isBelongsTo ? topAssociation.sourceKeyField || topInclude.model.primaryKeyField : topAssociation.identifierField;
-          const join = [
+          const join2 = [
             `${this.quoteIdentifier(topInclude.as)}.${this.quoteIdentifier(targetField)}`,
             `${this.quoteTable(topParent.as || topParent.model.name)}.${this.quoteIdentifier(sourceField)}`
           ].join(" = ");
@@ -38289,7 +38289,7 @@ https://github.com/sequelize/sequelize/discussions/15694`);
             where: {
               [Op2.and]: [
                 topInclude.where,
-                { [Op2.join]: this.sequelize.literal(join) }
+                { [Op2.join]: this.sequelize.literal(join2) }
               ]
             },
             limit: 1,
@@ -38651,15 +38651,15 @@ https://github.com/sequelize/sequelize/discussions/15694`);
         const result = items.join(this.OperatorMap[Op2.and]);
         return items.length > 1 ? `(${result})` : result;
       }
-      _traverseJSON(items, baseKey, prop, item, path) {
+      _traverseJSON(items, baseKey, prop, item, path2) {
         let cast2;
-        if (path[path.length - 1].includes("::")) {
-          const tmp = path[path.length - 1].split("::");
+        if (path2[path2.length - 1].includes("::")) {
+          const tmp = path2[path2.length - 1].split("::");
           cast2 = tmp[1];
-          path[path.length - 1] = tmp[0];
+          path2[path2.length - 1] = tmp[0];
           this._validateCastType(cast2);
         }
-        let pathKey = this.jsonPathExtractionQuery(baseKey, path);
+        let pathKey = this.jsonPathExtractionQuery(baseKey, path2);
         if (_.isPlainObject(item)) {
           Utils2.getOperators(item).forEach((op) => {
             const value = this._toJSONValue(item[op]);
@@ -38671,11 +38671,11 @@ https://github.com/sequelize/sequelize/discussions/15694`);
               } catch (e) {
               }
             }
-            pathKey = this.jsonPathExtractionQuery(baseKey, path, isJson);
+            pathKey = this.jsonPathExtractionQuery(baseKey, path2, isJson);
             items.push(this.whereItemQuery(this._castKey(pathKey, value, cast2), { [op]: value }));
           });
           _.forOwn(item, (value, itemProp) => {
-            this._traverseJSON(items, baseKey, itemProp, value, path.concat([itemProp]));
+            this._traverseJSON(items, baseKey, itemProp, value, path2.concat([itemProp]));
           });
           return;
         }
@@ -38888,13 +38888,13 @@ https://github.com/sequelize/sequelize/discussions/15694`);
         }
         throw new Error(`Unsupported where option value: ${util.inspect(smth)}. Please refer to the Sequelize documentation to learn more about which values are accepted as part of the where option.`);
       }
-      parseConditionObject(conditions, path) {
-        path = path || [];
+      parseConditionObject(conditions, path2) {
+        path2 = path2 || [];
         return _.reduce(conditions, (result, value, key) => {
           if (_.isObject(value)) {
-            return result.concat(this.parseConditionObject(value, path.concat(key)));
+            return result.concat(this.parseConditionObject(value, path2.concat(key)));
           }
-          result.push({ path: path.concat(key), value });
+          result.push({ path: path2.concat(key), value });
           return result;
         }, []);
       }
@@ -43055,8 +43055,8 @@ var require_query_generator5 = __commonJS({
         }
         return hasJsonFunction;
       }
-      jsonPathExtractionQuery(column, path) {
-        let paths = _.toPath(path);
+      jsonPathExtractionQuery(column, path2) {
+        let paths = _.toPath(path2);
         const quotedColumn = this.isIdentifierQuoted(column) ? column : this.quoteIdentifier(column);
         paths = paths.map((subPath) => {
           return /\D/.test(subPath) ? Utils2.addTicks(subPath, '"') : subPath;
@@ -44777,7 +44777,7 @@ var require_connection_manager7 = __commonJS({
   "node_modules/sequelize/lib/dialects/sqlite/connection-manager.js"(exports2, module2) {
     "use strict";
     var fs = require("fs");
-    var path = require("path");
+    var path2 = require("path");
     var AbstractConnectionManager = require_connection_manager();
     var { logger } = require_logger();
     var debug = logger.debugContext("connection:sqlite");
@@ -44821,7 +44821,7 @@ var require_connection_manager7 = __commonJS({
           return this.connections[options.inMemory || options.uuid];
         }
         if (!options.inMemory && (options.readWriteMode & this.lib.OPEN_CREATE) !== 0) {
-          fs.mkdirSync(path.dirname(options.storage), { recursive: true });
+          fs.mkdirSync(path2.dirname(options.storage), { recursive: true });
         }
         const connection = await new Promise((resolve, reject) => {
           this.connections[options.inMemory || options.uuid] = new this.lib.Database(options.storage, options.readWriteMode, (err) => {
@@ -48674,7 +48674,7 @@ var require_sequelize = __commonJS({
     };
     var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     var url = require("url");
-    var path = require("path");
+    var path2 = require("path");
     var pgConnectionString = require_pg_connection_string();
     var retry = require_dist().default;
     var _ = require_lodash();
@@ -48713,8 +48713,8 @@ var require_sequelize = __commonJS({
           options.dialect = urlParts.protocol.replace(/:$/, "");
           options.host = urlParts.hostname;
           if (options.dialect === "sqlite" && urlParts.pathname && !urlParts.pathname.startsWith("/:memory")) {
-            const storagePath = path.join(options.host, urlParts.pathname);
-            options.storage = path.resolve(options.storage || storagePath);
+            const storagePath = path2.join(options.host, urlParts.pathname);
+            options.storage = path2.resolve(options.storage || storagePath);
           }
           if (urlParts.pathname) {
             config.database = urlParts.pathname.replace(/^\//, "");
@@ -49315,7 +49315,7 @@ __export(extension_exports, {
   deactivate: () => deactivate
 });
 module.exports = __toCommonJS(extension_exports);
-var vscode3 = __toESM(require("vscode"));
+var vscode5 = __toESM(require("vscode"));
 
 // node_modules/sequelize/lib/index.mjs
 var import_index = __toESM(require_lib2(), 1);
@@ -49560,11 +49560,10 @@ var StateStorage = class {
     }
     return repo.get({ plain: true });
   };
-  toggleRepoExpanded = async (args) => {
-    const { repoId } = args;
-    const repo = await RepositoryModel.findByPk(repoId);
+  toggleRepoExpanded = async (id) => {
+    const repo = await RepositoryModel.findByPk(id);
     if (!repo) {
-      throw new Error(`Repository ${repoId} not found`);
+      throw new Error(`Repository ${id} not found`);
     }
     repo.isExpanded = !repo.isExpanded;
     await repo.save();
@@ -49770,6 +49769,39 @@ var AgentPanelProvider = class {
 var getNonce = () => (0, import_crypto5.randomBytes)(16).toString("hex");
 
 // src/services/WebviewCommandHandler.ts
+var vscode4 = __toESM(require("vscode"));
+
+// src/features/addRepo.ts
+var import_fs = require("fs");
+var path = __toESM(require("path"));
+var vscode3 = __toESM(require("vscode"));
+var addRepo = async (storage) => {
+  const result = await vscode3.window.showOpenDialog({
+    canSelectFiles: false,
+    canSelectFolders: true,
+    canSelectMany: false,
+    openLabel: "Add Repository"
+  });
+  if (!result || result.length === 0) {
+    return;
+  }
+  const folderPath = result[0].fsPath;
+  if (!(0, import_fs.existsSync)(path.join(folderPath, ".git"))) {
+    vscode3.window.showErrorMessage("Selected folder is not a git repository (no .git found).");
+    return;
+  }
+  const name = path.basename(folderPath);
+  await storage.addRepository(name, folderPath, "staging");
+  const alreadyInWorkspace = (vscode3.workspace.workspaceFolders ?? []).some(
+    (wf) => wf.uri.fsPath === folderPath
+  );
+  if (!alreadyInWorkspace) {
+    const index = vscode3.workspace.workspaceFolders?.length ?? 0;
+    vscode3.workspace.updateWorkspaceFolders(index, 0, { uri: vscode3.Uri.file(folderPath) });
+  }
+};
+
+// src/services/WebviewCommandHandler.ts
 var WebviewCommandHandler = class {
   constructor(provider, storage) {
     this.storage = storage;
@@ -49784,12 +49816,21 @@ var WebviewCommandHandler = class {
   }
   disposables = [];
   messageDisposable;
-  handler(message) {
-    switch (message.function) {
-      case "toggleRepoExpanded":
-        this.storage.toggleRepoExpanded(message.args);
+  handler = async (message) => {
+    try {
+      switch (message.function) {
+        case "addRepo":
+          await addRepo(this.storage);
+          break;
+        case "toggleRepoExpanded":
+          await this.storage.toggleRepoExpanded(message.args.repoId);
+          break;
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      vscode4.window.showErrorMessage(msg);
     }
-  }
+  };
   dispose() {
     this.messageDisposable?.dispose();
     for (const d of this.disposables) {
@@ -49807,7 +49848,7 @@ var activate = async (context) => {
   const commandHandler = new WebviewCommandHandler(provider, storage);
   context.subscriptions.push(commandHandler);
   context.subscriptions.push(
-    vscode3.window.registerWebviewViewProvider(AgentPanelProvider.viewType, provider)
+    vscode5.window.registerWebviewViewProvider(AgentPanelProvider.viewType, provider)
   );
 };
 var deactivate = () => {

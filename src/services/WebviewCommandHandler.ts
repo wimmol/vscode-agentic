@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import type { StateStorage } from '../db';
 import type { AgentPanelProvider } from './AgentPanelProvider';
 import type { WebviewToExtensionMessage } from '../types/messages';
+import { addRepo } from '../features/addRepo';
 
 /**
  * Handles all webview → extension communication.
@@ -30,6 +31,9 @@ export class WebviewCommandHandler implements vscode.Disposable {
   private handler = async (message: WebviewToExtensionMessage): Promise<void> => {
     try {
       switch (message.function) {
+        case 'addRepo':
+          await addRepo(this.storage);
+          break;
         case 'toggleRepoExpanded':
           await this.storage.toggleRepoExpanded(message.args.repoId);
           break;

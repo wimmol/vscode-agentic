@@ -22,3 +22,8 @@ export const toggleRepoExpandedMessage = (repoId: string): WebviewToExtensionMes
   function: 'toggleRepoExpanded',
   args: { repoId },
 });
+
+export const addRepoMessage = (): WebviewToExtensionMessage => ({
+  function: 'addRepo',
+  args: {},
+});
