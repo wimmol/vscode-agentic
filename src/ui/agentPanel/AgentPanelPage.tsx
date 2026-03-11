@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { AgentPanelView } from './AgentPanelView';
 import { useAgentPanel } from './useAgentPanel';
 import { vscode } from '../index';
-import { addRepoMessage, toggleRepoExpandedMessage } from '../../types/messages';
+import { addRepoMessage, removeRepoMessage, toggleRepoExpandedMessage } from '../../types/messages';
 
 const noop = () => {};
 const noopId = (_id: string) => {};
@@ -12,6 +12,10 @@ export const AgentPanelPage = () => {
 
   const onAddRepoClick = useCallback(() => {
     vscode.postMessage(addRepoMessage());
+  }, []);
+
+  const onRemoveRepoClick = useCallback((repoId: string) => {
+    vscode.postMessage(removeRepoMessage(repoId));
   }, []);
 
   const onToggleRepoClick = useCallback((repoId: string) => {
@@ -25,7 +29,7 @@ export const AgentPanelPage = () => {
       onAddRepoClick={onAddRepoClick}
       onRepoRootClick={noopId}
       onAddAgentClick={noopId}
-      onRemoveRepoClick={noopId}
+      onRemoveRepoClick={onRemoveRepoClick}
       onToggleRepoClick={onToggleRepoClick}
       onAgentClick={noopId}
       onCloneAgentClick={noopId}

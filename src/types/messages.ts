@@ -27,3 +27,8 @@ export const addRepoMessage = (): WebviewToExtensionMessage => ({
   function: 'addRepo',
   args: {},
 });
+
+export const removeRepoMessage = (repoId: string): WebviewToExtensionMessage => ({
+  function: 'removeRepo',
+  args: { repoId },
+});

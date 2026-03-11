@@ -49315,7 +49315,7 @@ __export(extension_exports, {
   deactivate: () => deactivate
 });
 module.exports = __toCommonJS(extension_exports);
-var vscode5 = __toESM(require("vscode"));
+var vscode6 = __toESM(require("vscode"));
 
 // node_modules/sequelize/lib/index.mjs
 var import_index = __toESM(require_lib2(), 1);
@@ -49807,7 +49807,7 @@ var AgentPanelProvider = class {
 var getNonce = () => (0, import_crypto5.randomBytes)(16).toString("hex");
 
 // src/services/WebviewCommandHandler.ts
-var vscode4 = __toESM(require("vscode"));
+var vscode5 = __toESM(require("vscode"));
 
 // src/features/addRepo.ts
 var import_fs = require("fs");
@@ -49874,6 +49874,25 @@ var addRepo = async (storage) => {
   }
 };
 
+// src/features/removeRepo.ts
+var vscode4 = __toESM(require("vscode"));
+var removeRepo = async (storage, repoId) => {
+  const repo = await storage.getRepository(repoId);
+  if (!repo) {
+    vscode4.window.showErrorMessage("Repository not found.");
+    return;
+  }
+  const confirm = await vscode4.window.showWarningMessage(
+    `Remove repository "${repo.name}"? This will also delete all its agents and worktrees.`,
+    { modal: true },
+    "Remove"
+  );
+  if (confirm !== "Remove") {
+    return;
+  }
+  await storage.removeRepository(repoId);
+};
+
 // src/services/WebviewCommandHandler.ts
 var WebviewCommandHandler = class {
   constructor(provider, storage) {
@@ -49896,6 +49915,9 @@ var WebviewCommandHandler = class {
         case "addRepo":
           await addRepo(this.storage);
           break;
+        case "removeRepo":
+          await removeRepo(this.storage, message.args.repoId);
+          break;
         case "toggleRepoExpanded":
           await this.storage.toggleRepoExpanded(message.args.repoId);
           break;
@@ -49904,7 +49926,7 @@ var WebviewCommandHandler = class {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error('[WebviewCommandHandler] error handling "%s":', message.function, msg);
-      vscode4.window.showErrorMessage(msg);
+      vscode5.window.showErrorMessage(msg);
     }
   };
   dispose() {
@@ -49924,7 +49946,7 @@ var activate = async (context) => {
   const commandHandler = new WebviewCommandHandler(provider, storage);
   context.subscriptions.push(commandHandler);
   context.subscriptions.push(
-    vscode5.window.registerWebviewViewProvider(AgentPanelProvider.viewType, provider)
+    vscode6.window.registerWebviewViewProvider(AgentPanelProvider.viewType, provider)
   );
 };
 var deactivate = () => {
