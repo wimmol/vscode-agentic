@@ -49315,7 +49315,10 @@ __export(extension_exports, {
   deactivate: () => deactivate
 });
 module.exports = __toCommonJS(extension_exports);
-var vscode8 = __toESM(require("vscode"));
+var vscode9 = __toESM(require("vscode"));
+
+// src/db/index.ts
+var vscode2 = __toESM(require("vscode"));
 
 // node_modules/sequelize/lib/index.mjs
 var import_index = __toESM(require_lib2(), 1);
@@ -49464,42 +49467,12 @@ var initModels = (sequelize) => {
 // src/db/StateStorage.ts
 var import_crypto4 = require("crypto");
 var vscode = __toESM(require("vscode"));
-var BACKUP_KEYS = {
-  repositories: "backup:repositories",
-  agents: "backup:agents",
-  worktrees: "backup:worktrees"
-};
 var StateStorage = class {
-  constructor(sequelize, state) {
+  constructor(sequelize) {
     this.sequelize = sequelize;
-    this.state = state;
   }
   _onDidChange = new vscode.EventEmitter();
   onDidChange = this._onDidChange.event;
-  /** Restores data from workspaceState into the database. Called once after creation. */
-  restore = async () => {
-    const repos = this.state.get(BACKUP_KEYS.repositories, []);
-    const agents = this.state.get(BACKUP_KEYS.agents, []);
-    const worktrees = this.state.get(BACKUP_KEYS.worktrees, []);
-    console.log("[StateStorage] restore: data from workspaceState:", {
-      repositories: repos,
-      agents,
-      worktrees
-    });
-    await this.sequelize.transaction(async (t) => {
-      await RepositoryModel.bulkCreate(repos, { ignoreDuplicates: true, transaction: t });
-      await AgentModel.bulkCreate(agents, { ignoreDuplicates: true, transaction: t });
-      await WorktreeModel.bulkCreate(worktrees, { ignoreDuplicates: true, transaction: t });
-    });
-    const dbRepos = (await RepositoryModel.findAll()).map((r) => r.get({ plain: true }));
-    const dbAgents = (await AgentModel.findAll()).map((r) => r.get({ plain: true }));
-    const dbWorktrees = (await WorktreeModel.findAll()).map((r) => r.get({ plain: true }));
-    console.log("[StateStorage] restore: SQLite after hydration:", {
-      repositories: dbRepos,
-      agents: dbAgents,
-      worktrees: dbWorktrees
-    });
-  };
   // ── Repositories ───────────────────────────────────────────────
   addRepository = async (name, localPath, stagingBranch) => {
     const trimmedName = name.trim();
@@ -49519,7 +49492,7 @@ var StateStorage = class {
       createdAt: Date.now()
     };
     await RepositoryModel.create(repo);
-    await this._changed(["repositories"], "addRepository");
+    this._onDidChange.fire();
     console.log("[StateStorage] addRepository: result:", repo);
     return repo;
   };
@@ -49532,8 +49505,10 @@ var StateStorage = class {
     return rows.map((r) => r.get({ plain: true }));
   };
   getAllReposWithAgents = async () => {
-    const repos = await RepositoryModel.findAll({ order: [["createdAt", "ASC"]] });
-    const agents = await AgentModel.findAll({ order: [["createdAt", "ASC"]] });
+    const [repos, agents] = await Promise.all([
+      RepositoryModel.findAll({ order: [["createdAt", "ASC"]] }),
+      AgentModel.findAll({ order: [["createdAt", "ASC"]] })
+    ]);
     const agentsByRepo = /* @__PURE__ */ new Map();
     for (const agent of agents) {
       const plain = agent.get({ plain: true });
@@ -49570,7 +49545,7 @@ var StateStorage = class {
     }
     if (repo.changed()) {
       await repo.save();
-      await this._changed(["repositories"], "updateRepository");
+      this._onDidChange.fire();
     }
     const result = repo.get({ plain: true });
     console.log("[StateStorage] updateRepository: result:", result);
@@ -49583,14 +49558,14 @@ var StateStorage = class {
     }
     repo.isExpanded = !repo.isExpanded;
     await repo.save();
-    await this._changed(["repositories"], "toggleRepoExpanded");
+    this._onDidChange.fire();
     console.log("[StateStorage] toggleRepoExpanded:", { id, isExpanded: repo.isExpanded });
   };
   removeRepository = async (id) => {
     console.log("[StateStorage] removeRepository:", { id });
     const count = await RepositoryModel.destroy({ where: { repositoryId: id } });
     if (count > 0) {
-      await this._changed(["repositories", "agents", "worktrees"], "removeRepository");
+      this._onDidChange.fire();
     }
   };
   // ── Agents ─────────────────────────────────────────────────────
@@ -49625,7 +49600,7 @@ var StateStorage = class {
         { transaction: t }
       );
     });
-    await this._changed(["agents", "worktrees"], "addAgent");
+    this._onDidChange.fire();
     console.log("[StateStorage] addAgent: result:", agent);
     return agent;
   };
@@ -49658,7 +49633,7 @@ var StateStorage = class {
     if (data.startedAt !== void 0) agent.startedAt = data.startedAt;
     if (agent.changed()) {
       await agent.save();
-      await this._changed(["agents"], "updateAgent");
+      this._onDidChange.fire();
     }
     const result = agent.get({ plain: true });
     console.log("[StateStorage] updateAgent: result:", result);
@@ -49668,7 +49643,7 @@ var StateStorage = class {
     console.log("[StateStorage] removeAgent:", { id });
     const count = await AgentModel.destroy({ where: { agentId: id } });
     if (count > 0) {
-      await this._changed(["agents", "worktrees"], "removeAgent");
+      this._onDidChange.fire();
     }
   };
   // ── Worktrees (read-only) ─────────────────────────────────────
@@ -49676,35 +49651,7 @@ var StateStorage = class {
     const worktree = await WorktreeModel.findOne({ where: { agentId } });
     return worktree?.get({ plain: true });
   };
-  /** Flushes all tables to workspaceState. Call before operations that trigger extension reactivation. */
-  persistAll = async () => {
-    await this._persist(["repositories", "agents", "worktrees"]);
-  };
   // ── Internal ───────────────────────────────────────────────────
-  _changed = async (tables, action) => {
-    console.log(`[StateStorage] _changed: action="${action ?? "unknown"}", persisting tables:`, tables);
-    await this._persist(tables);
-    this._onDidChange.fire();
-  };
-  _persist = async (tables) => {
-    const readTable = async (table) => {
-      switch (table) {
-        case "repositories":
-          return (await RepositoryModel.findAll()).map((r) => r.get({ plain: true }));
-        case "agents":
-          return (await AgentModel.findAll()).map((r) => r.get({ plain: true }));
-        case "worktrees":
-          return (await WorktreeModel.findAll()).map((r) => r.get({ plain: true }));
-      }
-    };
-    await Promise.all(
-      tables.map(async (table) => {
-        const rows = await readTable(table);
-        console.log(`[StateStorage] _persist: saving ${BACKUP_KEYS[table]} to workspaceState:`, rows);
-        await this.state.update(BACKUP_KEYS[table], rows);
-      })
-    );
-  };
   dispose = () => {
     this._onDidChange.dispose();
     void this.sequelize.close();
@@ -49713,35 +49660,38 @@ var StateStorage = class {
 
 // src/db/index.ts
 var createStateStorage = async (context) => {
-  console.log("[createStateStorage] initializing in-memory SQLite...");
+  if (!context.storageUri) {
+    vscode2.window.showErrorMessage("Agentic: Open a folder or workspace to use this extension.");
+    throw new Error("No workspace storage available.");
+  }
+  await vscode2.workspace.fs.createDirectory(context.storageUri);
+  const dbPath = vscode2.Uri.joinPath(context.storageUri, "state.db").fsPath;
+  console.log("[createStateStorage] initializing SQLite at", dbPath);
   const sequelize = new Sequelize({
     dialect: "sqlite",
-    storage: ":memory:",
+    storage: dbPath,
     logging: false
   });
-  await sequelize.query("PRAGMA foreign_keys = ON");
+  await sequelize.query("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL;");
   initModels(sequelize);
   await sequelize.sync();
-  console.log("[createStateStorage] SQLite ready, restoring from workspaceState...");
-  const storage2 = new StateStorage(sequelize, context.workspaceState);
-  await storage2.restore();
-  console.log("[createStateStorage] restore complete");
-  return storage2;
+  console.log("[createStateStorage] SQLite ready");
+  return new StateStorage(sequelize);
 };
 
 // src/services/AgentPanelProvider.ts
 var import_crypto5 = require("crypto");
-var vscode2 = __toESM(require("vscode"));
+var vscode3 = __toESM(require("vscode"));
 var AgentPanelProvider = class {
-  constructor(extensionUri, storage2) {
+  constructor(extensionUri, storage) {
     this.extensionUri = extensionUri;
-    this.storage = storage2;
+    this.storage = storage;
     this.disposables.push(
       this.storage.onDidChange(() => this.pushState())
     );
   }
   static viewType = "vscode-agentic.agents";
-  _onDidResolveView = new vscode2.EventEmitter();
+  _onDidResolveView = new vscode3.EventEmitter();
   onDidResolveView = this._onDidResolveView.event;
   view;
   disposables = [];
@@ -49749,7 +49699,7 @@ var AgentPanelProvider = class {
     this.view = webviewView;
     webviewView.webview.options = {
       enableScripts: true,
-      localResourceRoots: [vscode2.Uri.joinPath(this.extensionUri, "out", "ui")]
+      localResourceRoots: [vscode3.Uri.joinPath(this.extensionUri, "out", "ui")]
     };
     webviewView.webview.html = this.getHtml(webviewView.webview);
     webviewView.onDidChangeVisibility(() => {
@@ -49780,10 +49730,10 @@ var AgentPanelProvider = class {
   };
   getHtml = (webview) => {
     const scriptUri = webview.asWebviewUri(
-      vscode2.Uri.joinPath(this.extensionUri, "out", "ui", "index.js")
+      vscode3.Uri.joinPath(this.extensionUri, "out", "ui", "index.js")
     );
     const styleUri = webview.asWebviewUri(
-      vscode2.Uri.joinPath(this.extensionUri, "out", "ui", "index.css")
+      vscode3.Uri.joinPath(this.extensionUri, "out", "ui", "index.css")
     );
     const nonce = getNonce();
     return `<!DOCTYPE html>
@@ -49811,15 +49761,15 @@ var AgentPanelProvider = class {
 var getNonce = () => (0, import_crypto5.randomBytes)(16).toString("hex");
 
 // src/services/WebviewCommandHandler.ts
-var vscode7 = __toESM(require("vscode"));
+var vscode8 = __toESM(require("vscode"));
 
 // src/features/addRepo.ts
 var import_fs = require("fs");
 var path = __toESM(require("path"));
-var vscode3 = __toESM(require("vscode"));
+var vscode4 = __toESM(require("vscode"));
 var BROWSE_LABEL = "$(folder-opened) Browse\u2026";
 var getWorkspaceGitFolders = () => {
-  const folders = vscode3.workspace.workspaceFolders ?? [];
+  const folders = vscode4.workspace.workspaceFolders ?? [];
   return folders.filter((wf) => (0, import_fs.existsSync)(path.join(wf.uri.fsPath, ".git"))).map((wf) => ({
     label: wf.name,
     description: wf.uri.fsPath,
@@ -49827,7 +49777,7 @@ var getWorkspaceGitFolders = () => {
   }));
 };
 var pickViaOsDialog = async () => {
-  const result = await vscode3.window.showOpenDialog({
+  const result = await vscode4.window.showOpenDialog({
     canSelectFiles: false,
     canSelectFolders: true,
     canSelectMany: false,
@@ -49838,21 +49788,21 @@ var pickViaOsDialog = async () => {
   }
   const folderPath = result[0].fsPath;
   if (!(0, import_fs.existsSync)(path.join(folderPath, ".git"))) {
-    vscode3.window.showErrorMessage("Selected folder is not a git repository (no .git found).");
+    vscode4.window.showErrorMessage("Selected folder is not a git repository (no .git found).");
     return void 0;
   }
   return folderPath;
 };
-var addRepo = async (storage2) => {
-  const existingRepos = await storage2.getAllRepositories();
+var addRepo = async (storage) => {
+  const existingRepos = await storage.getAllRepositories();
   const existingPaths = new Set(existingRepos.map((r) => r.localPath));
   const suggestions = getWorkspaceGitFolders().filter((f) => !existingPaths.has(f.folderPath));
   const items = [
     ...suggestions,
-    ...suggestions.length > 0 ? [{ label: "", kind: vscode3.QuickPickItemKind.Separator }] : [],
+    ...suggestions.length > 0 ? [{ label: "", kind: vscode4.QuickPickItemKind.Separator }] : [],
     { label: BROWSE_LABEL, alwaysShow: true }
   ];
-  const picked = await vscode3.window.showQuickPick(items, {
+  const picked = await vscode4.window.showQuickPick(items, {
     placeHolder: suggestions.length > 0 ? "Select a workspace repository or browse\u2026" : "No workspace repositories found \u2014 browse to add one",
     title: "Add Repository"
   });
@@ -49864,29 +49814,29 @@ var addRepo = async (storage2) => {
     return;
   }
   if (existingPaths.has(folderPath)) {
-    vscode3.window.showInformationMessage("Repository is already added.");
+    vscode4.window.showInformationMessage("Repository is already added.");
     return;
   }
   const name = path.basename(folderPath);
-  await storage2.addRepository(name, folderPath, "staging");
-  const alreadyInWorkspace = (vscode3.workspace.workspaceFolders ?? []).some(
+  await storage.addRepository(name, folderPath, "staging");
+  const alreadyInWorkspace = (vscode4.workspace.workspaceFolders ?? []).some(
     (wf) => wf.uri.fsPath === folderPath
   );
   if (!alreadyInWorkspace) {
-    const index = vscode3.workspace.workspaceFolders?.length ?? 0;
-    vscode3.workspace.updateWorkspaceFolders(index, 0, { uri: vscode3.Uri.file(folderPath) });
+    const index = vscode4.workspace.workspaceFolders?.length ?? 0;
+    vscode4.workspace.updateWorkspaceFolders(index, 0, { uri: vscode4.Uri.file(folderPath) });
   }
 };
 
 // src/features/removeRepo.ts
-var vscode4 = __toESM(require("vscode"));
-var removeRepo = async (storage2, repoId) => {
-  const repo = await storage2.getRepository(repoId);
+var vscode5 = __toESM(require("vscode"));
+var removeRepo = async (storage, repoId) => {
+  const repo = await storage.getRepository(repoId);
   if (!repo) {
-    vscode4.window.showErrorMessage("Repository not found.");
+    vscode5.window.showErrorMessage("Repository not found.");
     return;
   }
-  const confirm = await vscode4.window.showWarningMessage(
+  const confirm = await vscode5.window.showWarningMessage(
     `Remove repository "${repo.name}"? This will also delete all its agents and worktrees.`,
     { modal: true },
     "Remove"
@@ -49894,53 +49844,51 @@ var removeRepo = async (storage2, repoId) => {
   if (confirm !== "Remove") {
     return;
   }
-  await storage2.removeRepository(repoId);
+  await storage.removeRepository(repoId);
 };
 
 // src/features/rootClick.ts
-var vscode5 = __toESM(require("vscode"));
-var rootClick = async (storage2) => {
-  const repos = await storage2.getAllRepositories();
+var vscode6 = __toESM(require("vscode"));
+var rootClick = async (storage) => {
+  const repos = await storage.getAllRepositories();
   if (repos.length === 0) {
-    vscode5.window.showInformationMessage("No repositories added.");
+    vscode6.window.showInformationMessage("No repositories added.");
     return;
   }
-  const current = vscode5.workspace.workspaceFolders ?? [];
+  const current = vscode6.workspace.workspaceFolders ?? [];
   const currentPaths = new Set(current.map((f) => f.uri.fsPath));
   const missing = repos.filter((r) => !currentPaths.has(r.localPath));
   if (missing.length === 0) {
     return;
   }
-  await storage2.persistAll();
-  const newFolders = missing.map((r) => ({ uri: vscode5.Uri.file(r.localPath) }));
-  vscode5.workspace.updateWorkspaceFolders(current.length, 0, ...newFolders);
+  const newFolders = missing.map((r) => ({ uri: vscode6.Uri.file(r.localPath) }));
+  vscode6.workspace.updateWorkspaceFolders(current.length, 0, ...newFolders);
 };
 
 // src/features/repoRootClick.ts
-var vscode6 = __toESM(require("vscode"));
-var repoRootClick = async (storage2, repoId) => {
-  const repo = await storage2.getRepository(repoId);
+var vscode7 = __toESM(require("vscode"));
+var repoRootClick = async (storage, repoId) => {
+  const repo = await storage.getRepository(repoId);
   if (!repo) {
-    vscode6.window.showErrorMessage("Repository not found.");
+    vscode7.window.showErrorMessage("Repository not found.");
     return;
   }
-  const current = vscode6.workspace.workspaceFolders ?? [];
+  const current = vscode7.workspace.workspaceFolders ?? [];
   const repoIndex = current.findIndex((f) => f.uri.fsPath === repo.localPath);
   if (repoIndex !== -1 && current.length === 1) {
     return;
   }
-  await storage2.persistAll();
   if (repoIndex === 0) {
-    vscode6.workspace.updateWorkspaceFolders(1, current.length - 1);
+    vscode7.workspace.updateWorkspaceFolders(1, current.length - 1);
   } else {
-    vscode6.workspace.updateWorkspaceFolders(0, current.length, { uri: vscode6.Uri.file(repo.localPath) });
+    vscode7.workspace.updateWorkspaceFolders(0, current.length, { uri: vscode7.Uri.file(repo.localPath) });
   }
 };
 
 // src/services/WebviewCommandHandler.ts
 var WebviewCommandHandler = class {
-  constructor(provider, storage2) {
-    this.storage = storage2;
+  constructor(provider, storage) {
+    this.storage = storage;
     this.disposables.push(
       provider.onDidResolveView((view) => {
         this.messageDisposable?.dispose();
@@ -49976,7 +49924,7 @@ var WebviewCommandHandler = class {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error('[WebviewCommandHandler] error handling "%s":', message.function, msg);
-      vscode7.window.showErrorMessage(msg);
+      vscode8.window.showErrorMessage(msg);
     }
   };
   dispose() {
@@ -49988,21 +49936,15 @@ var WebviewCommandHandler = class {
 };
 
 // src/extension.ts
-var storage;
 var activate = async (context) => {
-  if (!storage) {
-    storage = await createStateStorage(context);
-  }
-  context.subscriptions.push({ dispose: () => {
-    storage?.dispose();
-    storage = void 0;
-  } });
+  const storage = await createStateStorage(context);
+  context.subscriptions.push(storage);
   const provider = new AgentPanelProvider(context.extensionUri, storage);
   context.subscriptions.push(provider);
   const commandHandler = new WebviewCommandHandler(provider, storage);
   context.subscriptions.push(commandHandler);
   context.subscriptions.push(
-    vscode8.window.registerWebviewViewProvider(AgentPanelProvider.viewType, provider)
+    vscode9.window.registerWebviewViewProvider(AgentPanelProvider.viewType, provider)
   );
 };
 var deactivate = () => {

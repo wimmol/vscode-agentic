@@ -15,8 +15,6 @@ export const repoRootClick = async (storage: StateStorage, repoId: string): Prom
     return;
   }
 
-  await storage.persistAll();
-
   if (repoIndex === 0) {
     vscode.workspace.updateWorkspaceFolders(1, current.length - 1);
   } else {

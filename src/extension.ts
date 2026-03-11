@@ -1,16 +1,11 @@
 import * as vscode from 'vscode';
 import { createStateStorage } from './db';
-import type { StateStorage } from './db';
 import { AgentPanelProvider } from './services/AgentPanelProvider';
 import { WebviewCommandHandler } from './services/WebviewCommandHandler';
 
-let storage: StateStorage | undefined;
-
 export const activate = async (context: vscode.ExtensionContext) => {
-  if (!storage) {
-    storage = await createStateStorage(context);
-  }
-  context.subscriptions.push({ dispose: () => { storage?.dispose(); storage = undefined; } });
+  const storage = await createStateStorage(context);
+  context.subscriptions.push(storage);
 
   const provider = new AgentPanelProvider(context.extensionUri, storage);
   context.subscriptions.push(provider);

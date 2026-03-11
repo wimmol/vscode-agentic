@@ -16,8 +16,6 @@ export const rootClick = async (storage: StateStorage): Promise<void> => {
     return;
   }
 
-  await storage.persistAll();
-
   const newFolders = missing.map((r) => ({ uri: vscode.Uri.file(r.localPath) }));
   vscode.workspace.updateWorkspaceFolders(current.length, 0, ...newFolders);
 };

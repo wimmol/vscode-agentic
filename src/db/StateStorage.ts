@@ -6,20 +6,12 @@ import type { Repository, Worktree, Agent } from './models';
 import type { RepoWithAgents } from '../types';
 import type { AgentCli } from '../types/agent';
 
-const BACKUP_KEYS = {
-  repositories: 'backup:repositories',
-  agents: 'backup:agents',
-  worktrees: 'backup:worktrees',
-} as const;
-
-type TableName = keyof typeof BACKUP_KEYS;
-
 /**
- * Manages all read/write operations against the in-memory SQLite database.
+ * Manages all read/write operations against the file-based SQLite database.
  *
  * Fits between the extension layer (commands, webview provider) and the
  * raw database — every public method validates input, mutates via Sequelize,
- * emits a change event, and persists affected tables to workspaceState.
+ * and emits a change event.
  *
  * Exists as a class (rather than loose functions) because it owns the
  * Sequelize instance and the EventEmitter, both of which share a lifetime.
@@ -28,38 +20,7 @@ export class StateStorage implements vscode.Disposable {
   private readonly _onDidChange = new vscode.EventEmitter<void>();
   readonly onDidChange: vscode.Event<void> = this._onDidChange.event;
 
-  constructor(
-    private readonly sequelize: Sequelize,
-    private readonly state: vscode.Memento,
-  ) {}
-
-  /** Restores data from workspaceState into the database. Called once after creation. */
-  restore = async (): Promise<void> => {
-    const repos = this.state.get<Repository[]>(BACKUP_KEYS.repositories, []);
-    const agents = this.state.get<Agent[]>(BACKUP_KEYS.agents, []);
-    const worktrees = this.state.get<Worktree[]>(BACKUP_KEYS.worktrees, []);
-
-    console.log('[StateStorage] restore: data from workspaceState:', {
-      repositories: repos,
-      agents: agents,
-      worktrees: worktrees,
-    });
-
-    await this.sequelize.transaction(async (t) => {
-      await RepositoryModel.bulkCreate(repos, { ignoreDuplicates: true, transaction: t });
-      await AgentModel.bulkCreate(agents, { ignoreDuplicates: true, transaction: t });
-      await WorktreeModel.bulkCreate(worktrees, { ignoreDuplicates: true, transaction: t });
-    });
-
-    const dbRepos = (await RepositoryModel.findAll()).map((r) => r.get({ plain: true }));
-    const dbAgents = (await AgentModel.findAll()).map((r) => r.get({ plain: true }));
-    const dbWorktrees = (await WorktreeModel.findAll()).map((r) => r.get({ plain: true }));
-    console.log('[StateStorage] restore: SQLite after hydration:', {
-      repositories: dbRepos,
-      agents: dbAgents,
-      worktrees: dbWorktrees,
-    });
-  };
+  constructor(private readonly sequelize: Sequelize) {}
 
   // ── Repositories ───────────────────────────────────────────────
 
@@ -84,7 +45,7 @@ export class StateStorage implements vscode.Disposable {
     };
 
     await RepositoryModel.create(repo);
-    await this._changed(['repositories'], 'addRepository');
+    this._onDidChange.fire();
     console.log('[StateStorage] addRepository: result:', repo);
     return repo;
   };
@@ -100,8 +61,10 @@ export class StateStorage implements vscode.Disposable {
   };
 
   getAllReposWithAgents = async (): Promise<RepoWithAgents[]> => {
-    const repos = await RepositoryModel.findAll({ order: [['createdAt', 'ASC']] });
-    const agents = await AgentModel.findAll({ order: [['createdAt', 'ASC']] });
+    const [repos, agents] = await Promise.all([
+      RepositoryModel.findAll({ order: [['createdAt', 'ASC']] }),
+      AgentModel.findAll({ order: [['createdAt', 'ASC']] }),
+    ]);
 
     const agentsByRepo = new Map<string, Agent[]>();
     for (const agent of agents) {
@@ -147,7 +110,7 @@ export class StateStorage implements vscode.Disposable {
 
     if (repo.changed()) {
       await repo.save();
-      await this._changed(['repositories'], 'updateRepository');
+      this._onDidChange.fire();
     }
 
     const result = repo.get({ plain: true });
@@ -163,7 +126,7 @@ export class StateStorage implements vscode.Disposable {
 
     repo.isExpanded = !repo.isExpanded;
     await repo.save();
-    await this._changed(['repositories'], 'toggleRepoExpanded');
+    this._onDidChange.fire();
     console.log('[StateStorage] toggleRepoExpanded:', { id, isExpanded: repo.isExpanded });
   };
 
@@ -171,7 +134,7 @@ export class StateStorage implements vscode.Disposable {
     console.log('[StateStorage] removeRepository:', { id });
     const count = await RepositoryModel.destroy({ where: { repositoryId: id } });
     if (count > 0) {
-      await this._changed(['repositories', 'agents', 'worktrees'], 'removeRepository');
+      this._onDidChange.fire();
     }
   };
 
@@ -212,7 +175,7 @@ export class StateStorage implements vscode.Disposable {
       );
     });
 
-    await this._changed(['agents', 'worktrees'], 'addAgent');
+    this._onDidChange.fire();
     console.log('[StateStorage] addAgent: result:', agent);
     return agent;
   };
@@ -254,7 +217,7 @@ export class StateStorage implements vscode.Disposable {
 
     if (agent.changed()) {
       await agent.save();
-      await this._changed(['agents'], 'updateAgent');
+      this._onDidChange.fire();
     }
 
     const result = agent.get({ plain: true });
@@ -266,7 +229,7 @@ export class StateStorage implements vscode.Disposable {
     console.log('[StateStorage] removeAgent:', { id });
     const count = await AgentModel.destroy({ where: { agentId: id } });
     if (count > 0) {
-      await this._changed(['agents', 'worktrees'], 'removeAgent');
+      this._onDidChange.fire();
     }
   };
 
@@ -277,36 +240,7 @@ export class StateStorage implements vscode.Disposable {
     return worktree?.get({ plain: true });
   };
 
-  /** Flushes all tables to workspaceState. Call before operations that trigger extension reactivation. */
-  persistAll = async (): Promise<void> => {
-    await this._persist(['repositories', 'agents', 'worktrees']);
-  };
-
   // ── Internal ───────────────────────────────────────────────────
-
-  private _changed = async (tables: TableName[], action?: string): Promise<void> => {
-    console.log(`[StateStorage] _changed: action="${action ?? 'unknown'}", persisting tables:`, tables);
-    await this._persist(tables);
-    this._onDidChange.fire();
-  };
-
-  private _persist = async (tables: TableName[]): Promise<void> => {
-    const readTable = async (table: TableName): Promise<unknown[]> => {
-      switch (table) {
-        case 'repositories': return (await RepositoryModel.findAll()).map((r) => r.get({ plain: true }));
-        case 'agents': return (await AgentModel.findAll()).map((r) => r.get({ plain: true }));
-        case 'worktrees': return (await WorktreeModel.findAll()).map((r) => r.get({ plain: true }));
-      }
-    };
-
-    await Promise.all(
-      tables.map(async (table) => {
-        const rows = await readTable(table);
-        console.log(`[StateStorage] _persist: saving ${BACKUP_KEYS[table]} to workspaceState:`, rows);
-        await this.state.update(BACKUP_KEYS[table], rows);
-      }),
-    );
-  };
 
   dispose = (): void => {
     this._onDidChange.dispose();

@@ -2,29 +2,29 @@
 
 ### Overview
 
-All extension state lives in an in-memory SQLite database (via Sequelize ORM), scoped to the current workspace.
+All extension state lives in a file-based SQLite database (via Sequelize ORM), scoped to the current workspace.
+VS Code provides a unique storage directory per workspace via `context.storageUri`.
 If no workspace is open, the extension shows a hint to create one — no DB is initialized.
 
 ### Storage
 
-- **Runtime store:** In-memory SQLite via Sequelize (async, models define schema)
-- **Durable backup:** `context.workspaceState` (VS Code Memento, persists across sessions)
-- **On startup:** Sequelize syncs models to in-memory SQLite, data is restored from `workspaceState`
-- **On every write:** Sequelize mutates DB, then affected tables are serialized to `workspaceState`
+- **Runtime store:** File-based SQLite via Sequelize at `<storageUri>/state.db`
+- **Persistence:** Data survives window reloads, extension restarts, and scope changes automatically
+- **On startup:** Sequelize syncs models to the existing DB file (creates if missing)
 
 ### Data Flow
 
 ```
-[UI] ──postMessage──> [Extension] ──write──> [SQLite (in-memory)]
+[UI] ──postMessage──> [Extension] ──write──> [SQLite (file)]
                                                 │
-                                          EventEmitter + workspaceState backup
+                                          EventEmitter
                                                 │
 [UI] <──postMessage── [Extension] <──listen─────┘
 ```
 
 1. UI sends a command via `postMessage` (e.g. "create agent").
 2. Extension calls a `StateStorage` method (e.g. `addAgent`).
-3. Method validates input, writes via Sequelize, emits a change event, and persists to `workspaceState`.
+3. Method validates input, writes via Sequelize, and emits a change event.
 4. Webview provider listens to `onDidChange`, reads updated state, pushes it to UI.
 
 ### StateStorage
@@ -36,7 +36,6 @@ Created via async factory `createStateStorage(context)` in `src/db/index.ts`.
 Rules:
 - All write methods are async (Sequelize is async).
 - Every write method emits a change event via `vscode.EventEmitter`.
-- Every write method persists affected tables to `workspaceState`.
 - Read methods do not emit events.
 - Implements `vscode.Disposable` — must be pushed into `context.subscriptions`.
 
@@ -82,7 +81,7 @@ DB row types (`Repository`, `Worktree`) in `src/db/models.ts`.
 ### Relations
 
 ```
-repositories 1───∞ agents 1───1ü worktrees
+repositories 1───∞ agents 1───1 worktrees
 ```
 
 - One repository has many agents.
