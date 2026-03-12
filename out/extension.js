@@ -21926,7 +21926,7 @@ var require_logger = __commonJS({
       logger: () => logger
     });
     var import_debug = __toModule(require_src());
-    var import_util = __toModule(require("util"));
+    var import_util2 = __toModule(require("util"));
     var Logger = class {
       constructor(_a = {}) {
         __publicField(this, "config");
@@ -21939,7 +21939,7 @@ var require_logger = __commonJS({
         console.warn(`(${this.config.context}) Warning: ${message}`);
       }
       inspect(value) {
-        return import_util.default.inspect(value, {
+        return import_util2.default.inspect(value, {
           showHidden: false,
           depth: 1
         });
@@ -28347,7 +28347,7 @@ var require_instance_validator = __commonJS({
     var DataTypes2 = require_data_types9();
     var BelongsTo2 = require_belongs_to();
     var validator = require_validator_extras().validator;
-    var { promisify } = require("util");
+    var { promisify: promisify2 } = require("util");
     var InstanceValidator = class _InstanceValidator {
       constructor(modelInstance, options) {
         options = __spreadValues({
@@ -28471,9 +28471,9 @@ var require_instance_validator = __commonJS({
         if (isAsync) {
           try {
             if (optAttrDefined) {
-              return await promisify(validator2.bind(this.modelInstance, invokeArgs))();
+              return await promisify2(validator2.bind(this.modelInstance, invokeArgs))();
             }
-            return await promisify(validator2.bind(this.modelInstance))();
+            return await promisify2(validator2.bind(this.modelInstance))();
           } catch (e) {
             return this._pushError(false, errorKey, e, optValue, validatorType);
           }
@@ -28840,14 +28840,14 @@ var require_deprecations = __commonJS({
       noTrueLogging: () => noTrueLogging,
       unsupportedEngine: () => unsupportedEngine
     });
-    var import_util = __toModule(require("util"));
+    var import_util2 = __toModule(require("util"));
     var noop = () => {
     };
-    var noTrueLogging = (0, import_util.deprecate)(noop, "The logging-option should be either a function or false. Default: console.log", "SEQUELIZE0002");
-    var noStringOperators = (0, import_util.deprecate)(noop, "String based operators are deprecated. Please use Symbol based operators for better security, read more at https://sequelize.org/master/manual/querying.html#operators", "SEQUELIZE0003");
-    var noBoolOperatorAliases = (0, import_util.deprecate)(noop, "A boolean value was passed to options.operatorsAliases. This is a no-op with v5 and should be removed.", "SEQUELIZE0004");
-    var noDoubleNestedGroup = (0, import_util.deprecate)(noop, "Passing a double nested nested array to `group` is unsupported and will be removed in v6.", "SEQUELIZE0005");
-    var unsupportedEngine = (0, import_util.deprecate)(noop, "This database engine version is not supported, please update your database server. More information https://github.com/sequelize/sequelize/blob/main/ENGINE.md", "SEQUELIZE0006");
+    var noTrueLogging = (0, import_util2.deprecate)(noop, "The logging-option should be either a function or false. Default: console.log", "SEQUELIZE0002");
+    var noStringOperators = (0, import_util2.deprecate)(noop, "String based operators are deprecated. Please use Symbol based operators for better security, read more at https://sequelize.org/master/manual/querying.html#operators", "SEQUELIZE0003");
+    var noBoolOperatorAliases = (0, import_util2.deprecate)(noop, "A boolean value was passed to options.operatorsAliases. This is a no-op with v5 and should be removed.", "SEQUELIZE0004");
+    var noDoubleNestedGroup = (0, import_util2.deprecate)(noop, "Passing a double nested nested array to `group` is unsupported and will be removed in v6.", "SEQUELIZE0005");
+    var unsupportedEngine = (0, import_util2.deprecate)(noop, "This database engine version is not supported, please update your database server. More information https://github.com/sequelize/sequelize/blob/main/ENGINE.md", "SEQUELIZE0006");
   }
 });
 
@@ -41087,7 +41087,7 @@ var require_connection_manager4 = __commonJS({
     var momentTz = require_moment_timezone2();
     var debug = logger.debugContext("connection:mysql");
     var parserStore = require_parserStore()("mysql");
-    var { promisify } = require("util");
+    var { promisify: promisify2 } = require("util");
     var ConnectionManager = class _ConnectionManager extends AbstractConnectionManager {
       constructor(dialect, sequelize) {
         sequelize.config.port = sequelize.config.port || 3306;
@@ -41148,7 +41148,7 @@ var require_connection_manager4 = __commonJS({
           if (!this.sequelize.config.keepDefaultTimezone) {
             let tzOffset = this.sequelize.options.timezone;
             tzOffset = /\//.test(tzOffset) ? momentTz.tz(tzOffset).format("Z") : tzOffset;
-            await promisify((cb) => connection.query(`SET time_zone = '${tzOffset}'`, cb))();
+            await promisify2((cb) => connection.query(`SET time_zone = '${tzOffset}'`, cb))();
           }
           return connection;
         } catch (err) {
@@ -41173,7 +41173,7 @@ var require_connection_manager4 = __commonJS({
           debug("connection tried to disconnect but was already at CLOSED state");
           return;
         }
-        return await promisify((callback) => connection.end(callback))();
+        return await promisify2((callback) => connection.end(callback))();
       }
       validate(connection) {
         return connection && !connection._fatalError && !connection._protocolError && !connection._closing && !connection.stream.destroyed;
@@ -41531,7 +41531,7 @@ var require_connection_manager5 = __commonJS({
     var semver = require_semver2();
     var debug = logger.debugContext("connection:oracle");
     var DataTypes2 = require_data_types9().oracle;
-    var { promisify } = require("util");
+    var { promisify: promisify2 } = require("util");
     var OracleConnectionManager = class extends AbstractConnectionManager {
       constructor(dialect, sequelize) {
         super(dialect, sequelize);
@@ -41638,7 +41638,7 @@ var require_connection_manager5 = __commonJS({
           debug("connection tried to disconnect but was already at CLOSED state");
           return;
         }
-        return await promisify((callback) => connection.close(callback))();
+        return await promisify2((callback) => connection.close(callback))();
       }
       validate(connection) {
         return connection && connection.isHealthy();
@@ -43273,7 +43273,7 @@ var require_connection_manager6 = __commonJS({
     var semver = require_semver2();
     var dataTypes = require_data_types9();
     var momentTz = require_moment_timezone2();
-    var { promisify } = require("util");
+    var { promisify: promisify2 } = require("util");
     var ConnectionManager = class _ConnectionManager extends AbstractConnectionManager {
       constructor(dialect, sequelize) {
         sequelize.config.port = sequelize.config.port || 5432;
@@ -43459,7 +43459,7 @@ var require_connection_manager6 = __commonJS({
           debug("connection tried to disconnect but was already at ENDING state");
           return;
         }
-        return await promisify((callback) => connection.end(callback))();
+        return await promisify2((callback) => connection.end(callback))();
       }
       validate(connection) {
         return !connection._invalid && !connection._ending;
@@ -44784,7 +44784,7 @@ var require_connection_manager7 = __commonJS({
     var dataTypes = require_data_types9().sqlite;
     var sequelizeErrors = require_errors();
     var parserStore = require_parserStore()("sqlite");
-    var { promisify } = require("util");
+    var { promisify: promisify2 } = require("util");
     var ConnectionManager = class extends AbstractConnectionManager {
       constructor(dialect, sequelize) {
         super(dialect, sequelize);
@@ -44796,7 +44796,7 @@ var require_connection_manager7 = __commonJS({
         this.refreshTypeParser(dataTypes);
       }
       async _onProcessExit() {
-        await Promise.all(Object.getOwnPropertyNames(this.connections).map((connection) => promisify((callback) => this.connections[connection].close(callback))()));
+        await Promise.all(Object.getOwnPropertyNames(this.connections).map((connection) => promisify2((callback) => this.connections[connection].close(callback))()));
         return super._onProcessExit.call(this);
       }
       _refreshTypeParser(dataType) {
@@ -49315,7 +49315,7 @@ __export(extension_exports, {
   deactivate: () => deactivate
 });
 module.exports = __toCommonJS(extension_exports);
-var vscode11 = __toESM(require("vscode"));
+var vscode12 = __toESM(require("vscode"));
 
 // src/db/index.ts
 var vscode2 = __toESM(require("vscode"));
@@ -49944,15 +49944,97 @@ var FileItem = class extends vscode5.TreeItem {
 };
 
 // src/services/WebviewCommandHandler.ts
-var vscode10 = __toESM(require("vscode"));
+var vscode11 = __toESM(require("vscode"));
+
+// src/features/addAgent.ts
+var import_child_process = require("child_process");
+var import_util = require("util");
+var vscode6 = __toESM(require("vscode"));
+var execFile = (0, import_util.promisify)(import_child_process.execFile);
+var INVALID_BRANCH_RE = /[~^:?*[\\\s]|\.\.|\.lock$/;
+var GIT_TIMEOUT = 3e4;
+var GIT_WORKTREE_TIMEOUT = 12e4;
+var GIT_MAX_BUFFER = 10 * 1024 * 1024;
+var gitOpts = (cwd, timeout = GIT_TIMEOUT) => ({
+  cwd,
+  timeout,
+  maxBuffer: GIT_MAX_BUFFER
+});
+var validateBranchName = (value) => {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "Branch name cannot be empty";
+  }
+  if (INVALID_BRANCH_RE.test(trimmed)) {
+    return "Invalid branch name (contains forbidden characters)";
+  }
+  return void 0;
+};
+var ensureBranch = async (repoPath, branch) => {
+  try {
+    await execFile("git", ["branch", branch], gitOpts(repoPath));
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "";
+    if (!msg.includes("already exists")) {
+      throw err;
+    }
+  }
+};
+var createWorktree = async (repoPath, worktreePath, branch) => {
+  await execFile(
+    "git",
+    ["worktree", "add", worktreePath, branch],
+    gitOpts(repoPath, GIT_WORKTREE_TIMEOUT)
+  );
+};
+var removeWorktree = async (repoPath, worktreePath) => {
+  try {
+    await execFile("git", ["worktree", "remove", "--force", worktreePath], gitOpts(repoPath));
+  } catch {
+  }
+};
+var addAgent = async (storage, repoId) => {
+  const repo = await storage.getRepository(repoId);
+  if (!repo) {
+    vscode6.window.showErrorMessage("Repository not found.");
+    return;
+  }
+  const name = await vscode6.window.showInputBox({
+    title: "Add Agent",
+    placeHolder: "Branch name for the agent",
+    validateInput: validateBranchName,
+    ignoreFocusOut: true
+  });
+  if (!name) {
+    return;
+  }
+  const branch = name.trim();
+  const repoPath = repo.localPath;
+  const worktreePath = `${repoPath}/.worktrees/${branch}`;
+  await ensureBranch(repoPath, branch);
+  await createWorktree(repoPath, worktreePath, branch);
+  try {
+    await storage.addAgent(repoId, branch, "claude-code");
+  } catch (err) {
+    await removeWorktree(repoPath, worktreePath);
+    throw err;
+  }
+  const agentCommand = vscode6.workspace.getConfiguration("vscode-agentic").get("agentCommand", "claude");
+  const terminal = vscode6.window.createTerminal({
+    name: `${branch} (${repo.name})`,
+    cwd: worktreePath,
+    location: { viewColumn: vscode6.ViewColumn.Two }
+  });
+  terminal.sendText(agentCommand);
+};
 
 // src/features/addRepo.ts
 var import_fs2 = require("fs");
 var path3 = __toESM(require("path"));
-var vscode6 = __toESM(require("vscode"));
+var vscode7 = __toESM(require("vscode"));
 var BROWSE_LABEL = "$(folder-opened) Browse\u2026";
 var getWorkspaceGitFolders = () => {
-  const folders = vscode6.workspace.workspaceFolders ?? [];
+  const folders = vscode7.workspace.workspaceFolders ?? [];
   return folders.filter((wf) => (0, import_fs2.existsSync)(path3.join(wf.uri.fsPath, ".git"))).map((wf) => ({
     label: wf.name,
     description: wf.uri.fsPath,
@@ -49960,7 +50042,7 @@ var getWorkspaceGitFolders = () => {
   }));
 };
 var pickViaOsDialog = async () => {
-  const result = await vscode6.window.showOpenDialog({
+  const result = await vscode7.window.showOpenDialog({
     canSelectFiles: false,
     canSelectFolders: true,
     canSelectMany: false,
@@ -49971,7 +50053,7 @@ var pickViaOsDialog = async () => {
   }
   const folderPath = result[0].fsPath;
   if (!(0, import_fs2.existsSync)(path3.join(folderPath, ".git"))) {
-    vscode6.window.showErrorMessage("Selected folder is not a git repository (no .git found).");
+    vscode7.window.showErrorMessage("Selected folder is not a git repository (no .git found).");
     return void 0;
   }
   return folderPath;
@@ -49982,10 +50064,10 @@ var addRepo = async (storage) => {
   const suggestions = getWorkspaceGitFolders().filter((f) => !existingPaths.has(f.folderPath));
   const items = [
     ...suggestions,
-    ...suggestions.length > 0 ? [{ label: "", kind: vscode6.QuickPickItemKind.Separator }] : [],
+    ...suggestions.length > 0 ? [{ label: "", kind: vscode7.QuickPickItemKind.Separator }] : [],
     { label: BROWSE_LABEL, alwaysShow: true }
   ];
-  const picked = await vscode6.window.showQuickPick(items, {
+  const picked = await vscode7.window.showQuickPick(items, {
     placeHolder: suggestions.length > 0 ? "Select a workspace repository or browse\u2026" : "No workspace repositories found \u2014 browse to add one",
     title: "Add Repository"
   });
@@ -49997,34 +50079,34 @@ var addRepo = async (storage) => {
     return;
   }
   if (existingPaths.has(folderPath)) {
-    vscode6.window.showInformationMessage("Repository is already added.");
+    vscode7.window.showInformationMessage("Repository is already added.");
     return;
   }
   const name = path3.basename(folderPath);
   await storage.addRepository(name, folderPath, "staging");
-  const alreadyInWorkspace = (vscode6.workspace.workspaceFolders ?? []).some(
+  const alreadyInWorkspace = (vscode7.workspace.workspaceFolders ?? []).some(
     (wf) => wf.uri.fsPath === folderPath
   );
   if (!alreadyInWorkspace) {
-    const insertAt = vscode6.workspace.workspaceFolders?.length ?? 0;
-    vscode6.workspace.updateWorkspaceFolders(insertAt, 0, { uri: vscode6.Uri.file(folderPath) });
+    const insertAt = vscode7.workspace.workspaceFolders?.length ?? 0;
+    vscode7.workspace.updateWorkspaceFolders(insertAt, 0, { uri: vscode7.Uri.file(folderPath) });
   }
 };
 
 // src/features/removeRepo.ts
-var vscode7 = __toESM(require("vscode"));
+var vscode8 = __toESM(require("vscode"));
 var removeRepo = async (storage, repoId) => {
   const repo = await storage.getRepository(repoId);
   if (!repo) {
-    vscode7.window.showErrorMessage("Repository not found.");
+    vscode8.window.showErrorMessage("Repository not found.");
     return;
   }
-  const isInWorkspace = (vscode7.workspace.workspaceFolders ?? []).some(
+  const isInWorkspace = (vscode8.workspace.workspaceFolders ?? []).some(
     (wf) => wf.uri.fsPath === repo.localPath
   );
   const REMOVE_WITH_WORKSPACE = "Remove & Workspace";
   const buttons = isInWorkspace ? ["Remove", REMOVE_WITH_WORKSPACE] : ["Remove"];
-  const confirm = await vscode7.window.showWarningMessage(
+  const confirm = await vscode8.window.showWarningMessage(
     `Remove repository "${repo.name}"? This will also delete all its agents and worktrees.`,
     { modal: true },
     ...buttons
@@ -50034,40 +50116,40 @@ var removeRepo = async (storage, repoId) => {
   }
   await storage.removeRepository(repoId);
   if (confirm === REMOVE_WITH_WORKSPACE) {
-    const folders = vscode7.workspace.workspaceFolders ?? [];
+    const folders = vscode8.workspace.workspaceFolders ?? [];
     const idx = folders.findIndex((wf) => wf.uri.fsPath === repo.localPath);
     if (idx !== -1) {
-      vscode7.workspace.updateWorkspaceFolders(idx, 1);
+      vscode8.workspace.updateWorkspaceFolders(idx, 1);
     }
   }
 };
 
 // src/features/rootClick.ts
-var vscode8 = __toESM(require("vscode"));
+var vscode9 = __toESM(require("vscode"));
 var rootClick = async (storage, explorer) => {
   const repos = await storage.getAllRepositories();
   if (repos.length === 0) {
-    vscode8.window.showInformationMessage("No repositories added.");
+    vscode9.window.showInformationMessage("No repositories added.");
     return;
   }
   explorer.showAllRepos(repos.map((r) => r.localPath));
-  const config = vscode8.workspace.getConfiguration("terminal.integrated");
-  config.update("cwd", void 0, vscode8.ConfigurationTarget.Workspace).then(void 0, (err) => {
+  const config = vscode9.workspace.getConfiguration("terminal.integrated");
+  config.update("cwd", void 0, vscode9.ConfigurationTarget.Workspace).then(void 0, (err) => {
     console.error("[rootClick] Failed to clear terminal cwd:", err);
   });
 };
 
 // src/features/repoRootClick.ts
-var vscode9 = __toESM(require("vscode"));
+var vscode10 = __toESM(require("vscode"));
 var repoRootClick = async (storage, explorer, repoId) => {
   const repo = await storage.getRepository(repoId);
   if (!repo) {
-    vscode9.window.showErrorMessage("Repository not found.");
+    vscode10.window.showErrorMessage("Repository not found.");
     return;
   }
   explorer.showRepo(repoId, repo.localPath);
-  const config = vscode9.workspace.getConfiguration("terminal.integrated");
-  config.update("cwd", repo.localPath, vscode9.ConfigurationTarget.Workspace).then(void 0, (err) => {
+  const config = vscode10.workspace.getConfiguration("terminal.integrated");
+  config.update("cwd", repo.localPath, vscode10.ConfigurationTarget.Workspace).then(void 0, (err) => {
     console.error("[repoRootClick] Failed to update terminal cwd:", err);
   });
 };
@@ -50092,6 +50174,9 @@ var WebviewCommandHandler = class {
     console.log("[WebviewCommandHandler] received message:", message);
     try {
       switch (message.function) {
+        case "addAgent":
+          await addAgent(this.storage, message.args.repoId);
+          break;
         case "addRepo":
           await addRepo(this.storage);
           break;
@@ -50112,7 +50197,7 @@ var WebviewCommandHandler = class {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error('[WebviewCommandHandler] error handling "%s":', message.function, msg);
-      vscode10.window.showErrorMessage(msg);
+      vscode11.window.showErrorMessage(msg);
     }
   };
   dispose() {
@@ -50131,7 +50216,7 @@ var activate = async (context) => {
   context.subscriptions.push(provider);
   const explorer = new FileExplorerProvider(storage);
   context.subscriptions.push(explorer);
-  const treeView = vscode11.window.createTreeView("vscode-agentic.explorer", {
+  const treeView = vscode12.window.createTreeView("vscode-agentic.explorer", {
     treeDataProvider: explorer
   });
   explorer.attachTreeView(treeView);
@@ -50139,7 +50224,7 @@ var activate = async (context) => {
   const commandHandler = new WebviewCommandHandler(provider, storage, explorer);
   context.subscriptions.push(commandHandler);
   context.subscriptions.push(
-    vscode11.window.registerWebviewViewProvider(AgentPanelProvider.viewType, provider)
+    vscode12.window.registerWebviewViewProvider(AgentPanelProvider.viewType, provider)
   );
   setTimeout(() => {
     syncWorkspaceRepos(storage).catch((err) => console.error("[Agentic] workspace sync failed:", err));

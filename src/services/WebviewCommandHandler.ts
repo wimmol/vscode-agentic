@@ -3,6 +3,7 @@ import type { StateStorage } from '../db';
 import type { AgentPanelProvider } from './AgentPanelProvider';
 import type { FileExplorerProvider } from './FileExplorerProvider';
 import type { WebviewToExtensionMessage } from '../types/messages';
+import { addAgent } from '../features/addAgent';
 import { addRepo } from '../features/addRepo';
 import { removeRepo } from '../features/removeRepo';
 import { rootClick } from '../features/rootClick';
@@ -37,6 +38,9 @@ export class WebviewCommandHandler implements vscode.Disposable {
     console.log('[WebviewCommandHandler] received message:', message);
     try {
       switch (message.function) {
+        case 'addAgent':
+          await addAgent(this.storage, message.args.repoId);
+          break;
         case 'addRepo':
           await addRepo(this.storage);
           break;

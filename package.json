@@ -24,6 +24,16 @@
         }
       ]
     },
+    "configuration": {
+      "title": "Agentic",
+      "properties": {
+        "vscode-agentic.agentCommand": {
+          "type": "string",
+          "default": "claude",
+          "description": "Command to execute in agent terminals."
+        }
+      }
+    },
     "views": {
       "vscode-agentic": [
         {

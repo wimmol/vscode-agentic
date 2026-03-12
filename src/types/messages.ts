@@ -42,3 +42,8 @@ export const repoRootClickMessage = (repoId: string): WebviewToExtensionMessage 
   function: 'repoRootClick',
   args: { repoId },
 });
+
+export const addAgentMessage = (repoId: string): WebviewToExtensionMessage => ({
+  function: 'addAgent',
+  args: { repoId },
+});

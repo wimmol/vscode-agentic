@@ -21987,6 +21987,10 @@ var repoRootClickMessage = (repoId) => ({
   function: "repoRootClick",
   args: { repoId }
 });
+var addAgentMessage = (repoId) => ({
+  function: "addAgent",
+  args: { repoId }
+});
 
 // src/ui/agentPanel/AgentPanelPage.tsx
 var import_jsx_runtime11 = __toESM(require_jsx_runtime());
@@ -21994,6 +21998,9 @@ var noopId = (_id) => {
 };
 var AgentPanelPage = () => {
   const repos = useAgentPanel();
+  const onAddAgentClick = (0, import_react3.useCallback)((repoId) => {
+    vscode.postMessage(addAgentMessage(repoId));
+  }, []);
   const onRootClick = (0, import_react3.useCallback)(() => {
     vscode.postMessage(rootClickMessage());
   }, []);
@@ -22016,7 +22023,7 @@ var AgentPanelPage = () => {
       onRootClick,
       onAddRepoClick,
       onRepoRootClick,
-      onAddAgentClick: noopId,
+      onAddAgentClick,
       onRemoveRepoClick,
       onToggleRepoClick,
       onAgentClick: noopId,
