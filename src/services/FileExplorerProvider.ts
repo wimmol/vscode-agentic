@@ -2,9 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import type { StateStorage } from '../db';
-
-const WORKSPACE_SCOPE_KEY = 'workspace';
-const PERSIST_DEBOUNCE_MS = 500;
+import { WORKSPACE_SCOPE_KEY, PERSIST_DEBOUNCE_MS } from '../constants/explorer';
 
 /**
  * Provides a file-tree view of repository directories in the sidebar.

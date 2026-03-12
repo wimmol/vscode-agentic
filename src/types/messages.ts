@@ -47,3 +47,8 @@ export const addAgentMessage = (repoId: string): WebviewToExtensionMessage => ({
   function: 'addAgent',
   args: { repoId },
 });
+
+export const removeAgentMessage = (agentId: string): WebviewToExtensionMessage => ({
+  function: 'removeAgent',
+  args: { agentId },
+});

@@ -5,6 +5,7 @@ import type { FileExplorerProvider } from './FileExplorerProvider';
 import type { WebviewToExtensionMessage } from '../types/messages';
 import { addAgent } from '../features/addAgent';
 import { addRepo } from '../features/addRepo';
+import { removeAgent } from '../features/removeAgent';
 import { removeRepo } from '../features/removeRepo';
 import { rootClick } from '../features/rootClick';
 import { repoRootClick } from '../features/repoRootClick';
@@ -43,6 +44,9 @@ export class WebviewCommandHandler implements vscode.Disposable {
           break;
         case 'addRepo':
           await addRepo(this.storage);
+          break;
+        case 'removeAgent':
+          await removeAgent(this.storage, message.args.agentId);
           break;
         case 'removeRepo':
           await removeRepo(this.storage, message.args.repoId);

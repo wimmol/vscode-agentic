@@ -5,6 +5,7 @@ import { RepositoryModel, AgentModel, WorktreeModel, ExplorerStateModel } from '
 import type { Repository, Worktree, Agent } from './models';
 import type { RepoWithAgents } from '../types';
 import type { AgentCli } from '../types/agent';
+import { worktreePath } from '../services/GitService';
 
 /**
  * Manages all read/write operations against the file-based SQLite database.
@@ -169,7 +170,7 @@ export class StateStorage implements vscode.Disposable {
         {
           worktreeId: randomUUID(),
           agentId: agent.agentId,
-          path: `${repo.localPath}/.worktrees/${trimmedName}`,
+          path: worktreePath(repo.localPath, trimmedName),
         },
         { transaction: t },
       );

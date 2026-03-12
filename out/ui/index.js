@@ -21991,6 +21991,10 @@ var addAgentMessage = (repoId) => ({
   function: "addAgent",
   args: { repoId }
 });
+var removeAgentMessage = (agentId) => ({
+  function: "removeAgent",
+  args: { agentId }
+});
 
 // src/ui/agentPanel/AgentPanelPage.tsx
 var import_jsx_runtime11 = __toESM(require_jsx_runtime());
@@ -22016,6 +22020,9 @@ var AgentPanelPage = () => {
   const onToggleRepoClick = (0, import_react3.useCallback)((repoId) => {
     vscode.postMessage(toggleRepoExpandedMessage(repoId));
   }, []);
+  const onRemoveAgentClick = (0, import_react3.useCallback)((agentId) => {
+    vscode.postMessage(removeAgentMessage(agentId));
+  }, []);
   return /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(
     AgentPanelView,
     {
@@ -22029,7 +22036,7 @@ var AgentPanelPage = () => {
       onAgentClick: noopId,
       onCloneAgentClick: noopId,
       onStopAgentClick: noopId,
-      onRemoveAgentClick: noopId,
+      onRemoveAgentClick,
       onClearAgentClick: noopId
     }
   );

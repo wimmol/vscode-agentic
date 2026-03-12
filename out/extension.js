@@ -49315,7 +49315,7 @@ __export(extension_exports, {
   deactivate: () => deactivate
 });
 module.exports = __toCommonJS(extension_exports);
-var vscode12 = __toESM(require("vscode"));
+var vscode13 = __toESM(require("vscode"));
 
 // src/db/index.ts
 var vscode2 = __toESM(require("vscode"));
@@ -49476,6 +49476,60 @@ var initModels = (sequelize) => {
 // src/db/StateStorage.ts
 var import_crypto4 = require("crypto");
 var vscode = __toESM(require("vscode"));
+
+// src/services/GitService.ts
+var import_child_process = require("child_process");
+var import_util = require("util");
+
+// src/constants/git.ts
+var GIT_TIMEOUT = 3e4;
+var GIT_WORKTREE_TIMEOUT = 12e4;
+var GIT_MAX_BUFFER = 10 * 1024 * 1024;
+var INVALID_BRANCH_RE = /[~^:?*[\\\s]|\.\.|\.lock$/;
+
+// src/services/GitService.ts
+var execFile = (0, import_util.promisify)(import_child_process.execFile);
+var gitOpts = (cwd, timeout = GIT_TIMEOUT) => ({
+  cwd,
+  timeout,
+  maxBuffer: GIT_MAX_BUFFER
+});
+var worktreePath = (repoPath, branch) => `${repoPath}/.worktrees/${branch}`;
+var ensureBranch = async (repoPath, branch) => {
+  try {
+    await execFile("git", ["branch", branch], gitOpts(repoPath));
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "";
+    if (!msg.includes("already exists")) {
+      throw err;
+    }
+  }
+};
+var createWorktree = async (repoPath, worktreePath2, branch) => {
+  await execFile(
+    "git",
+    ["worktree", "add", worktreePath2, branch],
+    gitOpts(repoPath, GIT_WORKTREE_TIMEOUT)
+  );
+};
+var removeWorktree = async (repoPath, worktreePath2) => {
+  try {
+    await execFile("git", ["worktree", "remove", "--force", worktreePath2], gitOpts(repoPath, GIT_WORKTREE_TIMEOUT));
+  } catch {
+  }
+  try {
+    await execFile("git", ["worktree", "prune"], gitOpts(repoPath));
+  } catch {
+  }
+};
+var deleteBranch = async (repoPath, branch) => {
+  try {
+    await execFile("git", ["branch", "-D", branch], gitOpts(repoPath));
+  } catch {
+  }
+};
+
+// src/db/StateStorage.ts
 var StateStorage = class {
   constructor(sequelize) {
     this.sequelize = sequelize;
@@ -49604,7 +49658,7 @@ var StateStorage = class {
         {
           worktreeId: (0, import_crypto4.randomUUID)(),
           agentId: agent.agentId,
-          path: `${repo.localPath}/.worktrees/${trimmedName}`
+          path: worktreePath(repo.localPath, trimmedName)
         },
         { transaction: t }
       );
@@ -49812,8 +49866,12 @@ var getNonce = () => (0, import_crypto5.randomBytes)(16).toString("hex");
 var vscode5 = __toESM(require("vscode"));
 var path2 = __toESM(require("path"));
 var fs = __toESM(require("fs/promises"));
+
+// src/constants/explorer.ts
 var WORKSPACE_SCOPE_KEY = "workspace";
 var PERSIST_DEBOUNCE_MS = 500;
+
+// src/services/FileExplorerProvider.ts
 var FileExplorerProvider = class {
   constructor(storage) {
     this.storage = storage;
@@ -49944,22 +50002,10 @@ var FileItem = class extends vscode5.TreeItem {
 };
 
 // src/services/WebviewCommandHandler.ts
-var vscode11 = __toESM(require("vscode"));
+var vscode12 = __toESM(require("vscode"));
 
 // src/features/addAgent.ts
-var import_child_process = require("child_process");
-var import_util = require("util");
 var vscode6 = __toESM(require("vscode"));
-var execFile = (0, import_util.promisify)(import_child_process.execFile);
-var INVALID_BRANCH_RE = /[~^:?*[\\\s]|\.\.|\.lock$/;
-var GIT_TIMEOUT = 3e4;
-var GIT_WORKTREE_TIMEOUT = 12e4;
-var GIT_MAX_BUFFER = 10 * 1024 * 1024;
-var gitOpts = (cwd, timeout = GIT_TIMEOUT) => ({
-  cwd,
-  timeout,
-  maxBuffer: GIT_MAX_BUFFER
-});
 var validateBranchName = (value) => {
   const trimmed = value.trim();
   if (!trimmed) {
@@ -49969,29 +50015,6 @@ var validateBranchName = (value) => {
     return "Invalid branch name (contains forbidden characters)";
   }
   return void 0;
-};
-var ensureBranch = async (repoPath, branch) => {
-  try {
-    await execFile("git", ["branch", branch], gitOpts(repoPath));
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "";
-    if (!msg.includes("already exists")) {
-      throw err;
-    }
-  }
-};
-var createWorktree = async (repoPath, worktreePath, branch) => {
-  await execFile(
-    "git",
-    ["worktree", "add", worktreePath, branch],
-    gitOpts(repoPath, GIT_WORKTREE_TIMEOUT)
-  );
-};
-var removeWorktree = async (repoPath, worktreePath) => {
-  try {
-    await execFile("git", ["worktree", "remove", "--force", worktreePath], gitOpts(repoPath));
-  } catch {
-  }
 };
 var addAgent = async (storage, repoId) => {
   const repo = await storage.getRepository(repoId);
@@ -50010,19 +50033,19 @@ var addAgent = async (storage, repoId) => {
   }
   const branch = name.trim();
   const repoPath = repo.localPath;
-  const worktreePath = `${repoPath}/.worktrees/${branch}`;
+  const wtPath = worktreePath(repoPath, branch);
   await ensureBranch(repoPath, branch);
-  await createWorktree(repoPath, worktreePath, branch);
+  await createWorktree(repoPath, wtPath, branch);
   try {
     await storage.addAgent(repoId, branch, "claude-code");
   } catch (err) {
-    await removeWorktree(repoPath, worktreePath);
+    await removeWorktree(repoPath, wtPath);
     throw err;
   }
   const agentCommand = vscode6.workspace.getConfiguration("vscode-agentic").get("agentCommand", "claude");
   const terminal = vscode6.window.createTerminal({
     name: `${branch} (${repo.name})`,
-    cwd: worktreePath,
+    cwd: wtPath,
     location: { viewColumn: vscode6.ViewColumn.Two }
   });
   terminal.sendText(agentCommand);
@@ -50032,7 +50055,11 @@ var addAgent = async (storage, repoId) => {
 var import_fs2 = require("fs");
 var path3 = __toESM(require("path"));
 var vscode7 = __toESM(require("vscode"));
+
+// src/constants/repo.ts
 var BROWSE_LABEL = "$(folder-opened) Browse\u2026";
+
+// src/features/addRepo.ts
 var getWorkspaceGitFolders = () => {
   const folders = vscode7.workspace.workspaceFolders ?? [];
   return folders.filter((wf) => (0, import_fs2.existsSync)(path3.join(wf.uri.fsPath, ".git"))).map((wf) => ({
@@ -50093,20 +50120,53 @@ var addRepo = async (storage) => {
   }
 };
 
-// src/features/removeRepo.ts
+// src/features/removeAgent.ts
 var vscode8 = __toESM(require("vscode"));
-var removeRepo = async (storage, repoId) => {
-  const repo = await storage.getRepository(repoId);
+var removeAgent = async (storage, agentId) => {
+  const agent = await storage.getAgent(agentId);
+  if (!agent) {
+    vscode8.window.showErrorMessage("Agent not found.");
+    return;
+  }
+  const [repo, worktree] = await Promise.all([
+    storage.getRepository(agent.repoId),
+    storage.getWorktree(agentId)
+  ]);
   if (!repo) {
     vscode8.window.showErrorMessage("Repository not found.");
     return;
   }
-  const isInWorkspace = (vscode8.workspace.workspaceFolders ?? []).some(
+  if (!worktree) {
+    vscode8.window.showErrorMessage("Worktree not found.");
+    return;
+  }
+  const confirm = await vscode8.window.showWarningMessage(
+    `Remove agent "${agent.name}"? This will delete its worktree and branch.`,
+    { modal: true },
+    "Remove"
+  );
+  if (confirm !== "Remove") {
+    return;
+  }
+  await removeWorktree(repo.localPath, worktree.path);
+  await deleteBranch(repo.localPath, agent.name);
+  await storage.removeAgent(agentId);
+};
+
+// src/features/removeRepo.ts
+var vscode9 = __toESM(require("vscode"));
+var removeRepo = async (storage, repoId) => {
+  const repo = await storage.getRepository(repoId);
+  if (!repo) {
+    vscode9.window.showErrorMessage("Repository not found.");
+    return;
+  }
+  const isInWorkspace = (vscode9.workspace.workspaceFolders ?? []).some(
     (wf) => wf.uri.fsPath === repo.localPath
   );
   const REMOVE_WITH_WORKSPACE = "Remove & Workspace";
   const buttons = isInWorkspace ? ["Remove", REMOVE_WITH_WORKSPACE] : ["Remove"];
-  const confirm = await vscode8.window.showWarningMessage(
+  const confirm = await vscode9.window.showWarningMessage(
     `Remove repository "${repo.name}"? This will also delete all its agents and worktrees.`,
     { modal: true },
     ...buttons
@@ -50116,40 +50176,40 @@ var removeRepo = async (storage, repoId) => {
   }
   await storage.removeRepository(repoId);
   if (confirm === REMOVE_WITH_WORKSPACE) {
-    const folders = vscode8.workspace.workspaceFolders ?? [];
+    const folders = vscode9.workspace.workspaceFolders ?? [];
     const idx = folders.findIndex((wf) => wf.uri.fsPath === repo.localPath);
     if (idx !== -1) {
-      vscode8.workspace.updateWorkspaceFolders(idx, 1);
+      vscode9.workspace.updateWorkspaceFolders(idx, 1);
     }
   }
 };
 
 // src/features/rootClick.ts
-var vscode9 = __toESM(require("vscode"));
+var vscode10 = __toESM(require("vscode"));
 var rootClick = async (storage, explorer) => {
   const repos = await storage.getAllRepositories();
   if (repos.length === 0) {
-    vscode9.window.showInformationMessage("No repositories added.");
+    vscode10.window.showInformationMessage("No repositories added.");
     return;
   }
   explorer.showAllRepos(repos.map((r) => r.localPath));
-  const config = vscode9.workspace.getConfiguration("terminal.integrated");
-  config.update("cwd", void 0, vscode9.ConfigurationTarget.Workspace).then(void 0, (err) => {
+  const config = vscode10.workspace.getConfiguration("terminal.integrated");
+  config.update("cwd", void 0, vscode10.ConfigurationTarget.Workspace).then(void 0, (err) => {
     console.error("[rootClick] Failed to clear terminal cwd:", err);
   });
 };
 
 // src/features/repoRootClick.ts
-var vscode10 = __toESM(require("vscode"));
+var vscode11 = __toESM(require("vscode"));
 var repoRootClick = async (storage, explorer, repoId) => {
   const repo = await storage.getRepository(repoId);
   if (!repo) {
-    vscode10.window.showErrorMessage("Repository not found.");
+    vscode11.window.showErrorMessage("Repository not found.");
     return;
   }
   explorer.showRepo(repoId, repo.localPath);
-  const config = vscode10.workspace.getConfiguration("terminal.integrated");
-  config.update("cwd", repo.localPath, vscode10.ConfigurationTarget.Workspace).then(void 0, (err) => {
+  const config = vscode11.workspace.getConfiguration("terminal.integrated");
+  config.update("cwd", repo.localPath, vscode11.ConfigurationTarget.Workspace).then(void 0, (err) => {
     console.error("[repoRootClick] Failed to update terminal cwd:", err);
   });
 };
@@ -50180,6 +50240,9 @@ var WebviewCommandHandler = class {
         case "addRepo":
           await addRepo(this.storage);
           break;
+        case "removeAgent":
+          await removeAgent(this.storage, message.args.agentId);
+          break;
         case "removeRepo":
           await removeRepo(this.storage, message.args.repoId);
           break;
@@ -50197,7 +50260,7 @@ var WebviewCommandHandler = class {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error('[WebviewCommandHandler] error handling "%s":', message.function, msg);
-      vscode11.window.showErrorMessage(msg);
+      vscode12.window.showErrorMessage(msg);
     }
   };
   dispose() {
@@ -50216,7 +50279,7 @@ var activate = async (context) => {
   context.subscriptions.push(provider);
   const explorer = new FileExplorerProvider(storage);
   context.subscriptions.push(explorer);
-  const treeView = vscode12.window.createTreeView("vscode-agentic.explorer", {
+  const treeView = vscode13.window.createTreeView("vscode-agentic.explorer", {
     treeDataProvider: explorer
   });
   explorer.attachTreeView(treeView);
@@ -50224,7 +50287,7 @@ var activate = async (context) => {
   const commandHandler = new WebviewCommandHandler(provider, storage, explorer);
   context.subscriptions.push(commandHandler);
   context.subscriptions.push(
-    vscode12.window.registerWebviewViewProvider(AgentPanelProvider.viewType, provider)
+    vscode13.window.registerWebviewViewProvider(AgentPanelProvider.viewType, provider)
   );
   setTimeout(() => {
     syncWorkspaceRepos(storage).catch((err) => console.error("[Agentic] workspace sync failed:", err));

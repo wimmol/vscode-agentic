@@ -2,12 +2,11 @@ import { existsSync } from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import type { StateStorage } from '../db';
+import { BROWSE_LABEL } from '../constants/repo';
 
 interface RepoPickItem extends vscode.QuickPickItem {
   folderPath?: string;
 }
-
-const BROWSE_LABEL = '$(folder-opened) Browse…';
 
 const getWorkspaceGitFolders = (): RepoPickItem[] => {
   const folders = vscode.workspace.workspaceFolders ?? [];
