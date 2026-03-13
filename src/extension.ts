@@ -7,8 +7,8 @@ import { TerminalService } from './services/TerminalService';
 import { WebviewCommandHandler } from './services/WebviewCommandHandler';
 import { VIEW_EXPLORER } from './constants/views';
 
-export const activate = async (context: vscode.ExtensionContext) => {
-  const storage = await createStateStorage(context);
+export const activate = (context: vscode.ExtensionContext) => {
+  const storage = createStateStorage(context);
   context.subscriptions.push(storage);
 
   const provider = new AgentPanelProvider(context.extensionUri, storage);
