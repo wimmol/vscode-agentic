@@ -64,5 +64,6 @@ export const addAgent = async (
 
   explorer.showRepo(agent.agentId, wtPath, repo.name, branch);
   terminalService.createTerminal(agent.agentId, branch, repo.name, wtPath);
+  await storage.focusAgent(agent.agentId);
   return agent.agentId;
 };

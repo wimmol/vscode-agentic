@@ -30,6 +30,7 @@ export interface Agent {
   name: string;
   cli: AgentCli;
   status: AgentStatus;
+  isFocused: boolean;
   sessionId: string | null;
   lastPrompt: string | null;
   startedAt: number | null;
@@ -64,6 +65,7 @@ export class AgentModel extends Model<Agent> implements Agent {
   declare name: string;
   declare cli: AgentCli;
   declare status: AgentStatus;
+  declare isFocused: boolean;
   declare sessionId: string | null;
   declare lastPrompt: string | null;
   declare startedAt: number | null;
@@ -99,6 +101,7 @@ export const initModels = (sequelize: Sequelize): void => {
       name: { type: DataTypes.TEXT, allowNull: false },
       cli: { type: DataTypes.TEXT, allowNull: false },
       status: { type: DataTypes.TEXT, allowNull: false },
+      isFocused: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
       sessionId: { type: DataTypes.TEXT },
       lastPrompt: { type: DataTypes.TEXT },
       startedAt: { type: DataTypes.INTEGER },

@@ -6,7 +6,6 @@ import { LABEL_EMPTY_REPOS } from '../../constants/messages';
 
 interface AgentPanelViewProps {
   repos: RepoWithAgents[];
-  selectedAgentId: string | null;
   onRootClick: () => void;
   onAddRepoClick: () => void;
   onRepoRootClick: (repoId: string) => void;
@@ -19,7 +18,6 @@ interface AgentPanelViewProps {
 
 export const AgentPanelView = ({
   repos,
-  selectedAgentId,
   onRootClick,
   onAddRepoClick,
   onRepoRootClick,
@@ -40,7 +38,6 @@ export const AgentPanelView = ({
           <RepoSection
             key={repo.repositoryId}
             repo={repo}
-            selectedAgentId={selectedAgentId}
             onRepoRootClick={() => onRepoRootClick(repo.repositoryId)}
             onAddAgentClick={() => onAddAgentClick(repo.repositoryId)}
             onRemoveRepoClick={() => onRemoveRepoClick(repo.repositoryId)}
