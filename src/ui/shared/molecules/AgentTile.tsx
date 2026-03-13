@@ -4,7 +4,20 @@ import { Timer } from './Timer';
 import { ElapsedTime } from '../atoms/ElapsedTime';
 import { TruncatedText } from '../atoms/TruncatedText';
 import type { AgentStatus } from '../../../types';
-import { AGENT_STATUS_RUNNING } from '../../../constants/agent';
+import {
+  AGENT_STATUS_CREATED,
+  AGENT_STATUS_RUNNING,
+  AGENT_STATUS_IDLE,
+  AGENT_STATUS_ERROR,
+} from '../../../constants/agent';
+
+/** Maps every AgentStatus to its CSS modifier class. Ensures TypeScript catches missing statuses. */
+const STATUS_CSS: Record<AgentStatus, string> = {
+  [AGENT_STATUS_CREATED]: 'agent-tile--created',
+  [AGENT_STATUS_RUNNING]: 'agent-tile--running',
+  [AGENT_STATUS_IDLE]: 'agent-tile--idle',
+  [AGENT_STATUS_ERROR]: 'agent-tile--error',
+};
 import { LABEL_REMOVE_AGENT } from '../../../constants/messages';
 import { useCallback } from 'react';
 
@@ -34,7 +47,7 @@ export const AgentTile = ({
   const handleClick = useCallback(() => onClick(agentId), [onClick, agentId]);
   const handleRemove = useCallback(() => onRemoveClick(agentId), [onRemoveClick, agentId]);
 
-  const className = `agent-tile agent-tile--${status}${isSelected ? ' agent-tile--selected' : ''}`;
+  const className = `agent-tile ${STATUS_CSS[status]}${isSelected ? ' agent-tile--selected' : ''}`;
 
   // Live timer when task is in progress (startedAt set, no completedAt yet).
   const showTimer = startedAt !== null && completedAt === null;
