@@ -1,0 +1,84 @@
+import * as vscode from 'vscode';
+import type { StateStorage } from '../db';
+import type { AgentPanelProvider } from './AgentPanelProvider';
+import type { FileExplorerProvider } from './FileExplorerProvider';
+import type { TerminalService } from './TerminalService';
+import type { WebviewToExtensionMessage } from '../types/messages';
+import { addAgent } from '../features/addAgent';
+import { addRepo } from '../features/addRepo';
+import { removeAgent } from '../features/removeAgent';
+import { removeRepo } from '../features/removeRepo';
+import { rootClick } from '../features/rootClick';
+import { repoRootClick } from '../features/repoRootClick';
+import { agentClick } from '../features/agentClick';
+
+/**
+ * Handles all webview → extension communication.
+ *
+ * Subscribes to the webview once it resolves, listens for incoming
+ * commands via onDidReceiveMessage, and routes them by function name.
+ */
+export class WebviewCommandHandler implements vscode.Disposable {
+  private readonly disposables: vscode.Disposable[] = [];
+  private messageDisposable: vscode.Disposable | undefined;
+
+  constructor(
+    provider: AgentPanelProvider,
+    private readonly storage: StateStorage,
+    private readonly explorer: FileExplorerProvider,
+    private readonly terminalService: TerminalService,
+  ) {
+    this.disposables.push(
+      provider.onDidResolveView((view) => {
+        this.messageDisposable?.dispose();
+        this.messageDisposable = view.webview.onDidReceiveMessage(
+          (message: WebviewToExtensionMessage) => this.handler(message)
+        );
+      }),
+    );
+  }
+
+  private handler = async (message: WebviewToExtensionMessage): Promise<void> => {
+    console.log('[WebviewCommandHandler] received message:', message);
+    try {
+      switch (message.function) {
+        case 'addAgent':
+          await addAgent(this.storage, this.terminalService, message.args.repoId);
+          break;
+        case 'addRepo':
+          await addRepo(this.storage);
+          break;
+        case 'removeAgent':
+          await removeAgent(this.storage, this.terminalService, message.args.agentId);
+          break;
+        case 'removeRepo':
+          await removeRepo(this.storage, message.args.repoId);
+          break;
+        case 'toggleRepoExpanded':
+          await this.storage.toggleRepoExpanded(message.args.repoId);
+          break;
+        case 'rootClick':
+          await rootClick(this.storage, this.explorer);
+          break;
+        case 'repoRootClick':
+          await repoRootClick(this.storage, this.explorer, message.args.repoId);
+          break;
+        case 'agentClick':
+          await agentClick(this.storage, this.explorer, this.terminalService, message.args.agentId);
+          break;
+      }
+      console.log('[WebviewCommandHandler] handled "%s" successfully', message.function);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('[WebviewCommandHandler] error handling "%s":', message.function, msg);
+      vscode.window.showErrorMessage(msg);
+    }
+  };
+
+  dispose(): void {
+    this.messageDisposable?.dispose();
+    for (const d of this.disposables) {
+      d.dispose();
+    }
+  }
+}

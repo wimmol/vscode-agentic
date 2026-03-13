@@ -1,24 +1,50 @@
+import { useCallback, useState } from 'react';
 import { AgentPanelView } from './AgentPanelView';
-import type { Repo } from '../shared/types';
-
-const placeholderRepos: Repo[] = [];
-
-const onRootClick = () => {};
-const onAddRepoClick = () => {};
-const onRepoRootClick = (_repoId: string) => {};
-const onAddAgentClick = (_repoId: string) => {};
-const onRemoveRepoClick = (_repoId: string) => {};
-const onToggleRepoClick = (_repoId: string) => {};
-const onAgentClick = (_agentId: string) => {};
-const onCloneAgentClick = (_agentId: string) => {};
-const onStopAgentClick = (_agentId: string) => {};
-const onRemoveAgentClick = (_agentId: string) => {};
-const onClearAgentClick = (_agentId: string) => {};
+import { useAgentPanel } from './useAgentPanel';
+import { vscode } from '../index';
+import { addAgentMessage, addRepoMessage, agentClickMessage, removeAgentMessage, removeRepoMessage, repoRootClickMessage, rootClickMessage, toggleRepoExpandedMessage } from '../../types/messages';
 
 export const AgentPanelPage = () => {
+  const repos = useAgentPanel();
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+
+  const onAddAgentClick = useCallback((repoId: string) => {
+    vscode.postMessage(addAgentMessage(repoId));
+  }, []);
+
+  const onRootClick = useCallback(() => {
+    vscode.postMessage(rootClickMessage());
+  }, []);
+
+  const onRepoRootClick = useCallback((repoId: string) => {
+    vscode.postMessage(repoRootClickMessage(repoId));
+  }, []);
+
+  const onAddRepoClick = useCallback(() => {
+    vscode.postMessage(addRepoMessage());
+  }, []);
+
+  const onRemoveRepoClick = useCallback((repoId: string) => {
+    vscode.postMessage(removeRepoMessage(repoId));
+  }, []);
+
+  const onToggleRepoClick = useCallback((repoId: string) => {
+    vscode.postMessage(toggleRepoExpandedMessage(repoId));
+  }, []);
+
+  const onRemoveAgentClick = useCallback((agentId: string) => {
+    vscode.postMessage(removeAgentMessage(agentId));
+  }, []);
+
+  const onAgentClick = useCallback((agentId: string) => {
+    setSelectedAgentId(agentId);
+    vscode.postMessage(agentClickMessage(agentId));
+  }, []);
+
   return (
     <AgentPanelView
-      repos={placeholderRepos}
+      repos={repos}
+      selectedAgentId={selectedAgentId}
       onRootClick={onRootClick}
       onAddRepoClick={onAddRepoClick}
       onRepoRootClick={onRepoRootClick}
@@ -26,10 +52,7 @@ export const AgentPanelPage = () => {
       onRemoveRepoClick={onRemoveRepoClick}
       onToggleRepoClick={onToggleRepoClick}
       onAgentClick={onAgentClick}
-      onCloneAgentClick={onCloneAgentClick}
-      onStopAgentClick={onStopAgentClick}
       onRemoveAgentClick={onRemoveAgentClick}
-      onClearAgentClick={onClearAgentClick}
     />
   );
 };

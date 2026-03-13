@@ -1,50 +1,57 @@
 import { IconButton } from '../atoms/IconButton';
 import { StatusIcon } from '../atoms/StatusIcon';
 import { Timer } from './Timer';
+import { ElapsedTime } from '../atoms/ElapsedTime';
 import { TruncatedText } from '../atoms/TruncatedText';
-import type { AgentStatus } from '../types';
-import type { MouseEvent } from 'react';
-
-const stopPropagation = (e: MouseEvent) => e.stopPropagation();
+import type { AgentStatus } from '../../../types';
+import { useCallback } from 'react';
 
 interface AgentTileProps {
+  agentId: string;
   name: string;
   status: AgentStatus;
-  lastPrompt: string;
-  startedAt?: number;
-  onClick: () => void;
-  onCloneClick: () => void;
-  onStopClick: () => void;
-  onRemoveClick: () => void;
-  onClearClick: () => void;
+  lastPrompt: string | null;
+  startedAt: number | null;
+  completedAt: number | null;
+  isSelected: boolean;
+  onClick: (agentId: string) => void;
+  onRemoveClick: (agentId: string) => void;
 }
 
 export const AgentTile = ({
+  agentId,
   name,
   status,
   lastPrompt,
   startedAt,
+  completedAt,
+  isSelected,
   onClick,
-  onCloneClick,
-  onStopClick,
   onRemoveClick,
-  onClearClick,
 }: AgentTileProps) => {
+  const handleClick = useCallback(() => onClick(agentId), [onClick, agentId]);
+  const handleRemove = useCallback(() => onRemoveClick(agentId), [onRemoveClick, agentId]);
+
+  const className = `agent-tile agent-tile--${status}${isSelected ? ' agent-tile--selected' : ''}`;
+
+  // Live timer when task is in progress (startedAt set, no completedAt yet).
+  const showTimer = startedAt !== null && completedAt === null;
+  // Static elapsed time when last task is complete.
+  const showElapsed = startedAt !== null && completedAt !== null;
+
   return (
-    <article className="agent-tile" onClick={onClick}>
+    <article className={className} onClick={handleClick} tabIndex={0}>
       <div className="agent-tile-header">
         <StatusIcon status={status} />
         <span className="agent-tile-name">{name}</span>
-        {status === 'running' && startedAt !== undefined && <Timer startedAt={startedAt} />}
+        {showTimer && <Timer startedAt={startedAt} />}
+        {showElapsed && <ElapsedTime startedAt={startedAt} completedAt={completedAt} />}
       </div>
       <div className="agent-tile-prompt">
         <TruncatedText text={lastPrompt} />
       </div>
-      <nav className="agent-tile-actions" onClick={stopPropagation}>
-        <IconButton icon="copy" onClick={onCloneClick} title="Clone agent" />
-        <IconButton icon="debug-stop" onClick={onStopClick} title="Stop agent" />
-        <IconButton icon="trash" onClick={onRemoveClick} title="Remove agent" disabled={status === 'running'} />
-        <IconButton icon="clear-all" onClick={onClearClick} title="Clear context" />
+      <nav className="agent-tile-actions">
+        <IconButton icon="trash" onClick={handleRemove} title="Remove agent" disabled={status === 'running'} />
       </nav>
     </article>
   );

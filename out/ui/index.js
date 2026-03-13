@@ -21720,14 +21720,21 @@ var require_jsx_runtime = __commonJS({
 // src/ui/index.tsx
 var import_client = __toESM(require_client());
 
+// src/ui/agentPanel/AgentPanelPage.tsx
+var import_react4 = __toESM(require_react());
+
 // src/ui/shared/atoms/IconButton.tsx
 var import_jsx_runtime = __toESM(require_jsx_runtime());
 var IconButton = ({ icon, onClick, disabled, title }) => {
+  const handleClick = (e) => {
+    e.stopPropagation();
+    onClick();
+  };
   return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
     "button",
     {
       className: "icon-button",
-      onClick,
+      onClick: handleClick,
       disabled,
       title,
       "aria-label": title,
@@ -21738,13 +21745,10 @@ var IconButton = ({ icon, onClick, disabled, title }) => {
 
 // src/ui/shared/molecules/TabHeader.tsx
 var import_jsx_runtime2 = __toESM(require_jsx_runtime());
-var TabHeader = ({ onRootClick: onRootClick2, onAddRepoClick: onAddRepoClick2 }) => {
-  return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("header", { className: "tab-header", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "tab-header-title", children: "Agentic" }),
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("nav", { className: "tab-header-actions", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(IconButton, { icon: "root-folder", onClick: onRootClick2, title: "Navigate to workspace" }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(IconButton, { icon: "add", onClick: onAddRepoClick2, title: "Add repo" })
-    ] })
+var TabHeader = ({ onRootClick, onAddRepoClick }) => {
+  return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("nav", { className: "tab-header", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(IconButton, { icon: "root-folder", onClick: onRootClick, title: "Navigate to workspace" }),
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(IconButton, { icon: "add", onClick: onAddRepoClick, title: "Add repo" })
   ] });
 };
 
@@ -21753,16 +21757,16 @@ var import_jsx_runtime3 = __toESM(require_jsx_runtime());
 var RepoHeader = ({
   name,
   expanded,
-  onRootClick: onRootClick2,
-  onAddAgentClick: onAddAgentClick2,
+  onRootClick,
+  onAddAgentClick,
   onRemoveClick,
   onToggleClick
 }) => {
   return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("header", { className: "repo-header", children: [
     /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { className: "repo-header-name", children: name }),
     /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("nav", { className: "repo-header-actions", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(IconButton, { icon: "root-folder", onClick: onRootClick2, title: "Navigate to repo" }),
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(IconButton, { icon: "add", onClick: onAddAgentClick2, title: "Add agent" }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(IconButton, { icon: "root-folder", onClick: onRootClick, title: "Navigate to repo" }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(IconButton, { icon: "add", onClick: onAddAgentClick, title: "Add agent" }),
       /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(IconButton, { icon: "close", onClick: onRemoveClick, title: "Remove repo" }),
       /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
         IconButton,
@@ -21780,15 +21784,17 @@ var RepoHeader = ({
 var import_jsx_runtime4 = __toESM(require_jsx_runtime());
 var STATUS_ICONS = {
   created: "circle-outline",
-  running: "sync~spin",
+  running: "sync",
+  idle: "check",
   completed: "check",
   error: "error"
 };
 var StatusIcon = ({ status }) => {
+  const spin = status === "running" ? " codicon-modifier-spin" : "";
   return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
     "i",
     {
-      className: `codicon codicon-${STATUS_ICONS[status]}`,
+      className: `codicon codicon-${STATUS_ICONS[status]}${spin}`,
       title: status,
       "aria-label": status
     }
@@ -21797,7 +21803,8 @@ var StatusIcon = ({ status }) => {
 
 // src/ui/shared/molecules/Timer.tsx
 var import_react = __toESM(require_react());
-var import_jsx_runtime5 = __toESM(require_jsx_runtime());
+
+// src/ui/shared/utils/formatTime.ts
 var formatTime = (seconds) => {
   const mins = Math.floor(seconds / 60);
   const secs = seconds % 60;
@@ -21806,6 +21813,9 @@ var formatTime = (seconds) => {
   }
   return `${mins}m ${secs}s`;
 };
+
+// src/ui/shared/molecules/Timer.tsx
+var import_jsx_runtime5 = __toESM(require_jsx_runtime());
 var Timer = ({ startedAt }) => {
   const [elapsed, setElapsed] = (0, import_react.useState)(() => Math.max(0, Math.floor((Date.now() - startedAt) / 1e3)));
   (0, import_react.useEffect)(() => {
@@ -21818,134 +21828,225 @@ var Timer = ({ startedAt }) => {
   return /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: "timer", children: formatTime(elapsed) });
 };
 
-// src/ui/shared/atoms/TruncatedText.tsx
+// src/ui/shared/atoms/ElapsedTime.tsx
 var import_jsx_runtime6 = __toESM(require_jsx_runtime());
-var truncateStyle = {
-  display: "-webkit-box",
-  WebkitLineClamp: 1,
-  WebkitBoxOrient: "vertical",
-  overflow: "hidden",
-  textOverflow: "ellipsis"
+var ElapsedTime = ({ startedAt, completedAt }) => {
+  const elapsed = Math.max(0, Math.floor((completedAt - startedAt) / 1e3));
+  return /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "timer", children: formatTime(elapsed) });
 };
+
+// src/ui/shared/atoms/TruncatedText.tsx
+var import_jsx_runtime7 = __toESM(require_jsx_runtime());
 var TruncatedText = ({ text }) => {
-  return /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "truncated-text", style: truncateStyle, title: text, children: text });
+  return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: "truncated-text", title: text ?? void 0, children: text });
 };
 
 // src/ui/shared/molecules/AgentTile.tsx
-var import_jsx_runtime7 = __toESM(require_jsx_runtime());
-var stopPropagation = (e) => e.stopPropagation();
+var import_react2 = __toESM(require_react());
+var import_jsx_runtime8 = __toESM(require_jsx_runtime());
 var AgentTile = ({
+  agentId,
   name,
   status,
   lastPrompt,
   startedAt,
+  completedAt,
+  isSelected,
   onClick,
-  onCloneClick,
-  onStopClick,
-  onRemoveClick,
-  onClearClick
+  onRemoveClick
 }) => {
-  return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("article", { className: "agent-tile", onClick, children: [
-    /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "agent-tile-header", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(StatusIcon, { status }),
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: "agent-tile-name", children: name }),
-      status === "running" && startedAt !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Timer, { startedAt })
+  const handleClick = (0, import_react2.useCallback)(() => onClick(agentId), [onClick, agentId]);
+  const handleRemove = (0, import_react2.useCallback)(() => onRemoveClick(agentId), [onRemoveClick, agentId]);
+  const className = `agent-tile agent-tile--${status}${isSelected ? " agent-tile--selected" : ""}`;
+  const showTimer = startedAt !== null && completedAt === null;
+  const showElapsed = startedAt !== null && completedAt !== null;
+  return /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("article", { className, onClick: handleClick, tabIndex: 0, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "agent-tile-header", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(StatusIcon, { status }),
+      /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("span", { className: "agent-tile-name", children: name }),
+      showTimer && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(Timer, { startedAt }),
+      showElapsed && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(ElapsedTime, { startedAt, completedAt })
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "agent-tile-prompt", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(TruncatedText, { text: lastPrompt }) }),
-    /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("nav", { className: "agent-tile-actions", onClick: stopPropagation, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(IconButton, { icon: "copy", onClick: onCloneClick, title: "Clone agent" }),
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(IconButton, { icon: "debug-stop", onClick: onStopClick, title: "Stop agent" }),
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(IconButton, { icon: "trash", onClick: onRemoveClick, title: "Remove agent", disabled: status === "running" }),
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(IconButton, { icon: "clear-all", onClick: onClearClick, title: "Clear context" })
-    ] })
+    /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "agent-tile-prompt", children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(TruncatedText, { text: lastPrompt }) }),
+    /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("nav", { className: "agent-tile-actions", children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(IconButton, { icon: "trash", onClick: handleRemove, title: "Remove agent", disabled: status === "running" }) })
   ] });
 };
 
 // src/ui/shared/atoms/EmptyState.tsx
-var import_jsx_runtime8 = __toESM(require_jsx_runtime());
+var import_jsx_runtime9 = __toESM(require_jsx_runtime());
 var EmptyState = ({ text }) => {
-  return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("p", { className: "empty-state", children: text });
+  return /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("p", { className: "empty-state", children: text });
 };
 
-// src/ui/agentPanel/AgentPanelView.tsx
-var import_jsx_runtime9 = __toESM(require_jsx_runtime());
-var AgentPanelView = ({
-  repos,
-  onRootClick: onRootClick2,
-  onAddRepoClick: onAddRepoClick2,
-  onRepoRootClick: onRepoRootClick2,
-  onAddAgentClick: onAddAgentClick2,
-  onRemoveRepoClick: onRemoveRepoClick2,
-  onToggleRepoClick: onToggleRepoClick2,
-  onAgentClick: onAgentClick2,
-  onCloneAgentClick: onCloneAgentClick2,
-  onStopAgentClick: onStopAgentClick2,
-  onRemoveAgentClick: onRemoveAgentClick2,
-  onClearAgentClick: onClearAgentClick2
+// src/ui/agentPanel/RepoSection.tsx
+var import_jsx_runtime10 = __toESM(require_jsx_runtime());
+var RepoSection = ({
+  repo,
+  selectedAgentId,
+  onRepoRootClick,
+  onAddAgentClick,
+  onRemoveRepoClick,
+  onToggleRepoClick,
+  onAgentClick,
+  onRemoveAgentClick
 }) => {
-  return /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("section", { className: "agent-panel", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(TabHeader, { onRootClick: onRootClick2, onAddRepoClick: onAddRepoClick2 }),
-    repos.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(EmptyState, { text: "press + to add repo" }) : repos.map((repo) => /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("section", { className: "repo-section", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
-        RepoHeader,
-        {
-          name: repo.name,
-          expanded: repo.expanded,
-          onRootClick: () => onRepoRootClick2(repo.id),
-          onAddAgentClick: () => onAddAgentClick2(repo.id),
-          onRemoveClick: () => onRemoveRepoClick2(repo.id),
-          onToggleClick: () => onToggleRepoClick2(repo.id)
-        }
-      ),
-      repo.expanded && /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("div", { className: "repo-agents", children: repo.agents.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(EmptyState, { text: "press + to add agent" }) : repo.agents.map((agent) => /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
-        AgentTile,
-        {
-          name: agent.name,
-          status: agent.status,
-          lastPrompt: agent.lastPrompt,
-          startedAt: agent.startedAt,
-          onClick: () => onAgentClick2(agent.id),
-          onCloneClick: () => onCloneAgentClick2(agent.id),
-          onStopClick: () => onStopAgentClick2(agent.id),
-          onRemoveClick: () => onRemoveAgentClick2(agent.id),
-          onClearClick: () => onClearAgentClick2(agent.id)
-        },
-        agent.id
-      )) })
-    ] }, repo.id))
+  return /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("section", { className: "repo-section", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
+      RepoHeader,
+      {
+        name: repo.name,
+        expanded: repo.isExpanded,
+        onRootClick: onRepoRootClick,
+        onAddAgentClick,
+        onRemoveClick: onRemoveRepoClick,
+        onToggleClick: onToggleRepoClick
+      }
+    ),
+    repo.isExpanded && /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("div", { className: "repo-agents", children: repo.agents.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(EmptyState, { text: "press + to add agent" }) : repo.agents.map((agent) => /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
+      AgentTile,
+      {
+        agentId: agent.agentId,
+        name: agent.name,
+        status: agent.status,
+        lastPrompt: agent.lastPrompt,
+        startedAt: agent.startedAt,
+        completedAt: agent.completedAt,
+        isSelected: agent.agentId === selectedAgentId,
+        onClick: onAgentClick,
+        onRemoveClick: onRemoveAgentClick
+      },
+      agent.agentId
+    )) })
   ] });
 };
 
+// src/ui/agentPanel/AgentPanelView.tsx
+var import_jsx_runtime11 = __toESM(require_jsx_runtime());
+var AgentPanelView = ({
+  repos,
+  selectedAgentId,
+  onRootClick,
+  onAddRepoClick,
+  onRepoRootClick,
+  onAddAgentClick,
+  onRemoveRepoClick,
+  onToggleRepoClick,
+  onAgentClick,
+  onRemoveAgentClick
+}) => {
+  return /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("section", { className: "agent-panel", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(TabHeader, { onRootClick, onAddRepoClick }),
+    repos.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(EmptyState, { text: "press + to add repo" }) : repos.map((repo) => /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(
+      RepoSection,
+      {
+        repo,
+        selectedAgentId,
+        onRepoRootClick: () => onRepoRootClick(repo.repositoryId),
+        onAddAgentClick: () => onAddAgentClick(repo.repositoryId),
+        onRemoveRepoClick: () => onRemoveRepoClick(repo.repositoryId),
+        onToggleRepoClick: () => onToggleRepoClick(repo.repositoryId),
+        onAgentClick,
+        onRemoveAgentClick
+      },
+      repo.repositoryId
+    ))
+  ] });
+};
+
+// src/ui/agentPanel/useAgentPanel.ts
+var import_react3 = __toESM(require_react());
+var getCachedRepos = () => {
+  const state = vscode.getState();
+  return state?.repos ?? [];
+};
+var useAgentPanel = () => {
+  const [repos, setRepos] = (0, import_react3.useState)(getCachedRepos);
+  (0, import_react3.useEffect)(() => {
+    const handler = (event) => {
+      const message = event.data;
+      console.log("[useAgentPanel] received message:", message);
+      if (message.type === "update") {
+        console.log("[useAgentPanel] setting repos:", message.repos);
+        setRepos(message.repos);
+        vscode.setState({ repos: message.repos });
+      }
+    };
+    window.addEventListener("message", handler);
+    vscode.postMessage({ function: "ready", args: {} });
+    return () => window.removeEventListener("message", handler);
+  }, []);
+  return repos;
+};
+
+// src/types/messages.ts
+var toggleRepoExpandedMessage = (repoId) => ({
+  function: "toggleRepoExpanded",
+  args: { repoId }
+});
+var addRepoMessage = () => ({
+  function: "addRepo",
+  args: {}
+});
+var removeRepoMessage = (repoId) => ({
+  function: "removeRepo",
+  args: { repoId }
+});
+var rootClickMessage = () => ({
+  function: "rootClick",
+  args: {}
+});
+var repoRootClickMessage = (repoId) => ({
+  function: "repoRootClick",
+  args: { repoId }
+});
+var addAgentMessage = (repoId) => ({
+  function: "addAgent",
+  args: { repoId }
+});
+var removeAgentMessage = (agentId) => ({
+  function: "removeAgent",
+  args: { agentId }
+});
+var agentClickMessage = (agentId) => ({
+  function: "agentClick",
+  args: { agentId }
+});
+
 // src/ui/agentPanel/AgentPanelPage.tsx
-var import_jsx_runtime10 = __toESM(require_jsx_runtime());
-var placeholderRepos = [];
-var onRootClick = () => {
-};
-var onAddRepoClick = () => {
-};
-var onRepoRootClick = (_repoId) => {
-};
-var onAddAgentClick = (_repoId) => {
-};
-var onRemoveRepoClick = (_repoId) => {
-};
-var onToggleRepoClick = (_repoId) => {
-};
-var onAgentClick = (_agentId) => {
-};
-var onCloneAgentClick = (_agentId) => {
-};
-var onStopAgentClick = (_agentId) => {
-};
-var onRemoveAgentClick = (_agentId) => {
-};
-var onClearAgentClick = (_agentId) => {
-};
+var import_jsx_runtime12 = __toESM(require_jsx_runtime());
 var AgentPanelPage = () => {
-  return /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
+  const repos = useAgentPanel();
+  const [selectedAgentId, setSelectedAgentId] = (0, import_react4.useState)(null);
+  const onAddAgentClick = (0, import_react4.useCallback)((repoId) => {
+    vscode.postMessage(addAgentMessage(repoId));
+  }, []);
+  const onRootClick = (0, import_react4.useCallback)(() => {
+    vscode.postMessage(rootClickMessage());
+  }, []);
+  const onRepoRootClick = (0, import_react4.useCallback)((repoId) => {
+    vscode.postMessage(repoRootClickMessage(repoId));
+  }, []);
+  const onAddRepoClick = (0, import_react4.useCallback)(() => {
+    vscode.postMessage(addRepoMessage());
+  }, []);
+  const onRemoveRepoClick = (0, import_react4.useCallback)((repoId) => {
+    vscode.postMessage(removeRepoMessage(repoId));
+  }, []);
+  const onToggleRepoClick = (0, import_react4.useCallback)((repoId) => {
+    vscode.postMessage(toggleRepoExpandedMessage(repoId));
+  }, []);
+  const onRemoveAgentClick = (0, import_react4.useCallback)((agentId) => {
+    vscode.postMessage(removeAgentMessage(agentId));
+  }, []);
+  const onAgentClick = (0, import_react4.useCallback)((agentId) => {
+    setSelectedAgentId(agentId);
+    vscode.postMessage(agentClickMessage(agentId));
+  }, []);
+  return /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(
     AgentPanelView,
     {
-      repos: placeholderRepos,
+      repos,
+      selectedAgentId,
       onRootClick,
       onAddRepoClick,
       onRepoRootClick,
@@ -21953,24 +22054,25 @@ var AgentPanelPage = () => {
       onRemoveRepoClick,
       onToggleRepoClick,
       onAgentClick,
-      onCloneAgentClick,
-      onStopAgentClick,
-      onRemoveAgentClick,
-      onClearAgentClick
+      onRemoveAgentClick
     }
   );
 };
 
 // src/ui/App.tsx
-var import_jsx_runtime11 = __toESM(require_jsx_runtime());
+var import_jsx_runtime13 = __toESM(require_jsx_runtime());
 var App = () => {
-  return /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(AgentPanelPage, {});
+  return /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(AgentPanelPage, {});
 };
 
 // src/ui/index.tsx
-var import_jsx_runtime12 = __toESM(require_jsx_runtime());
+var import_jsx_runtime14 = __toESM(require_jsx_runtime());
+var vscode = acquireVsCodeApi();
 var root = (0, import_client.createRoot)(document.getElementById("root"));
-root.render(/* @__PURE__ */ (0, import_jsx_runtime12.jsx)(App, {}));
+root.render(/* @__PURE__ */ (0, import_jsx_runtime14.jsx)(App, {}));
+export {
+  vscode
+};
 /*! Bundled license information:
 
 scheduler/cjs/scheduler.development.js:

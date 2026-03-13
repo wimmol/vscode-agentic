@@ -1,0 +1,145 @@
+.tab-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  padding: 0 8px;
+  height: 35px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-color: var(--vscode-sideBar-background);
+  border-bottom: 1px solid var(--vscode-sideBarSectionHeader-border);
+}
+
+.repo-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+  height: 30px;
+  cursor: default;
+}
+
+.repo-header-name {
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--vscode-foreground);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.repo-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.agent-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px;
+  margin: 0 6px 4px;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.agent-tile--running {
+  border: none;
+  position: relative;
+  z-index: 0;
+  /* Compensate for removed 1px border to keep content alignment. */
+  padding: 7px 9px;
+}
+
+.agent-tile--running::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 4px;
+  padding: 1px;
+  background: conic-gradient(from var(--border-angle, 0deg), transparent 40%, var(--vscode-charts-orange) 100%);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  animation: rotate-border 2s linear infinite;
+}
+
+@keyframes rotate-border {
+  to { --border-angle: 360deg; }
+}
+
+@property --border-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.agent-tile--idle {
+  border-color: var(--vscode-charts-green);
+}
+
+.agent-tile--selected {
+  background-color: var(--vscode-list-activeSelectionBackground);
+}
+
+.agent-tile:hover {
+  background-color: var(--vscode-list-hoverBackground);
+}
+
+.agent-tile:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
+
+.agent-tile-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.agent-tile-name {
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--vscode-foreground);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-tile-prompt {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  min-width: 0;
+}
+
+.agent-tile-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.agent-tile-actions .icon-button {
+  pointer-events: auto;
+}
+
+.agent-tile:hover .agent-tile-actions {
+  visibility: visible;
+}
+
+.timer {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
