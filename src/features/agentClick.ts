@@ -21,7 +21,7 @@ export const agentClick = async (
     return;
   }
 
-  explorer.showRepo(agentId, ctx.worktree.path);
+  explorer.showRepo(agentId, ctx.worktree.path, ctx.repo.name, ctx.agent.name);
 
   const terminal = terminalService.getTerminal(agentId);
   if (terminal) {

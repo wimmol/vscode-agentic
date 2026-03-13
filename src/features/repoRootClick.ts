@@ -13,7 +13,7 @@ export const repoRootClick = async (
     return;
   }
 
-  explorer.showRepo(repoId, repo.localPath);
+  explorer.showRepo(repoId, repo.localPath, repo.name);
 
   const config = vscode.workspace.getConfiguration('terminal.integrated');
   config.update('cwd', repo.localPath, vscode.ConfigurationTarget.Workspace).then(undefined, (err) => {

@@ -4,6 +4,8 @@ import * as fs from 'fs/promises';
 import type { StateStorage } from '../db';
 import { WORKSPACE_SCOPE_KEY, PERSIST_DEBOUNCE_MS } from '../constants/explorer';
 
+type ExplorerItem = ScopeHeaderItem | FileItem;
+
 /**
  * Provides a file-tree view of repository directories in the sidebar.
  *
@@ -11,15 +13,16 @@ import { WORKSPACE_SCOPE_KEY, PERSIST_DEBOUNCE_MS } from '../constants/explorer'
  * never restarts the window, extensions, or terminals.
  * Persists expanded folder state per scope in SQLite (explorer_state table).
  */
-export class FileExplorerProvider implements vscode.TreeDataProvider<FileItem>, vscode.Disposable {
+export class FileExplorerProvider implements vscode.TreeDataProvider<ExplorerItem>, vscode.Disposable {
   private roots: string[] = [];
   private mode: 'all' | 'scoped' = 'all';
   private scopeKey = WORKSPACE_SCOPE_KEY;
   private expandedPaths = new Set<string>();
   private generation = 0;
   private persistTimer: ReturnType<typeof setTimeout> | undefined;
+  private headerItem: ScopeHeaderItem = ScopeHeaderItem.workspace();
 
-  private readonly _onDidChangeTreeData = new vscode.EventEmitter<FileItem | undefined>();
+  private readonly _onDidChangeTreeData = new vscode.EventEmitter<ExplorerItem | undefined>();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
   private readonly disposables: vscode.Disposable[] = [];
@@ -35,22 +38,30 @@ export class FileExplorerProvider implements vscode.TreeDataProvider<FileItem>, 
     void this.loadAndRefresh();
   }
 
-  attachTreeView(treeView: vscode.TreeView<FileItem>): void {
+  attachTreeView(treeView: vscode.TreeView<ExplorerItem>): void {
     this.disposables.push(
       treeView.onDidExpandElement((e) => {
-        this.expandedPaths.add(e.element.filePath);
-        this.debouncePersist();
+        if (e.element instanceof FileItem) {
+          this.expandedPaths.add(e.element.filePath);
+          this.debouncePersist();
+        }
       }),
       treeView.onDidCollapseElement((e) => {
-        this.expandedPaths.delete(e.element.filePath);
-        this.debouncePersist();
+        if (e.element instanceof FileItem) {
+          this.expandedPaths.delete(e.element.filePath);
+          this.debouncePersist();
+        }
       }),
     );
   }
 
   showAllRepos(repoPaths?: string[]): void {
+    if (this.mode === 'all' && !repoPaths) {
+      return;
+    }
     this.mode = 'all';
     this.scopeKey = WORKSPACE_SCOPE_KEY;
+    this.headerItem = ScopeHeaderItem.workspace();
     if (repoPaths) {
       this.roots = repoPaths;
       void this.loadExpandedAndRefresh();
@@ -59,29 +70,40 @@ export class FileExplorerProvider implements vscode.TreeDataProvider<FileItem>, 
     }
   }
 
-  showRepo(repoId: string, repoPath: string): void {
+  showRepo(repoId: string, repoPath: string, repoName: string, agentName?: string): void {
+    const header = agentName
+      ? ScopeHeaderItem.agent(repoName, agentName)
+      : ScopeHeaderItem.repo(repoName);
     if (this.mode === 'scoped' && this.scopeKey === repoId) {
+      if (this.headerItem.label !== header.label || this.headerItem.description !== header.description) {
+        this.headerItem = header;
+        this._onDidChangeTreeData.fire(undefined);
+      }
       return;
     }
+    this.headerItem = header;
     this.mode = 'scoped';
     this.scopeKey = repoId;
     this.roots = [repoPath];
     void this.loadExpandedAndRefresh();
   }
 
-  getTreeItem(element: FileItem): vscode.TreeItem {
+  getTreeItem(element: ExplorerItem): vscode.TreeItem {
     return element;
   }
 
-  async getChildren(element?: FileItem): Promise<FileItem[]> {
+  async getChildren(element?: ExplorerItem): Promise<ExplorerItem[]> {
     if (!element) {
+      const items: ExplorerItem[] = [this.headerItem];
       if (this.mode === 'scoped' && this.roots.length === 1) {
-        return this.readDirectory(this.roots[0]);
+        items.push(...(await this.readDirectory(this.roots[0])));
+      } else {
+        items.push(...this.roots.map((r) => this.createItem(r, true)));
       }
-      return this.roots.map((r) => this.createItem(r, true));
+      return items;
     }
 
-    if (!element.isDir) {
+    if (element instanceof ScopeHeaderItem || !element.isDir) {
       return [];
     }
 
@@ -139,6 +161,29 @@ export class FileExplorerProvider implements vscode.TreeDataProvider<FileItem>, 
     this._onDidChangeTreeData.dispose();
     for (const d of this.disposables) {
       d.dispose();
+    }
+  }
+}
+
+class ScopeHeaderItem extends vscode.TreeItem {
+  static workspace(): ScopeHeaderItem {
+    return new ScopeHeaderItem('WORKSPACE', 'home');
+  }
+
+  static repo(repoName: string): ScopeHeaderItem {
+    return new ScopeHeaderItem(repoName, 'repo');
+  }
+
+  static agent(repoName: string, agentName: string): ScopeHeaderItem {
+    return new ScopeHeaderItem(repoName, 'terminal', `› ${agentName}`);
+  }
+
+  private constructor(label: string, icon: 'home' | 'repo' | 'terminal', desc?: string) {
+    super(label, vscode.TreeItemCollapsibleState.None);
+    this.iconPath = new vscode.ThemeIcon(icon);
+    this.contextValue = 'scopeHeader';
+    if (desc) {
+      this.description = desc;
     }
   }
 }

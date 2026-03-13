@@ -21582,7 +21582,7 @@ var require_has_flag = __commonJS({
 var require_supports_color = __commonJS({
   "node_modules/supports-color/index.js"(exports2, module2) {
     "use strict";
-    var os = require("os");
+    var os2 = require("os");
     var tty = require("tty");
     var hasFlag = require_has_flag();
     var { env } = process;
@@ -21630,7 +21630,7 @@ var require_supports_color = __commonJS({
         return min;
       }
       if (process.platform === "win32") {
-        const osRelease = os.release().split(".");
+        const osRelease = os2.release().split(".");
         if (Number(osRelease[0]) >= 10 && Number(osRelease[2]) >= 10586) {
           return Number(osRelease[2]) >= 14931 ? 3 : 2;
         }
@@ -49921,24 +49921,33 @@ var FileExplorerProvider = class {
   expandedPaths = /* @__PURE__ */ new Set();
   generation = 0;
   persistTimer;
+  headerItem = ScopeHeaderItem.workspace();
   _onDidChangeTreeData = new vscode5.EventEmitter();
   onDidChangeTreeData = this._onDidChangeTreeData.event;
   disposables = [];
   attachTreeView(treeView) {
     this.disposables.push(
       treeView.onDidExpandElement((e) => {
-        this.expandedPaths.add(e.element.filePath);
-        this.debouncePersist();
+        if (e.element instanceof FileItem) {
+          this.expandedPaths.add(e.element.filePath);
+          this.debouncePersist();
+        }
       }),
       treeView.onDidCollapseElement((e) => {
-        this.expandedPaths.delete(e.element.filePath);
-        this.debouncePersist();
+        if (e.element instanceof FileItem) {
+          this.expandedPaths.delete(e.element.filePath);
+          this.debouncePersist();
+        }
       })
     );
   }
   showAllRepos(repoPaths) {
+    if (this.mode === "all" && !repoPaths) {
+      return;
+    }
     this.mode = "all";
     this.scopeKey = WORKSPACE_SCOPE_KEY;
+    this.headerItem = ScopeHeaderItem.workspace();
     if (repoPaths) {
       this.roots = repoPaths;
       void this.loadExpandedAndRefresh();
@@ -49946,8 +49955,10 @@ var FileExplorerProvider = class {
       void this.loadAndRefresh();
     }
   }
-  showRepo(repoId, repoPath) {
+  showRepo(repoId, repoPath, repoName, agentName) {
+    this.headerItem = agentName ? ScopeHeaderItem.agent(repoName, agentName) : ScopeHeaderItem.repo(repoName);
     if (this.mode === "scoped" && this.scopeKey === repoId) {
+      this._onDidChangeTreeData.fire(void 0);
       return;
     }
     this.mode = "scoped";
@@ -49960,12 +49971,15 @@ var FileExplorerProvider = class {
   }
   async getChildren(element) {
     if (!element) {
+      const items = [this.headerItem];
       if (this.mode === "scoped" && this.roots.length === 1) {
-        return this.readDirectory(this.roots[0]);
+        items.push(...await this.readDirectory(this.roots[0]));
+      } else {
+        items.push(...this.roots.map((r) => this.createItem(r, true)));
       }
-      return this.roots.map((r) => this.createItem(r, true));
+      return items;
     }
-    if (!element.isDir) {
+    if (element instanceof ScopeHeaderItem || !element.isDir) {
       return [];
     }
     return this.readDirectory(element.filePath);
@@ -50014,6 +50028,24 @@ var FileExplorerProvider = class {
     for (const d of this.disposables) {
       d.dispose();
     }
+  }
+};
+var ScopeHeaderItem = class _ScopeHeaderItem extends vscode5.TreeItem {
+  static workspace() {
+    return new _ScopeHeaderItem("WORKSPACE", "home");
+  }
+  static repo(repoName) {
+    return new _ScopeHeaderItem(repoName, "repo");
+  }
+  static agent(repoName, agentName) {
+    const item = new _ScopeHeaderItem(repoName, "terminal");
+    item.description = `\u203A ${agentName}`;
+    return item;
+  }
+  constructor(label, icon) {
+    super(label, vscode5.TreeItemCollapsibleState.None);
+    this.iconPath = new vscode5.ThemeIcon(icon);
+    this.contextValue = "scopeHeader";
   }
 };
 var FileItem = class extends vscode5.TreeItem {
@@ -50433,6 +50465,7 @@ var removeRepo = async (storage, repoId) => {
 };
 
 // src/features/rootClick.ts
+var os = __toESM(require("os"));
 var vscode11 = __toESM(require("vscode"));
 var rootClick = async (storage, explorer) => {
   const repos = await storage.getAllRepositories();
@@ -50442,8 +50475,8 @@ var rootClick = async (storage, explorer) => {
   }
   explorer.showAllRepos(repos.map((r) => r.localPath));
   const config = vscode11.workspace.getConfiguration("terminal.integrated");
-  config.update("cwd", void 0, vscode11.ConfigurationTarget.Workspace).then(void 0, (err) => {
-    console.error("[rootClick] Failed to clear terminal cwd:", err);
+  config.update("cwd", os.homedir(), vscode11.ConfigurationTarget.Workspace).then(void 0, (err) => {
+    console.error("[rootClick] Failed to update terminal cwd:", err);
   });
 };
 
@@ -50455,7 +50488,7 @@ var repoRootClick = async (storage, explorer, repoId) => {
     vscode12.window.showErrorMessage("Repository not found.");
     return;
   }
-  explorer.showRepo(repoId, repo.localPath);
+  explorer.showRepo(repoId, repo.localPath, repo.name);
   const config = vscode12.workspace.getConfiguration("terminal.integrated");
   config.update("cwd", repo.localPath, vscode12.ConfigurationTarget.Workspace).then(void 0, (err) => {
     console.error("[repoRootClick] Failed to update terminal cwd:", err);
@@ -50473,7 +50506,7 @@ var agentClick = async (storage, explorer, terminalService, agentId) => {
   if (gen !== generation) {
     return;
   }
-  explorer.showRepo(agentId, ctx.worktree.path);
+  explorer.showRepo(agentId, ctx.worktree.path, ctx.repo.name, ctx.agent.name);
   const terminal = terminalService.getTerminal(agentId);
   if (terminal) {
     terminal.show(false);
