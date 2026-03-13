@@ -5,7 +5,7 @@ import * as vscode from 'vscode';
 import type { StateStorage } from '../db';
 import { terminalName } from '../constants/terminal';
 import { CLAUDE_DIR, CLAUDE_PROJECTS_DIR } from '../constants/paths';
-import { AGENT_STATUS_RUNNING, AGENT_STATUS_ERROR, DEFAULT_AGENT_COMMAND } from '../constants/agent';
+import { AGENT_STATUS_ERROR, DEFAULT_AGENT_COMMAND } from '../constants/agent';
 import { CONFIG_SECTION, CONFIG_AGENT_COMMAND } from '../constants/views';
 import { SESSION_POLL_INTERVAL_MS, SESSION_POLL_MAX_ATTEMPTS } from '../constants/timing';
 import {
@@ -79,7 +79,6 @@ export class TerminalService implements vscode.Disposable {
     repoName: string,
     cwd: string,
     sessionId?: string | null,
-    opts?: { skipStatusUpdate?: boolean },
   ): vscode.Terminal => {
     const name = terminalName(agentName, repoName);
 
@@ -91,15 +90,11 @@ export class TerminalService implements vscode.Disposable {
     terminal.sendText(this.buildCommand(sessionId));
     this.terminals.set(agentId, terminal);
 
-    if (!opts?.skipStatusUpdate) {
-      this.storage.updateAgent(agentId, { status: AGENT_STATUS_RUNNING }).catch(() => {
-        // Agent may have been removed before the update landed.
-      });
-    }
-
     if (sessionId) {
+      console.log('[TerminalService] startWatching existing session:', { agentId, sessionId, cwd });
       this.sessionWatcher.startWatching(agentId, sessionId, cwd);
     } else {
+      console.log('[TerminalService] detecting new session:', { agentId, cwd, dir: claudeProjectDir(cwd) });
       this.detectSessionId(agentId, cwd);
     }
 
@@ -153,7 +148,7 @@ export class TerminalService implements vscode.Disposable {
           continue;
         }
 
-        this.createTerminal(agent.agentId, agent.name, repo.name, worktree.path, agent.sessionId, { skipStatusUpdate: true });
+        this.createTerminal(agent.agentId, agent.name, repo.name, worktree.path, agent.sessionId);
       }
     }
   };
@@ -199,6 +194,7 @@ export class TerminalService implements vscode.Disposable {
         const newFile = files.find((f) => f.endsWith('.jsonl') && !existing.has(f));
         if (newFile) {
           const sessionId = basename(newFile, '.jsonl');
+          console.log('[TerminalService] session detected:', { agentId, sessionId, attempt: attempts });
           this.detectors.delete(agentId);
           try {
             await this.storage.updateAgent(agentId, { sessionId });
@@ -214,6 +210,7 @@ export class TerminalService implements vscode.Disposable {
       if (attempts < SESSION_POLL_MAX_ATTEMPTS) {
         this.detectors.set(agentId, setTimeout(poll, SESSION_POLL_INTERVAL_MS));
       } else {
+        console.warn('[TerminalService] session detection gave up after', attempts, 'attempts:', { agentId, dir });
         this.detectors.delete(agentId);
       }
     };
