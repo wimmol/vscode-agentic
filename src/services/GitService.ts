@@ -26,11 +26,18 @@ export const ensureBranch = async (repoPath: string, branch: string): Promise<vo
 };
 
 export const createWorktree = async (repoPath: string, worktreePath: string, branch: string): Promise<void> => {
-  await execFile(
-    'git',
-    ['worktree', 'add', worktreePath, branch],
-    gitOpts(repoPath, GIT_WORKTREE_TIMEOUT),
-  );
+  try {
+    await execFile(
+      'git',
+      ['worktree', 'add', worktreePath, branch],
+      gitOpts(repoPath, GIT_WORKTREE_TIMEOUT),
+    );
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : '';
+    if (!msg.includes('already exists')) {
+      throw err;
+    }
+  }
 };
 
 export const removeWorktree = async (repoPath: string, worktreePath: string): Promise<void> => {
