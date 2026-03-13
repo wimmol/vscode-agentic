@@ -129,6 +129,9 @@ export class TerminalService implements vscode.Disposable {
     const worktreeByAgent = new Map(allWorktrees.map((wt) => [wt.agentId, wt]));
     const existingByName = new Map(vscode.window.terminals.map((t) => [t.name, t]));
 
+    // Collect agent terminal names so we can close unrelated terminals after restore.
+    const agentTerminalNames = new Set<string>();
+
     for (const repo of repos) {
       for (const agent of repo.agents) {
         const worktree = worktreeByAgent.get(agent.agentId);
@@ -136,9 +139,11 @@ export class TerminalService implements vscode.Disposable {
           continue;
         }
 
+        const name = terminalName(agent.name, repo.name);
+        agentTerminalNames.add(name);
+
         // Adopt an existing terminal if one already matches by name.
         // Don't send any command — the terminal is already running.
-        const name = terminalName(agent.name, repo.name);
         const existing = existingByName.get(name);
         if (existing) {
           this.terminals.set(agent.agentId, existing);
@@ -149,6 +154,13 @@ export class TerminalService implements vscode.Disposable {
         }
 
         this.createTerminal(agent.agentId, agent.name, repo.name, worktree.path, agent.sessionId);
+      }
+    }
+
+    // Close all pre-existing terminals that don't belong to any agent.
+    for (const [name, terminal] of existingByName) {
+      if (!agentTerminalNames.has(name)) {
+        terminal.dispose();
       }
     }
   };
