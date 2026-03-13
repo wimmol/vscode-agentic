@@ -15,12 +15,16 @@
   "categories": [
     "Machine Learning",
     "SCM Providers",
+    "Chat",
     "Other"
   ],
   "keywords": [
     "ai",
+    "ai-agents",
     "agents",
+    "automation",
     "worktree",
+    "workspace",
     "git",
     "multi-repo"
   ],
