@@ -92,6 +92,11 @@
   justify-content: flex-end;
   gap: 2px;
   visibility: hidden;
+  pointer-events: none;
+}
+
+.agent-tile-actions .icon-button {
+  pointer-events: auto;
 }
 
 .agent-tile:hover .agent-tile-actions {

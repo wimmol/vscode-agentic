@@ -21726,11 +21726,15 @@ var import_react4 = __toESM(require_react());
 // src/ui/shared/atoms/IconButton.tsx
 var import_jsx_runtime = __toESM(require_jsx_runtime());
 var IconButton = ({ icon, onClick, disabled, title }) => {
+  const handleClick = (e) => {
+    e.stopPropagation();
+    onClick();
+  };
   return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
     "button",
     {
       className: "icon-button",
-      onClick,
+      onClick: handleClick,
       disabled,
       title,
       "aria-label": title,
@@ -21827,7 +21831,6 @@ var TruncatedText = ({ text }) => {
 // src/ui/shared/molecules/AgentTile.tsx
 var import_react2 = __toESM(require_react());
 var import_jsx_runtime7 = __toESM(require_jsx_runtime());
-var stopPropagation = (e) => e.stopPropagation();
 var AgentTile = ({
   agentId,
   name,
@@ -21841,9 +21844,7 @@ var AgentTile = ({
   onRemoveClick,
   onClearClick
 }) => {
-  const handleClick = (0, import_react2.useCallback)(() => {
-    if (!isSelected) onClick(agentId);
-  }, [isSelected, onClick, agentId]);
+  const handleClick = (0, import_react2.useCallback)(() => onClick(agentId), [onClick, agentId]);
   const handleClone = (0, import_react2.useCallback)(() => onCloneClick(agentId), [onCloneClick, agentId]);
   const handleStop = (0, import_react2.useCallback)(() => onStopClick(agentId), [onStopClick, agentId]);
   const handleRemove = (0, import_react2.useCallback)(() => onRemoveClick(agentId), [onRemoveClick, agentId]);
@@ -21856,7 +21857,7 @@ var AgentTile = ({
       status === "running" && startedAt !== null && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Timer, { startedAt })
     ] }),
     /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "agent-tile-prompt", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(TruncatedText, { text: lastPrompt }) }),
-    /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("nav", { className: "agent-tile-actions", onClick: stopPropagation, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("nav", { className: "agent-tile-actions", children: [
       /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(IconButton, { icon: "copy", onClick: handleClone, title: "Clone agent" }),
       /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(IconButton, { icon: "debug-stop", onClick: handleStop, title: "Stop agent" }),
       /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(IconButton, { icon: "trash", onClick: handleRemove, title: "Remove agent", disabled: status === "running" }),
@@ -22023,7 +22024,6 @@ var noop = (_id) => {
 var AgentPanelPage = () => {
   const repos = useAgentPanel();
   const [selectedAgentId, setSelectedAgentId] = (0, import_react4.useState)(null);
-  const selectedRef = (0, import_react4.useRef)(null);
   const onAddAgentClick = (0, import_react4.useCallback)((repoId) => {
     vscode.postMessage(addAgentMessage(repoId));
   }, []);
@@ -22043,15 +22043,9 @@ var AgentPanelPage = () => {
     vscode.postMessage(toggleRepoExpandedMessage(repoId));
   }, []);
   const onRemoveAgentClick = (0, import_react4.useCallback)((agentId) => {
-    if (selectedRef.current === agentId) {
-      selectedRef.current = null;
-      setSelectedAgentId(null);
-    }
     vscode.postMessage(removeAgentMessage(agentId));
   }, []);
   const onAgentClick = (0, import_react4.useCallback)((agentId) => {
-    if (selectedRef.current === agentId) return;
-    selectedRef.current = agentId;
     setSelectedAgentId(agentId);
     vscode.postMessage(agentClickMessage(agentId));
   }, []);

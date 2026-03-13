@@ -3,10 +3,7 @@ import { StatusIcon } from '../atoms/StatusIcon';
 import { Timer } from './Timer';
 import { TruncatedText } from '../atoms/TruncatedText';
 import type { AgentStatus } from '../../../types';
-import type { MouseEvent } from 'react';
 import { useCallback } from 'react';
-
-const stopPropagation = (e: MouseEvent) => e.stopPropagation();
 
 interface AgentTileProps {
   agentId: string;
@@ -35,10 +32,7 @@ export const AgentTile = ({
   onRemoveClick,
   onClearClick,
 }: AgentTileProps) => {
-  const handleClick = useCallback(() => {
-    if (!isSelected) onClick(agentId);
-  }, [isSelected, onClick, agentId]);
-
+  const handleClick = useCallback(() => onClick(agentId), [onClick, agentId]);
   const handleClone = useCallback(() => onCloneClick(agentId), [onCloneClick, agentId]);
   const handleStop = useCallback(() => onStopClick(agentId), [onStopClick, agentId]);
   const handleRemove = useCallback(() => onRemoveClick(agentId), [onRemoveClick, agentId]);
@@ -56,7 +50,7 @@ export const AgentTile = ({
       <div className="agent-tile-prompt">
         <TruncatedText text={lastPrompt} />
       </div>
-      <nav className="agent-tile-actions" onClick={stopPropagation}>
+      <nav className="agent-tile-actions">
         <IconButton icon="copy" onClick={handleClone} title="Clone agent" />
         <IconButton icon="debug-stop" onClick={handleStop} title="Stop agent" />
         <IconButton icon="trash" onClick={handleRemove} title="Remove agent" disabled={status === 'running'} />

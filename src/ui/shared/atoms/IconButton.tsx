@@ -1,3 +1,5 @@
+import type { MouseEvent } from 'react';
+
 interface IconButtonProps {
   icon: string;
   onClick: () => void;
@@ -6,10 +8,15 @@ interface IconButtonProps {
 }
 
 export const IconButton = ({ icon, onClick, disabled, title }: IconButtonProps) => {
+  const handleClick = (e: MouseEvent) => {
+    e.stopPropagation();
+    onClick();
+  };
+
   return (
     <button
       className="icon-button"
-      onClick={onClick}
+      onClick={handleClick}
       disabled={disabled}
       title={title}
       aria-label={title}
