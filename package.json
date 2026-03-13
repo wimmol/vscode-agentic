@@ -2,6 +2,7 @@
   "name": "vscode-agentic",
   "displayName": "Agentic",
   "description": "Work on multiple repositories using AI agents on own worktrees",
+  "icon": "images/icon.png",
   "version": "0.1.0",
   "publisher": "wimmol",
   "engines": {
@@ -45,10 +46,10 @@
     "configuration": {
       "title": "Agentic",
       "properties": {
-        "vscode-agentic.agentCommand": {
-          "type": "string",
-          "default": "claude",
-          "description": "Command to execute in agent terminals."
+        "vscode-agentic.dangerouslyBypassPermissions": {
+          "type": "boolean",
+          "default": false,
+          "description": "Run agents with --dangerously-skip-permissions flag (no confirmation prompts)."
         }
       }
     },

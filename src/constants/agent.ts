@@ -6,3 +6,4 @@ export const AGENT_STATUS_ERROR = 'error' as const;
 export const AGENT_CLI_CLAUDE_CODE = 'claude-code' as const;
 
 export const DEFAULT_AGENT_COMMAND = 'claude';
+export const CLI_FLAG_BYPASS_PERMISSIONS = '--dangerously-skip-permissions';

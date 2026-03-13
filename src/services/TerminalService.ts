@@ -5,8 +5,8 @@ import * as vscode from 'vscode';
 import type { StateStorage } from '../db';
 import { terminalName } from '../constants/terminal';
 import { CLAUDE_DIR, CLAUDE_PROJECTS_DIR } from '../constants/paths';
-import { AGENT_STATUS_ERROR, DEFAULT_AGENT_COMMAND } from '../constants/agent';
-import { CONFIG_SECTION, CONFIG_AGENT_COMMAND } from '../constants/views';
+import { AGENT_STATUS_ERROR, DEFAULT_AGENT_COMMAND, CLI_FLAG_BYPASS_PERMISSIONS } from '../constants/agent';
+import { CONFIG_SECTION, CONFIG_BYPASS_PERMISSIONS } from '../constants/views';
 import { SESSION_POLL_INTERVAL_MS, SESSION_POLL_MAX_ATTEMPTS } from '../constants/timing';
 import {
   dialogTerminalClosed,
@@ -172,12 +172,13 @@ export class TerminalService implements vscode.Disposable {
    * When a sessionId is provided, appends `--resume <id>` to resume that exact session.
    */
   private buildCommand = (sessionId?: string | null): string => {
-    const raw = vscode.workspace
+    const bypass = vscode.workspace
       .getConfiguration(CONFIG_SECTION)
-      .get<string>(CONFIG_AGENT_COMMAND, DEFAULT_AGENT_COMMAND);
-    const base = raw?.trim() || DEFAULT_AGENT_COMMAND;
-    if (!sessionId || !UUID_RE.test(sessionId)) return base;
-    return `${base} --resume ${sessionId}`;
+      .get<boolean>(CONFIG_BYPASS_PERMISSIONS, false);
+    let cmd = DEFAULT_AGENT_COMMAND;
+    if (bypass) cmd += ` ${CLI_FLAG_BYPASS_PERMISSIONS}`;
+    if (sessionId && UUID_RE.test(sessionId)) cmd += ` --resume ${sessionId}`;
+    return cmd;
   };
 
   /**
