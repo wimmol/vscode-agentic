@@ -54,6 +54,7 @@ export const RepoSection = ({
                 status={agent.status}
                 lastPrompt={agent.lastPrompt}
                 startedAt={agent.startedAt}
+                completedAt={agent.completedAt}
                 isSelected={agent.agentId === selectedAgentId}
                 onClick={onAgentClick}
                 onCloneClick={onCloneAgentClick}

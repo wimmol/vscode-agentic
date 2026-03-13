@@ -27,6 +27,7 @@ export interface Agent {
   sessionId: string | null;
   lastPrompt: string | null;
   startedAt: number | null;
+  completedAt: number | null;
   createdAt: number;
 }
 
@@ -60,6 +61,7 @@ export class AgentModel extends Model<Agent> implements Agent {
   declare sessionId: string | null;
   declare lastPrompt: string | null;
   declare startedAt: number | null;
+  declare completedAt: number | null;
   declare createdAt: number;
 }
 
@@ -94,6 +96,7 @@ export const initModels = (sequelize: Sequelize): void => {
       sessionId: { type: DataTypes.TEXT },
       lastPrompt: { type: DataTypes.TEXT },
       startedAt: { type: DataTypes.INTEGER },
+      completedAt: { type: DataTypes.INTEGER },
       createdAt: { type: DataTypes.INTEGER, allowNull: false },
     },
     { sequelize, tableName: 'agents', timestamps: false },

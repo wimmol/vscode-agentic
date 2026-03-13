@@ -156,6 +156,7 @@ export class StateStorage implements vscode.Disposable {
       sessionId: null,
       lastPrompt: null,
       startedAt: null,
+      completedAt: null,
       createdAt: Date.now(),
     };
 
@@ -196,7 +197,7 @@ export class StateStorage implements vscode.Disposable {
 
   updateAgent = async (
     id: string,
-    data: Partial<Pick<Agent, 'name' | 'status' | 'sessionId' | 'lastPrompt' | 'startedAt'>>,
+    data: Partial<Pick<Agent, 'name' | 'status' | 'sessionId' | 'lastPrompt' | 'startedAt' | 'completedAt'>>,
   ): Promise<Agent> => {
     const agent = await AgentModel.findByPk(id);
     if (!agent) {
@@ -215,6 +216,7 @@ export class StateStorage implements vscode.Disposable {
     if (data.sessionId !== undefined) agent.sessionId = data.sessionId;
     if (data.lastPrompt !== undefined) agent.lastPrompt = data.lastPrompt;
     if (data.startedAt !== undefined) agent.startedAt = data.startedAt;
+    if (data.completedAt !== undefined) agent.completedAt = data.completedAt;
 
     if (agent.changed()) {
       await agent.save();

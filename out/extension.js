@@ -3653,7 +3653,7 @@ var require_lodash = __commonJS({
           }
           return mapped.length && mapped[0] === arrays[0] ? baseIntersection(mapped, undefined2, comparator) : [];
         });
-        function join5(array, separator) {
+        function join6(array, separator) {
           return array == null ? "" : nativeJoin.call(array, separator);
         }
         function last(array) {
@@ -5572,7 +5572,7 @@ var require_lodash = __commonJS({
         lodash.isUndefined = isUndefined;
         lodash.isWeakMap = isWeakMap;
         lodash.isWeakSet = isWeakSet;
-        lodash.join = join5;
+        lodash.join = join6;
         lodash.kebabCase = kebabCase;
         lodash.last = last;
         lodash.lastIndexOf = lastIndexOf;
@@ -21582,7 +21582,7 @@ var require_has_flag = __commonJS({
 var require_supports_color = __commonJS({
   "node_modules/supports-color/index.js"(exports2, module2) {
     "use strict";
-    var os2 = require("os");
+    var os = require("os");
     var tty = require("tty");
     var hasFlag = require_has_flag();
     var { env } = process;
@@ -21630,7 +21630,7 @@ var require_supports_color = __commonJS({
         return min;
       }
       if (process.platform === "win32") {
-        const osRelease = os2.release().split(".");
+        const osRelease = os.release().split(".");
         if (Number(osRelease[0]) >= 10 && Number(osRelease[2]) >= 10586) {
           return Number(osRelease[2]) >= 14931 ? 3 : 2;
         }
@@ -37588,9 +37588,9 @@ var require_query_generator = __commonJS({
             }
             return `json_unquote(json_extract(${quotedColumn},${pathStr}))`;
           case "postgres":
-            const join5 = isJson ? "#>" : "#>>";
+            const join6 = isJson ? "#>" : "#>>";
             pathStr = this.escape(`{${paths.join(",")}}`);
-            return `(${quotedColumn}${join5}${pathStr})`;
+            return `(${quotedColumn}${join6}${pathStr})`;
           default:
             throw new Error(`Unsupported ${this.dialect} for JSON operations`);
         }
@@ -38278,7 +38278,7 @@ https://github.com/sequelize/sequelize/discussions/15694`);
           const isBelongsTo = topAssociation.associationType === "BelongsTo";
           const sourceField = isBelongsTo ? topAssociation.identifierField : topAssociation.sourceKeyField || topParent.model.primaryKeyField;
           const targetField = isBelongsTo ? topAssociation.sourceKeyField || topInclude.model.primaryKeyField : topAssociation.identifierField;
-          const join5 = [
+          const join6 = [
             `${this.quoteIdentifier(topInclude.as)}.${this.quoteIdentifier(targetField)}`,
             `${this.quoteTable(topParent.as || topParent.model.name)}.${this.quoteIdentifier(sourceField)}`
           ].join(" = ");
@@ -38289,7 +38289,7 @@ https://github.com/sequelize/sequelize/discussions/15694`);
             where: {
               [Op2.and]: [
                 topInclude.where,
-                { [Op2.join]: this.sequelize.literal(join5) }
+                { [Op2.join]: this.sequelize.literal(join6) }
               ]
             },
             limit: 1,
@@ -49448,6 +49448,7 @@ var initModels = (sequelize) => {
       sessionId: { type: DataTypes.TEXT },
       lastPrompt: { type: DataTypes.TEXT },
       startedAt: { type: DataTypes.INTEGER },
+      completedAt: { type: DataTypes.INTEGER },
       createdAt: { type: DataTypes.INTEGER, allowNull: false }
     },
     { sequelize, tableName: "agents", timestamps: false }
@@ -49658,6 +49659,7 @@ var StateStorage = class {
       sessionId: null,
       lastPrompt: null,
       startedAt: null,
+      completedAt: null,
       createdAt: Date.now()
     };
     await this.sequelize.transaction(async (t) => {
@@ -49706,6 +49708,7 @@ var StateStorage = class {
     if (data.sessionId !== void 0) agent.sessionId = data.sessionId;
     if (data.lastPrompt !== void 0) agent.lastPrompt = data.lastPrompt;
     if (data.startedAt !== void 0) agent.startedAt = data.startedAt;
+    if (data.completedAt !== void 0) agent.completedAt = data.completedAt;
     if (agent.changed()) {
       await agent.save();
       this._onDidChange.fire();
@@ -49956,11 +49959,15 @@ var FileExplorerProvider = class {
     }
   }
   showRepo(repoId, repoPath, repoName, agentName) {
-    this.headerItem = agentName ? ScopeHeaderItem.agent(repoName, agentName) : ScopeHeaderItem.repo(repoName);
+    const header = agentName ? ScopeHeaderItem.agent(repoName, agentName) : ScopeHeaderItem.repo(repoName);
     if (this.mode === "scoped" && this.scopeKey === repoId) {
-      this._onDidChangeTreeData.fire(void 0);
+      if (this.headerItem.label !== header.label || this.headerItem.description !== header.description) {
+        this.headerItem = header;
+        this._onDidChangeTreeData.fire(void 0);
+      }
       return;
     }
+    this.headerItem = header;
     this.mode = "scoped";
     this.scopeKey = repoId;
     this.roots = [repoPath];
@@ -50038,14 +50045,15 @@ var ScopeHeaderItem = class _ScopeHeaderItem extends vscode5.TreeItem {
     return new _ScopeHeaderItem(repoName, "repo");
   }
   static agent(repoName, agentName) {
-    const item = new _ScopeHeaderItem(repoName, "terminal");
-    item.description = `\u203A ${agentName}`;
-    return item;
+    return new _ScopeHeaderItem(repoName, "terminal", `\u203A ${agentName}`);
   }
-  constructor(label, icon) {
+  constructor(label, icon, desc) {
     super(label, vscode5.TreeItemCollapsibleState.None);
     this.iconPath = new vscode5.ThemeIcon(icon);
     this.contextValue = "scopeHeader";
+    if (desc) {
+      this.description = desc;
+    }
   }
 };
 var FileItem = class extends vscode5.TreeItem {
@@ -50068,20 +50076,144 @@ var FileItem = class extends vscode5.TreeItem {
 };
 
 // src/services/TerminalService.ts
-var import_promises = require("fs/promises");
-var import_path = require("path");
+var import_promises2 = require("fs/promises");
+var import_path2 = require("path");
 var import_os = require("os");
 var vscode6 = __toESM(require("vscode"));
 
 // src/constants/terminal.ts
 var terminalName = (agentName, repoName) => `${agentName} (${repoName})`;
 
+// src/services/SessionWatcher.ts
+var import_promises = require("fs/promises");
+var import_path = require("path");
+var extractPromptText = (content) => {
+  if (typeof content === "string") {
+    return content.trim() || null;
+  }
+  if (Array.isArray(content)) {
+    for (const block of content) {
+      if (block?.type === "text" && typeof block.text === "string" && block.text.trim()) {
+        return block.text.trim();
+      }
+    }
+  }
+  return null;
+};
+var SessionWatcher = class {
+  constructor(storage) {
+    this.storage = storage;
+  }
+  watchers = /* @__PURE__ */ new Map();
+  /**
+   * Start watching a session file for an agent.
+   * Reads any existing content first, then watches for changes.
+   */
+  startWatching = (agentId, sessionId, cwd) => {
+    this.stopWatching(agentId);
+    const dir = claudeProjectDir(cwd);
+    const filePath = (0, import_path.join)(dir, `${sessionId}.jsonl`);
+    const abort = new AbortController();
+    const entry = { abort, offset: 0 };
+    this.watchers.set(agentId, entry);
+    this.readNewContent(agentId, filePath, entry).then(() => this.watchFile(agentId, filePath, entry, abort.signal)).catch(() => {
+      this.watchFile(agentId, filePath, entry, abort.signal);
+    });
+  };
+  /** Stop watching a session file for an agent. */
+  stopWatching = (agentId) => {
+    const entry = this.watchers.get(agentId);
+    if (entry) {
+      entry.abort.abort();
+      this.watchers.delete(agentId);
+    }
+  };
+  /** Stop all watchers. */
+  dispose = () => {
+    for (const entry of this.watchers.values()) {
+      entry.abort.abort();
+    }
+    this.watchers.clear();
+  };
+  // ── Private ───────────────────────────────────────────────────────
+  /** Watch the file for changes using fs.watch. */
+  watchFile = async (agentId, filePath, entry, signal) => {
+    try {
+      const watcher = (0, import_promises.watch)(filePath, { signal });
+      for await (const event of watcher) {
+        if (event.eventType === "change") {
+          await this.readNewContent(agentId, filePath, entry);
+        }
+      }
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return;
+    }
+  };
+  /** Read new content from the file starting at the tracked offset. */
+  readNewContent = async (agentId, filePath, entry) => {
+    let fd;
+    try {
+      const fileInfo = await (0, import_promises.stat)(filePath);
+      if (fileInfo.size <= entry.offset) return;
+      fd = await (0, import_promises.open)(filePath, "r");
+      const buf = Buffer.alloc(fileInfo.size - entry.offset);
+      await fd.read(buf, 0, buf.length, entry.offset);
+      entry.offset = fileInfo.size;
+      const newContent = buf.toString("utf-8");
+      const lines = newContent.split("\n").filter((l) => l.trim());
+      await this.processLines(agentId, lines);
+    } catch {
+    } finally {
+      await fd?.close();
+    }
+  };
+  /** Parse JSONL lines and update agent state. */
+  processLines = async (agentId, lines) => {
+    let lastPrompt = null;
+    let promptTimestamp = null;
+    let endTurnTimestamp = null;
+    for (const line of lines) {
+      try {
+        const obj = JSON.parse(line);
+        if (obj.type === "user" && obj.message?.role === "user") {
+          const text = extractPromptText(obj.message.content);
+          if (text) {
+            lastPrompt = text;
+            promptTimestamp = obj.timestamp ? new Date(obj.timestamp).getTime() : Date.now();
+            endTurnTimestamp = null;
+          }
+        }
+        if (obj.type === "assistant" && obj.message?.stop_reason === "end_turn") {
+          endTurnTimestamp = obj.timestamp ? new Date(obj.timestamp).getTime() : Date.now();
+        }
+      } catch {
+      }
+    }
+    if (lastPrompt !== null && promptTimestamp !== null) {
+      try {
+        await this.storage.updateAgent(agentId, {
+          lastPrompt,
+          startedAt: promptTimestamp,
+          completedAt: endTurnTimestamp
+        });
+      } catch {
+      }
+    } else if (endTurnTimestamp !== null) {
+      try {
+        await this.storage.updateAgent(agentId, { completedAt: endTurnTimestamp });
+      } catch {
+      }
+    }
+  };
+};
+
 // src/services/TerminalService.ts
-var claudeProjectDir = (cwd) => (0, import_path.join)((0, import_os.homedir)(), ".claude", "projects", cwd.replace(/[/.]/g, "-"));
+var claudeProjectDir = (cwd) => (0, import_path2.join)((0, import_os.homedir)(), ".claude", "projects", cwd.replace(/[/.]/g, "-"));
 var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 var TerminalService = class {
   constructor(storage) {
     this.storage = storage;
+    this.sessionWatcher = new SessionWatcher(storage);
     this.disposables.push(
       vscode6.window.onDidCloseTerminal((terminal) => {
         this.onTerminalClosed(terminal).catch((err) => {
@@ -50097,6 +50229,8 @@ var TerminalService = class {
   disposables = [];
   /** Active session-detection polling intervals, keyed by agentId. */
   detectors = /* @__PURE__ */ new Map();
+  /** Watches session JSONL files for prompt/timing data. */
+  sessionWatcher;
   /**
    * agentIds currently being removed programmatically.
    * When closeTerminal is called, the id is added here so that the
@@ -50118,7 +50252,9 @@ var TerminalService = class {
     });
     terminal.sendText(this.buildCommand(sessionId));
     this.terminals.set(agentId, terminal);
-    if (!sessionId) {
+    if (sessionId) {
+      this.sessionWatcher.startWatching(agentId, sessionId, cwd);
+    } else {
       this.detectSessionId(agentId, cwd);
     }
     return terminal;
@@ -50130,6 +50266,7 @@ var TerminalService = class {
   /** Mark an agent as being removed programmatically, then dispose its terminal. */
   closeTerminal = (agentId) => {
     this.stopDetecting(agentId);
+    this.sessionWatcher.stopWatching(agentId);
     const terminal = this.terminals.get(agentId);
     if (terminal) {
       this.removing.add(agentId);
@@ -50155,7 +50292,9 @@ var TerminalService = class {
         if (existing) {
           this.terminals.set(agent.agentId, existing);
           existing.sendText(this.buildCommand(agent.sessionId));
-          if (!agent.sessionId) {
+          if (agent.sessionId) {
+            this.sessionWatcher.startWatching(agent.agentId, agent.sessionId, worktree.path);
+          } else {
             this.detectSessionId(agent.agentId, worktree.path);
           }
           continue;
@@ -50185,7 +50324,7 @@ var TerminalService = class {
     const dir = claudeProjectDir(cwd);
     let existing;
     try {
-      const files = await (0, import_promises.readdir)(dir);
+      const files = await (0, import_promises2.readdir)(dir);
       existing = new Set(files.filter((f) => f.endsWith(".jsonl")));
     } catch {
       existing = /* @__PURE__ */ new Set();
@@ -50194,13 +50333,14 @@ var TerminalService = class {
     const poll = async () => {
       attempts++;
       try {
-        const files = await (0, import_promises.readdir)(dir);
+        const files = await (0, import_promises2.readdir)(dir);
         const newFile = files.find((f) => f.endsWith(".jsonl") && !existing.has(f));
         if (newFile) {
-          const sessionId = (0, import_path.basename)(newFile, ".jsonl");
+          const sessionId = (0, import_path2.basename)(newFile, ".jsonl");
           this.detectors.delete(agentId);
           try {
             await this.storage.updateAgent(agentId, { sessionId });
+            this.sessionWatcher.startWatching(agentId, sessionId, cwd);
           } catch {
           }
           return;
@@ -50236,6 +50376,7 @@ var TerminalService = class {
     }
     this.terminals.delete(agentId);
     this.stopDetecting(agentId);
+    this.sessionWatcher.stopWatching(agentId);
     if (this.removing.has(agentId)) {
       this.removing.delete(agentId);
       return;
@@ -50284,6 +50425,7 @@ var TerminalService = class {
     this.detectors.clear();
     this.terminals.clear();
     this.removing.clear();
+    this.sessionWatcher.dispose();
   }
 };
 
@@ -50465,7 +50607,7 @@ var removeRepo = async (storage, repoId) => {
 };
 
 // src/features/rootClick.ts
-var os = __toESM(require("os"));
+var import_os2 = require("os");
 var vscode11 = __toESM(require("vscode"));
 var rootClick = async (storage, explorer) => {
   const repos = await storage.getAllRepositories();
@@ -50475,7 +50617,7 @@ var rootClick = async (storage, explorer) => {
   }
   explorer.showAllRepos(repos.map((r) => r.localPath));
   const config = vscode11.workspace.getConfiguration("terminal.integrated");
-  config.update("cwd", os.homedir(), vscode11.ConfigurationTarget.Workspace).then(void 0, (err) => {
+  config.update("cwd", (0, import_os2.homedir)(), vscode11.ConfigurationTarget.Workspace).then(void 0, (err) => {
     console.error("[rootClick] Failed to update terminal cwd:", err);
   });
 };

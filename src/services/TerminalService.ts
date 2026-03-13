@@ -5,13 +5,14 @@ import * as vscode from 'vscode';
 import type { StateStorage } from '../db';
 import { terminalName } from '../constants/terminal';
 import { removeWorktree, deleteBranch, hasUncommittedChanges } from './GitService';
+import { SessionWatcher } from './SessionWatcher';
 
 /**
  * Compute the Claude project directory for a given working directory.
  * Claude stores sessions at ~/.claude/projects/<encoded-path>/<sessionId>.jsonl
  * where the encoded path replaces `/` and `.` with `-`.
  */
-const claudeProjectDir = (cwd: string): string =>
+export const claudeProjectDir = (cwd: string): string =>
   join(homedir(), '.claude', 'projects', cwd.replace(/[/.]/g, '-'));
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -32,6 +33,9 @@ export class TerminalService implements vscode.Disposable {
   /** Active session-detection polling intervals, keyed by agentId. */
   private readonly detectors = new Map<string, NodeJS.Timeout>();
 
+  /** Watches session JSONL files for prompt/timing data. */
+  private readonly sessionWatcher: SessionWatcher;
+
   /**
    * agentIds currently being removed programmatically.
    * When closeTerminal is called, the id is added here so that the
@@ -41,6 +45,7 @@ export class TerminalService implements vscode.Disposable {
   private readonly removing = new Set<string>();
 
   constructor(private readonly storage: StateStorage) {
+    this.sessionWatcher = new SessionWatcher(storage);
     this.disposables.push(
       vscode.window.onDidCloseTerminal((terminal) => {
         this.onTerminalClosed(terminal).catch((err) => {
@@ -74,7 +79,9 @@ export class TerminalService implements vscode.Disposable {
     terminal.sendText(this.buildCommand(sessionId));
     this.terminals.set(agentId, terminal);
 
-    if (!sessionId) {
+    if (sessionId) {
+      this.sessionWatcher.startWatching(agentId, sessionId, cwd);
+    } else {
       this.detectSessionId(agentId, cwd);
     }
 
@@ -89,6 +96,7 @@ export class TerminalService implements vscode.Disposable {
   /** Mark an agent as being removed programmatically, then dispose its terminal. */
   closeTerminal = (agentId: string): void => {
     this.stopDetecting(agentId);
+    this.sessionWatcher.stopWatching(agentId);
     const terminal = this.terminals.get(agentId);
     if (terminal) {
       this.removing.add(agentId);
@@ -122,7 +130,9 @@ export class TerminalService implements vscode.Disposable {
           this.terminals.set(agent.agentId, existing);
           // Resume the exact session (or start fresh if no session was saved).
           existing.sendText(this.buildCommand(agent.sessionId));
-          if (!agent.sessionId) {
+          if (agent.sessionId) {
+            this.sessionWatcher.startWatching(agent.agentId, agent.sessionId, worktree.path);
+          } else {
             this.detectSessionId(agent.agentId, worktree.path);
           }
           continue;
@@ -177,6 +187,7 @@ export class TerminalService implements vscode.Disposable {
           this.detectors.delete(agentId);
           try {
             await this.storage.updateAgent(agentId, { sessionId });
+            this.sessionWatcher.startWatching(agentId, sessionId, cwd);
           } catch {
             // Agent may have been removed — detection result is no longer needed.
           }
@@ -220,6 +231,7 @@ export class TerminalService implements vscode.Disposable {
 
     this.terminals.delete(agentId);
     this.stopDetecting(agentId);
+    this.sessionWatcher.stopWatching(agentId);
 
     // Programmatic removal — another code path already handles cleanup.
     if (this.removing.has(agentId)) {
@@ -281,5 +293,6 @@ export class TerminalService implements vscode.Disposable {
     this.detectors.clear();
     this.terminals.clear();
     this.removing.clear();
+    this.sessionWatcher.dispose();
   }
 }

@@ -1,6 +1,7 @@
 import { IconButton } from '../atoms/IconButton';
 import { StatusIcon } from '../atoms/StatusIcon';
 import { Timer } from './Timer';
+import { ElapsedTime } from '../atoms/ElapsedTime';
 import { TruncatedText } from '../atoms/TruncatedText';
 import type { AgentStatus } from '../../../types';
 import { useCallback } from 'react';
@@ -11,6 +12,7 @@ interface AgentTileProps {
   status: AgentStatus;
   lastPrompt: string | null;
   startedAt: number | null;
+  completedAt: number | null;
   isSelected: boolean;
   onClick: (agentId: string) => void;
   onCloneClick: (agentId: string) => void;
@@ -25,6 +27,7 @@ export const AgentTile = ({
   status,
   lastPrompt,
   startedAt,
+  completedAt,
   isSelected,
   onClick,
   onCloneClick,
@@ -40,12 +43,18 @@ export const AgentTile = ({
 
   const className = isSelected ? 'agent-tile agent-tile--selected' : 'agent-tile';
 
+  // Live timer when task is in progress (startedAt set, no completedAt yet).
+  const showTimer = startedAt !== null && completedAt === null;
+  // Static elapsed time when last task is complete.
+  const showElapsed = startedAt !== null && completedAt !== null;
+
   return (
     <article className={className} onClick={handleClick} tabIndex={0}>
       <div className="agent-tile-header">
         <StatusIcon status={status} />
         <span className="agent-tile-name">{name}</span>
-        {status === 'running' && startedAt !== null && <Timer startedAt={startedAt} />}
+        {showTimer && <Timer startedAt={startedAt} />}
+        {showElapsed && <ElapsedTime startedAt={startedAt} completedAt={completedAt} />}
       </div>
       <div className="agent-tile-prompt">
         <TruncatedText text={lastPrompt} />
