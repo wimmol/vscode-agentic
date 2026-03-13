@@ -49,16 +49,17 @@ export const RepoSection = ({
             repo.agents.map((agent) => (
               <AgentTile
                 key={agent.agentId}
+                agentId={agent.agentId}
                 name={agent.name}
                 status={agent.status}
                 lastPrompt={agent.lastPrompt}
                 startedAt={agent.startedAt}
                 isSelected={agent.agentId === selectedAgentId}
-                onClick={() => onAgentClick(agent.agentId)}
-                onCloneClick={() => onCloneAgentClick(agent.agentId)}
-                onStopClick={() => onStopAgentClick(agent.agentId)}
-                onRemoveClick={() => onRemoveAgentClick(agent.agentId)}
-                onClearClick={() => onClearAgentClick(agent.agentId)}
+                onClick={onAgentClick}
+                onCloneClick={onCloneAgentClick}
+                onStopClick={onStopAgentClick}
+                onRemoveClick={onRemoveAgentClick}
+                onClearClick={onClearAgentClick}
               />
             ))
           )}

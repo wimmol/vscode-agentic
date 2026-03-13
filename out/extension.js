@@ -50224,16 +50224,27 @@ var repoRootClick = async (storage, explorer, repoId) => {
 
 // src/features/agentClick.ts
 var vscode12 = __toESM(require("vscode"));
+var generation = 0;
 var agentClick = async (storage, explorer, agentId) => {
+  const gen = ++generation;
   const agent = await storage.getAgent(agentId);
   if (!agent) {
+    throw new Error(`Agent not found`);
+  }
+  if (gen !== generation) {
     return;
   }
   const [repo, worktree] = await Promise.all([
     storage.getRepository(agent.repoId),
     storage.getWorktree(agentId)
   ]);
-  if (!repo || !worktree) {
+  if (!repo) {
+    throw new Error(`Repository not found for agent "${agent.name}"`);
+  }
+  if (!worktree) {
+    throw new Error(`Worktree not found for agent "${agent.name}"`);
+  }
+  if (gen !== generation) {
     return;
   }
   explorer.showRepo(agentId, worktree.path);
@@ -50286,10 +50297,7 @@ var WebviewCommandHandler = class {
           await repoRootClick(this.storage, this.explorer, message.args.repoId);
           break;
         case "agentClick":
-          agentClick(this.storage, this.explorer, message.args.agentId).catch((err) => {
-            const errMsg = err instanceof Error ? err.message : String(err);
-            vscode13.window.showErrorMessage(errMsg);
-          });
+          await agentClick(this.storage, this.explorer, message.args.agentId);
           break;
       }
       console.log('[WebviewCommandHandler] handled "%s" successfully', message.function);

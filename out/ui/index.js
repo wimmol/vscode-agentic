@@ -340,7 +340,7 @@ var require_react_development = __commonJS({
         this.refs = emptyObject;
         this.updater = updater || ReactNoopUpdateQueue;
       }
-      function noop() {
+      function noop2() {
       }
       function testStringCoercion(value) {
         return "" + value;
@@ -531,7 +531,7 @@ var require_react_development = __commonJS({
           case "rejected":
             throw thenable.reason;
           default:
-            switch ("string" === typeof thenable.status ? thenable.then(noop, noop) : (thenable.status = "pending", thenable.then(
+            switch ("string" === typeof thenable.status ? thenable.then(noop2, noop2) : (thenable.status = "pending", thenable.then(
               function(fulfilledValue) {
                 "pending" === thenable.status && (thenable.status = "fulfilled", thenable.value = fulfilledValue);
               },
@@ -1169,7 +1169,7 @@ var require_react_development = __commonJS({
         try {
           var returnValue = scope(), onStartTransitionFinish = ReactSharedInternals.S;
           null !== onStartTransitionFinish && onStartTransitionFinish(currentTransition, returnValue);
-          "object" === typeof returnValue && null !== returnValue && "function" === typeof returnValue.then && (ReactSharedInternals.asyncTransitions++, returnValue.then(releaseAsyncTransition, releaseAsyncTransition), returnValue.then(noop, reportGlobalError));
+          "object" === typeof returnValue && null !== returnValue && "function" === typeof returnValue.then && (ReactSharedInternals.asyncTransitions++, returnValue.then(releaseAsyncTransition, releaseAsyncTransition), returnValue.then(noop2, reportGlobalError));
         } catch (error) {
           reportGlobalError(error);
         } finally {
@@ -1284,7 +1284,7 @@ var require_react_dom_development = __commonJS({
   "node_modules/react-dom/cjs/react-dom.development.js"(exports) {
     "use strict";
     (function() {
-      function noop() {
+      function noop2() {
       }
       function testStringCoercion(value) {
         return "" + value;
@@ -1330,19 +1330,19 @@ var require_react_dom_development = __commonJS({
       "undefined" !== typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ && "function" === typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart && __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart(Error());
       var React = require_react(), Internals = {
         d: {
-          f: noop,
+          f: noop2,
           r: function() {
             throw Error(
               "Invalid form element. requestFormReset must be passed a form that was rendered by React."
             );
           },
-          D: noop,
-          C: noop,
-          L: noop,
-          m: noop,
-          X: noop,
-          S: noop,
-          M: noop
+          D: noop2,
+          C: noop2,
+          L: noop2,
+          m: noop2,
+          X: noop2,
+          S: noop2,
+          M: noop2
         },
         p: 0,
         findDOMNode: null
@@ -1599,7 +1599,7 @@ var require_react_dom_client_development = __commonJS({
           "Context can only be read while React is rendering. In classes, you can read it in the render method or getDerivedStateFromProps. In function components, you can read it directly in the function body, but not inside Hooks like useReducer() or useMemo()."
         );
       }
-      function noop() {
+      function noop2() {
       }
       function warnForMissingKey() {
       }
@@ -7914,7 +7914,7 @@ var require_react_dom_client_development = __commonJS({
           queue,
           pendingState,
           NotPendingTransition,
-          null === action ? noop : function() {
+          null === action ? noop2 : function() {
             requestFormReset$1(formFiber);
             return action(formData);
           }
@@ -21829,6 +21829,7 @@ var import_react2 = __toESM(require_react());
 var import_jsx_runtime7 = __toESM(require_jsx_runtime());
 var stopPropagation = (e) => e.stopPropagation();
 var AgentTile = ({
+  agentId,
   name,
   status,
   lastPrompt,
@@ -21840,14 +21841,15 @@ var AgentTile = ({
   onRemoveClick,
   onClearClick
 }) => {
+  const handleClick = (0, import_react2.useCallback)(() => {
+    if (!isSelected) onClick(agentId);
+  }, [isSelected, onClick, agentId]);
+  const handleClone = (0, import_react2.useCallback)(() => onCloneClick(agentId), [onCloneClick, agentId]);
+  const handleStop = (0, import_react2.useCallback)(() => onStopClick(agentId), [onStopClick, agentId]);
+  const handleRemove = (0, import_react2.useCallback)(() => onRemoveClick(agentId), [onRemoveClick, agentId]);
+  const handleClear = (0, import_react2.useCallback)(() => onClearClick(agentId), [onClearClick, agentId]);
   const className = isSelected ? "agent-tile agent-tile--selected" : "agent-tile";
-  const onAgentClick = (0, import_react2.useMemo)(() => {
-    if (isSelected) {
-      return () => null;
-    }
-    return onClick;
-  }, [isSelected]);
-  return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("article", { className, onClick: onAgentClick, tabIndex: 0, children: [
+  return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("article", { className, onClick: handleClick, tabIndex: 0, children: [
     /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "agent-tile-header", children: [
       /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(StatusIcon, { status }),
       /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: "agent-tile-name", children: name }),
@@ -21855,10 +21857,10 @@ var AgentTile = ({
     ] }),
     /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "agent-tile-prompt", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(TruncatedText, { text: lastPrompt }) }),
     /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("nav", { className: "agent-tile-actions", onClick: stopPropagation, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(IconButton, { icon: "copy", onClick: onCloneClick, title: "Clone agent" }),
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(IconButton, { icon: "debug-stop", onClick: onStopClick, title: "Stop agent" }),
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(IconButton, { icon: "trash", onClick: onRemoveClick, title: "Remove agent", disabled: status === "running" }),
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(IconButton, { icon: "clear-all", onClick: onClearClick, title: "Clear context" })
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(IconButton, { icon: "copy", onClick: handleClone, title: "Clone agent" }),
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(IconButton, { icon: "debug-stop", onClick: handleStop, title: "Stop agent" }),
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(IconButton, { icon: "trash", onClick: handleRemove, title: "Remove agent", disabled: status === "running" }),
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(IconButton, { icon: "clear-all", onClick: handleClear, title: "Clear context" })
     ] })
   ] });
 };
@@ -21899,16 +21901,17 @@ var RepoSection = ({
     repo.isExpanded && /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("div", { className: "repo-agents", children: repo.agents.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(EmptyState, { text: "press + to add agent" }) : repo.agents.map((agent) => /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
       AgentTile,
       {
+        agentId: agent.agentId,
         name: agent.name,
         status: agent.status,
         lastPrompt: agent.lastPrompt,
         startedAt: agent.startedAt,
         isSelected: agent.agentId === selectedAgentId,
-        onClick: () => onAgentClick(agent.agentId),
-        onCloneClick: () => onCloneAgentClick(agent.agentId),
-        onStopClick: () => onStopAgentClick(agent.agentId),
-        onRemoveClick: () => onRemoveAgentClick(agent.agentId),
-        onClearClick: () => onClearAgentClick(agent.agentId)
+        onClick: onAgentClick,
+        onCloneClick: onCloneAgentClick,
+        onStopClick: onStopAgentClick,
+        onRemoveClick: onRemoveAgentClick,
+        onClearClick: onClearAgentClick
       },
       agent.agentId
     )) })
@@ -22015,11 +22018,12 @@ var agentClickMessage = (agentId) => ({
 
 // src/ui/agentPanel/AgentPanelPage.tsx
 var import_jsx_runtime11 = __toESM(require_jsx_runtime());
-var noopId = (_id) => {
+var noop = (_id) => {
 };
 var AgentPanelPage = () => {
   const repos = useAgentPanel();
   const [selectedAgentId, setSelectedAgentId] = (0, import_react4.useState)(null);
+  const selectedRef = (0, import_react4.useRef)(null);
   const onAddAgentClick = (0, import_react4.useCallback)((repoId) => {
     vscode.postMessage(addAgentMessage(repoId));
   }, []);
@@ -22039,15 +22043,17 @@ var AgentPanelPage = () => {
     vscode.postMessage(toggleRepoExpandedMessage(repoId));
   }, []);
   const onRemoveAgentClick = (0, import_react4.useCallback)((agentId) => {
-    setSelectedAgentId((prev) => prev === agentId ? null : prev);
+    if (selectedRef.current === agentId) {
+      selectedRef.current = null;
+      setSelectedAgentId(null);
+    }
     vscode.postMessage(removeAgentMessage(agentId));
   }, []);
   const onAgentClick = (0, import_react4.useCallback)((agentId) => {
-    setSelectedAgentId((prev) => {
-      if (prev === agentId) return prev;
-      vscode.postMessage(agentClickMessage(agentId));
-      return agentId;
-    });
+    if (selectedRef.current === agentId) return;
+    selectedRef.current = agentId;
+    setSelectedAgentId(agentId);
+    vscode.postMessage(agentClickMessage(agentId));
   }, []);
   return /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(
     AgentPanelView,
@@ -22061,10 +22067,10 @@ var AgentPanelPage = () => {
       onRemoveRepoClick,
       onToggleRepoClick,
       onAgentClick,
-      onCloneAgentClick: noopId,
-      onStopAgentClick: noopId,
+      onCloneAgentClick: noop,
+      onStopAgentClick: noop,
       onRemoveAgentClick,
-      onClearAgentClick: noopId
+      onClearAgentClick: noop
     }
   );
 };

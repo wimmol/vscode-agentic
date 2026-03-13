@@ -62,10 +62,7 @@ export class WebviewCommandHandler implements vscode.Disposable {
           await repoRootClick(this.storage, this.explorer, message.args.repoId);
           break;
         case 'agentClick':
-          agentClick(this.storage, this.explorer, message.args.agentId).catch((err) => {
-            const errMsg = err instanceof Error ? err.message : String(err);
-            vscode.window.showErrorMessage(errMsg);
-          });
+          await agentClick(this.storage, this.explorer, message.args.agentId);
           break;
       }
       console.log('[WebviewCommandHandler] handled "%s" successfully', message.function);

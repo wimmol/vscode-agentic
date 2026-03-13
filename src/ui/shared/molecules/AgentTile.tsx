@@ -4,24 +4,26 @@ import { Timer } from './Timer';
 import { TruncatedText } from '../atoms/TruncatedText';
 import type { AgentStatus } from '../../../types';
 import type { MouseEvent } from 'react';
-import { useMemo } from 'react';
+import { useCallback } from 'react';
 
 const stopPropagation = (e: MouseEvent) => e.stopPropagation();
 
 interface AgentTileProps {
+  agentId: string;
   name: string;
   status: AgentStatus;
   lastPrompt: string | null;
   startedAt: number | null;
   isSelected: boolean;
-  onClick: () => void;
-  onCloneClick: () => void;
-  onStopClick: () => void;
-  onRemoveClick: () => void;
-  onClearClick: () => void;
+  onClick: (agentId: string) => void;
+  onCloneClick: (agentId: string) => void;
+  onStopClick: (agentId: string) => void;
+  onRemoveClick: (agentId: string) => void;
+  onClearClick: (agentId: string) => void;
 }
 
 export const AgentTile = ({
+  agentId,
   name,
   status,
   lastPrompt,
@@ -33,14 +35,19 @@ export const AgentTile = ({
   onRemoveClick,
   onClearClick,
 }: AgentTileProps) => {
-  const [onAgentClick, className] = useMemo(() => {
-    if (isSelected) {
-      return [() => null, 'agent-tile agent-tile--selected'];
-    }
-    return [onClick, 'agent-tile'];
-  }, [isSelected])
+  const handleClick = useCallback(() => {
+    if (!isSelected) onClick(agentId);
+  }, [isSelected, onClick, agentId]);
+
+  const handleClone = useCallback(() => onCloneClick(agentId), [onCloneClick, agentId]);
+  const handleStop = useCallback(() => onStopClick(agentId), [onStopClick, agentId]);
+  const handleRemove = useCallback(() => onRemoveClick(agentId), [onRemoveClick, agentId]);
+  const handleClear = useCallback(() => onClearClick(agentId), [onClearClick, agentId]);
+
+  const className = isSelected ? 'agent-tile agent-tile--selected' : 'agent-tile';
+
   return (
-    <article className={className} onClick={onAgentClick} tabIndex={0}>
+    <article className={className} onClick={handleClick} tabIndex={0}>
       <div className="agent-tile-header">
         <StatusIcon status={status} />
         <span className="agent-tile-name">{name}</span>
@@ -50,10 +57,10 @@ export const AgentTile = ({
         <TruncatedText text={lastPrompt} />
       </div>
       <nav className="agent-tile-actions" onClick={stopPropagation}>
-        <IconButton icon="copy" onClick={onCloneClick} title="Clone agent" />
-        <IconButton icon="debug-stop" onClick={onStopClick} title="Stop agent" />
-        <IconButton icon="trash" onClick={onRemoveClick} title="Remove agent" disabled={status === 'running'} />
-        <IconButton icon="clear-all" onClick={onClearClick} title="Clear context" />
+        <IconButton icon="copy" onClick={handleClone} title="Clone agent" />
+        <IconButton icon="debug-stop" onClick={handleStop} title="Stop agent" />
+        <IconButton icon="trash" onClick={handleRemove} title="Remove agent" disabled={status === 'running'} />
+        <IconButton icon="clear-all" onClick={handleClear} title="Clear context" />
       </nav>
     </article>
   );

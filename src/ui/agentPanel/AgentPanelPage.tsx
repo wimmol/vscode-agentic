@@ -1,14 +1,15 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { AgentPanelView } from './AgentPanelView';
 import { useAgentPanel } from './useAgentPanel';
 import { vscode } from '../index';
 import { addAgentMessage, addRepoMessage, agentClickMessage, removeAgentMessage, removeRepoMessage, repoRootClickMessage, rootClickMessage, toggleRepoExpandedMessage } from '../../types/messages';
 
-const noopId = (_id: string) => {};
+const noop = (_id: string) => {};
 
 export const AgentPanelPage = () => {
   const repos = useAgentPanel();
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+  const selectedRef = useRef<string | null>(null);
 
   const onAddAgentClick = useCallback((repoId: string) => {
     vscode.postMessage(addAgentMessage(repoId));
@@ -35,16 +36,18 @@ export const AgentPanelPage = () => {
   }, []);
 
   const onRemoveAgentClick = useCallback((agentId: string) => {
-    setSelectedAgentId((prev) => prev === agentId ? null : prev);
+    if (selectedRef.current === agentId) {
+      selectedRef.current = null;
+      setSelectedAgentId(null);
+    }
     vscode.postMessage(removeAgentMessage(agentId));
   }, []);
 
   const onAgentClick = useCallback((agentId: string) => {
-    setSelectedAgentId((prev) => {
-      if (prev === agentId) return prev;
-      vscode.postMessage(agentClickMessage(agentId));
-      return agentId;
-    });
+    if (selectedRef.current === agentId) return;
+    selectedRef.current = agentId;
+    setSelectedAgentId(agentId);
+    vscode.postMessage(agentClickMessage(agentId));
   }, []);
 
   return (
@@ -58,10 +61,10 @@ export const AgentPanelPage = () => {
       onRemoveRepoClick={onRemoveRepoClick}
       onToggleRepoClick={onToggleRepoClick}
       onAgentClick={onAgentClick}
-      onCloneAgentClick={noopId}
-      onStopAgentClick={noopId}
+      onCloneAgentClick={noop}
+      onStopAgentClick={noop}
       onRemoveAgentClick={onRemoveAgentClick}
-      onClearAgentClick={noopId}
+      onClearAgentClick={noop}
     />
   );
 };
