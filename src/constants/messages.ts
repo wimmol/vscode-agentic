@@ -51,3 +51,7 @@ export const LABEL_OPEN_FILE = 'Open File';
 export const LABEL_AGENT_PREFIX = '› ';
 export const LABEL_COLLAPSE = 'Collapse';
 export const LABEL_EXPAND = 'Expand';
+export const LABEL_NAVIGATE_WORKSPACE = 'Navigate to workspace';
+export const LABEL_ADD_REPO = 'Add repo';
+export const LABEL_EMPTY_AGENTS = 'press + to add agent';
+export const LABEL_EMPTY_REPOS = 'press + to add repo';

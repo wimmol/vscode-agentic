@@ -2,6 +2,7 @@ import { RepoHeader } from '../shared/molecules/RepoHeader';
 import { AgentTile } from '../shared/molecules/AgentTile';
 import { EmptyState } from '../shared/atoms/EmptyState';
 import type { RepoWithAgents } from '../../types';
+import { LABEL_EMPTY_AGENTS } from '../../constants/messages';
 
 interface RepoSectionProps {
   repo: RepoWithAgents;
@@ -38,7 +39,7 @@ export const RepoSection = ({
       {repo.isExpanded && (
         <div className="repo-agents">
           {repo.agents.length === 0 ? (
-            <EmptyState text="press + to add agent" />
+            <EmptyState text={LABEL_EMPTY_AGENTS} />
           ) : (
             repo.agents.map((agent) => (
               <AgentTile
