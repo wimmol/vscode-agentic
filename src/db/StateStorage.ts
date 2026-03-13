@@ -241,6 +241,30 @@ export class StateStorage implements vscode.Disposable {
     return worktree?.get({ plain: true });
   };
 
+  getAllWorktrees = async (): Promise<Worktree[]> => {
+    const rows = await WorktreeModel.findAll();
+    return rows.map((r) => r.get({ plain: true }));
+  };
+
+  // ── Convenience ─────────────────────────────────────────────────
+
+  getAgentContext = async (
+    agentId: string,
+  ): Promise<{ agent: Agent; repo: Repository; worktree: Worktree } | undefined> => {
+    const [agent, worktree] = await Promise.all([
+      this.getAgent(agentId),
+      this.getWorktree(agentId),
+    ]);
+    if (!agent || !worktree) {
+      return undefined;
+    }
+    const repo = await this.getRepository(agent.repoId);
+    if (!repo) {
+      return undefined;
+    }
+    return { agent, repo, worktree };
+  };
+
   // ── Explorer state ───────────────────────────────────────────
 
   getExpandedPaths = async (scopeKey: string): Promise<string[]> => {

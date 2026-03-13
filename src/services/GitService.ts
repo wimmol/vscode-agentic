@@ -45,6 +45,19 @@ export const removeWorktree = async (repoPath: string, worktreePath: string): Pr
   }
 };
 
+export const hasUncommittedChanges = async (wtPath: string): Promise<boolean> => {
+  try {
+    const { stdout } = await execFile(
+      'git',
+      ['status', '--porcelain', '-z', '--no-optional-locks'],
+      gitOpts(wtPath),
+    );
+    return stdout.length > 0;
+  } catch {
+    return false;
+  }
+};
+
 export const deleteBranch = async (repoPath: string, branch: string): Promise<void> => {
   try {
     await execFile('git', ['branch', '-D', branch], gitOpts(repoPath));

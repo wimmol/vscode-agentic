@@ -1,0 +1,285 @@
+import { readdir } from 'fs/promises';
+import { basename, join } from 'path';
+import { homedir } from 'os';
+import * as vscode from 'vscode';
+import type { StateStorage } from '../db';
+import { terminalName } from '../constants/terminal';
+import { removeWorktree, deleteBranch, hasUncommittedChanges } from './GitService';
+
+/**
+ * Compute the Claude project directory for a given working directory.
+ * Claude stores sessions at ~/.claude/projects/<encoded-path>/<sessionId>.jsonl
+ * where the encoded path replaces `/` and `.` with `-`.
+ */
+const claudeProjectDir = (cwd: string): string =>
+  join(homedir(), '.claude', 'projects', cwd.replace(/[/.]/g, '-'));
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Manages agent↔terminal mappings and lifecycle.
+ *
+ * Tracks which terminal belongs to which agent, listens for terminal
+ * close events, and handles terminal restoration on startup.
+ * Exists as a class because it owns the terminal tracking map and
+ * the onDidCloseTerminal listener, both sharing a lifetime.
+ */
+export class TerminalService implements vscode.Disposable {
+  /** agentId → Terminal */
+  private readonly terminals = new Map<string, vscode.Terminal>();
+  private readonly disposables: vscode.Disposable[] = [];
+
+  /** Active session-detection polling intervals, keyed by agentId. */
+  private readonly detectors = new Map<string, NodeJS.Timeout>();
+
+  /**
+   * agentIds currently being removed programmatically.
+   * When closeTerminal is called, the id is added here so that the
+   * onDidCloseTerminal handler (fired async by VS Code) skips the
+   * user-facing dialog and just cleans up the map entry.
+   */
+  private readonly removing = new Set<string>();
+
+  constructor(private readonly storage: StateStorage) {
+    this.disposables.push(
+      vscode.window.onDidCloseTerminal((terminal) => {
+        this.onTerminalClosed(terminal).catch((err) => {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error('[TerminalService] onTerminalClosed error:', msg);
+          vscode.window.showErrorMessage(msg);
+        });
+      }),
+    );
+  }
+
+  /**
+   * Create a terminal for an agent and start the agent command.
+   * Pass a sessionId to resume that exact Claude session.
+   * When no sessionId is given, a new session starts and we detect its id.
+   */
+  createTerminal = (
+    agentId: string,
+    agentName: string,
+    repoName: string,
+    cwd: string,
+    sessionId?: string | null,
+  ): vscode.Terminal => {
+    const name = terminalName(agentName, repoName);
+
+    const terminal = vscode.window.createTerminal({
+      name,
+      cwd,
+      location: { viewColumn: vscode.ViewColumn.Two },
+    });
+    terminal.sendText(this.buildCommand(sessionId));
+    this.terminals.set(agentId, terminal);
+
+    if (!sessionId) {
+      this.detectSessionId(agentId, cwd);
+    }
+
+    return terminal;
+  };
+
+  /** Get the tracked terminal for an agent. */
+  getTerminal = (agentId: string): vscode.Terminal | undefined => {
+    return this.terminals.get(agentId);
+  };
+
+  /** Mark an agent as being removed programmatically, then dispose its terminal. */
+  closeTerminal = (agentId: string): void => {
+    this.stopDetecting(agentId);
+    const terminal = this.terminals.get(agentId);
+    if (terminal) {
+      this.removing.add(agentId);
+      terminal.dispose();
+      // Don't delete from this.terminals here — let onTerminalClosed do it
+      // so the handler can find the entry and clean up the removing Set.
+    }
+  };
+
+  /** Restore terminals for every agent in the database. Called once during activation. */
+  restoreAll = async (): Promise<void> => {
+    const [repos, allWorktrees] = await Promise.all([
+      this.storage.getAllReposWithAgents(),
+      this.storage.getAllWorktrees(),
+    ]);
+
+    const worktreeByAgent = new Map(allWorktrees.map((wt) => [wt.agentId, wt]));
+    const existingByName = new Map(vscode.window.terminals.map((t) => [t.name, t]));
+
+    for (const repo of repos) {
+      for (const agent of repo.agents) {
+        const worktree = worktreeByAgent.get(agent.agentId);
+        if (!worktree) {
+          continue;
+        }
+
+        // Adopt an existing terminal if one already matches by name.
+        const name = terminalName(agent.name, repo.name);
+        const existing = existingByName.get(name);
+        if (existing) {
+          this.terminals.set(agent.agentId, existing);
+          // Resume the exact session (or start fresh if no session was saved).
+          existing.sendText(this.buildCommand(agent.sessionId));
+          if (!agent.sessionId) {
+            this.detectSessionId(agent.agentId, worktree.path);
+          }
+          continue;
+        }
+
+        this.createTerminal(agent.agentId, agent.name, repo.name, worktree.path, agent.sessionId);
+      }
+    }
+  };
+
+  // ── Private ───────────────────────────────────────────────────────
+
+  /**
+   * Build the shell command.
+   * When a sessionId is provided, appends `--resume <id>` to resume that exact session.
+   */
+  private buildCommand = (sessionId?: string | null): string => {
+    const raw = vscode.workspace
+      .getConfiguration('vscode-agentic')
+      .get<string>('agentCommand', 'claude');
+    const base = raw?.trim() || 'claude';
+    if (!sessionId || !UUID_RE.test(sessionId)) return base;
+    return `${base} --resume ${sessionId}`;
+  };
+
+  /**
+   * Poll the Claude project directory for a new session file and save
+   * its id to the agent record. Polls every 2s for up to 30s.
+   * Uses recursive setTimeout so each poll waits for the previous to finish.
+   */
+  private detectSessionId = async (agentId: string, cwd: string): Promise<void> => {
+    this.stopDetecting(agentId);
+    const dir = claudeProjectDir(cwd);
+
+    // Snapshot existing .jsonl files so we can spot the new one.
+    let existing: Set<string>;
+    try {
+      const files = await readdir(dir);
+      existing = new Set(files.filter((f) => f.endsWith('.jsonl')));
+    } catch {
+      existing = new Set();
+    }
+
+    let attempts = 0;
+    const poll = async () => {
+      attempts++;
+      try {
+        const files = await readdir(dir);
+        const newFile = files.find((f) => f.endsWith('.jsonl') && !existing.has(f));
+        if (newFile) {
+          const sessionId = basename(newFile, '.jsonl');
+          this.detectors.delete(agentId);
+          try {
+            await this.storage.updateAgent(agentId, { sessionId });
+          } catch {
+            // Agent may have been removed — detection result is no longer needed.
+          }
+          return;
+        }
+      } catch {
+        // Directory may not exist yet — keep trying.
+      }
+      if (attempts < 15) {
+        this.detectors.set(agentId, setTimeout(poll, 2000));
+      } else {
+        this.detectors.delete(agentId);
+      }
+    };
+
+    this.detectors.set(agentId, setTimeout(poll, 2000));
+  };
+
+  /** Stop session-detection polling for an agent. */
+  private stopDetecting = (agentId: string): void => {
+    const timeout = this.detectors.get(agentId);
+    if (timeout) {
+      clearTimeout(timeout);
+      this.detectors.delete(agentId);
+    }
+  };
+
+  private onTerminalClosed = async (terminal: vscode.Terminal): Promise<void> => {
+    // Find which agent owns this terminal.
+    let agentId: string | undefined;
+    for (const [id, t] of this.terminals) {
+      if (t === terminal) {
+        agentId = id;
+        break;
+      }
+    }
+
+    if (!agentId) {
+      return;
+    }
+
+    this.terminals.delete(agentId);
+    this.stopDetecting(agentId);
+
+    // Programmatic removal — another code path already handles cleanup.
+    if (this.removing.has(agentId)) {
+      this.removing.delete(agentId);
+      return;
+    }
+
+    // Agent finished normally — silently remove without prompting.
+    if (terminal.exitStatus?.code === 0) {
+      await this.storage.removeAgent(agentId);
+      return;
+    }
+
+    // Terminal was closed by the user — ask what to do.
+    const ctx = await this.storage.getAgentContext(agentId);
+    if (!ctx) {
+      return;
+    }
+    const { agent, repo, worktree } = ctx;
+
+    let detail = `Closing the terminal kills the running agent "${agent.name}".`;
+    const dirty = await hasUncommittedChanges(worktree.path);
+    if (dirty) {
+      detail += ' The worktree has uncommitted changes.';
+    }
+
+    const choice = await vscode.window.showWarningMessage(
+      detail,
+      { modal: true },
+      'Remove & Delete Worktree',
+      'Remove & Keep Worktree',
+      'Reopen Terminal',
+    );
+
+    if (choice === 'Remove & Delete Worktree') {
+      await removeWorktree(repo.localPath, worktree.path);
+      await deleteBranch(repo.localPath, agent.name);
+      await this.storage.removeAgent(agentId);
+      return;
+    }
+
+    if (choice === 'Remove & Keep Worktree') {
+      await this.storage.removeAgent(agentId);
+      return;
+    }
+
+    // "Reopen Terminal" or dialog dismissed — resume the exact session.
+    const reopened = this.createTerminal(agentId, agent.name, repo.name, worktree.path, agent.sessionId);
+    reopened.show(false);
+  };
+
+  dispose(): void {
+    for (const d of this.disposables) {
+      d.dispose();
+    }
+    for (const timeout of this.detectors.values()) {
+      clearTimeout(timeout);
+    }
+    this.detectors.clear();
+    this.terminals.clear();
+    this.removing.clear();
+  }
+}

@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import type { StateStorage } from '../db';
 import type { AgentPanelProvider } from './AgentPanelProvider';
 import type { FileExplorerProvider } from './FileExplorerProvider';
+import type { TerminalService } from './TerminalService';
 import type { WebviewToExtensionMessage } from '../types/messages';
 import { addAgent } from '../features/addAgent';
 import { addRepo } from '../features/addRepo';
@@ -25,6 +26,7 @@ export class WebviewCommandHandler implements vscode.Disposable {
     provider: AgentPanelProvider,
     private readonly storage: StateStorage,
     private readonly explorer: FileExplorerProvider,
+    private readonly terminalService: TerminalService,
   ) {
     this.disposables.push(
       provider.onDidResolveView((view) => {
@@ -41,13 +43,13 @@ export class WebviewCommandHandler implements vscode.Disposable {
     try {
       switch (message.function) {
         case 'addAgent':
-          await addAgent(this.storage, message.args.repoId);
+          await addAgent(this.storage, this.terminalService, message.args.repoId);
           break;
         case 'addRepo':
           await addRepo(this.storage);
           break;
         case 'removeAgent':
-          await removeAgent(this.storage, message.args.agentId);
+          await removeAgent(this.storage, this.terminalService, message.args.agentId);
           break;
         case 'removeRepo':
           await removeRepo(this.storage, message.args.repoId);
@@ -62,7 +64,7 @@ export class WebviewCommandHandler implements vscode.Disposable {
           await repoRootClick(this.storage, this.explorer, message.args.repoId);
           break;
         case 'agentClick':
-          await agentClick(this.storage, this.explorer, message.args.agentId);
+          await agentClick(this.storage, this.explorer, this.terminalService, message.args.agentId);
           break;
       }
       console.log('[WebviewCommandHandler] handled "%s" successfully', message.function);

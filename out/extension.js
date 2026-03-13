@@ -3653,7 +3653,7 @@ var require_lodash = __commonJS({
           }
           return mapped.length && mapped[0] === arrays[0] ? baseIntersection(mapped, undefined2, comparator) : [];
         });
-        function join4(array, separator) {
+        function join5(array, separator) {
           return array == null ? "" : nativeJoin.call(array, separator);
         }
         function last(array) {
@@ -5572,7 +5572,7 @@ var require_lodash = __commonJS({
         lodash.isUndefined = isUndefined;
         lodash.isWeakMap = isWeakMap;
         lodash.isWeakSet = isWeakSet;
-        lodash.join = join4;
+        lodash.join = join5;
         lodash.kebabCase = kebabCase;
         lodash.last = last;
         lodash.lastIndexOf = lastIndexOf;
@@ -37588,9 +37588,9 @@ var require_query_generator = __commonJS({
             }
             return `json_unquote(json_extract(${quotedColumn},${pathStr}))`;
           case "postgres":
-            const join4 = isJson ? "#>" : "#>>";
+            const join5 = isJson ? "#>" : "#>>";
             pathStr = this.escape(`{${paths.join(",")}}`);
-            return `(${quotedColumn}${join4}${pathStr})`;
+            return `(${quotedColumn}${join5}${pathStr})`;
           default:
             throw new Error(`Unsupported ${this.dialect} for JSON operations`);
         }
@@ -38278,7 +38278,7 @@ https://github.com/sequelize/sequelize/discussions/15694`);
           const isBelongsTo = topAssociation.associationType === "BelongsTo";
           const sourceField = isBelongsTo ? topAssociation.identifierField : topAssociation.sourceKeyField || topParent.model.primaryKeyField;
           const targetField = isBelongsTo ? topAssociation.sourceKeyField || topInclude.model.primaryKeyField : topAssociation.identifierField;
-          const join4 = [
+          const join5 = [
             `${this.quoteIdentifier(topInclude.as)}.${this.quoteIdentifier(targetField)}`,
             `${this.quoteTable(topParent.as || topParent.model.name)}.${this.quoteIdentifier(sourceField)}`
           ].join(" = ");
@@ -38289,7 +38289,7 @@ https://github.com/sequelize/sequelize/discussions/15694`);
             where: {
               [Op2.and]: [
                 topInclude.where,
-                { [Op2.join]: this.sequelize.literal(join4) }
+                { [Op2.join]: this.sequelize.literal(join5) }
               ]
             },
             limit: 1,
@@ -49522,6 +49522,18 @@ var removeWorktree = async (repoPath, worktreePath2) => {
   } catch {
   }
 };
+var hasUncommittedChanges = async (wtPath) => {
+  try {
+    const { stdout } = await execFile(
+      "git",
+      ["status", "--porcelain", "-z", "--no-optional-locks"],
+      gitOpts(wtPath)
+    );
+    return stdout.length > 0;
+  } catch {
+    return false;
+  }
+};
 var deleteBranch = async (repoPath, branch) => {
   try {
     await execFile("git", ["branch", "-D", branch], gitOpts(repoPath));
@@ -49713,6 +49725,25 @@ var StateStorage = class {
   getWorktree = async (agentId) => {
     const worktree = await WorktreeModel.findOne({ where: { agentId } });
     return worktree?.get({ plain: true });
+  };
+  getAllWorktrees = async () => {
+    const rows = await WorktreeModel.findAll();
+    return rows.map((r) => r.get({ plain: true }));
+  };
+  // ── Convenience ─────────────────────────────────────────────────
+  getAgentContext = async (agentId) => {
+    const [agent, worktree] = await Promise.all([
+      this.getAgent(agentId),
+      this.getWorktree(agentId)
+    ]);
+    if (!agent || !worktree) {
+      return void 0;
+    }
+    const repo = await this.getRepository(agent.repoId);
+    if (!repo) {
+      return void 0;
+    }
+    return { agent, repo, worktree };
   };
   // ── Explorer state ───────────────────────────────────────────
   getExpandedPaths = async (scopeKey) => {
@@ -50004,16 +50035,231 @@ var FileItem = class extends vscode5.TreeItem {
   }
 };
 
-// src/services/WebviewCommandHandler.ts
-var vscode13 = __toESM(require("vscode"));
-
-// src/features/addAgent.ts
+// src/services/TerminalService.ts
+var import_promises = require("fs/promises");
+var import_path = require("path");
+var import_os = require("os");
 var vscode6 = __toESM(require("vscode"));
 
 // src/constants/terminal.ts
 var terminalName = (agentName, repoName) => `${agentName} (${repoName})`;
 
+// src/services/TerminalService.ts
+var claudeProjectDir = (cwd) => (0, import_path.join)((0, import_os.homedir)(), ".claude", "projects", cwd.replace(/[/.]/g, "-"));
+var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+var TerminalService = class {
+  constructor(storage) {
+    this.storage = storage;
+    this.disposables.push(
+      vscode6.window.onDidCloseTerminal((terminal) => {
+        this.onTerminalClosed(terminal).catch((err) => {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error("[TerminalService] onTerminalClosed error:", msg);
+          vscode6.window.showErrorMessage(msg);
+        });
+      })
+    );
+  }
+  /** agentId → Terminal */
+  terminals = /* @__PURE__ */ new Map();
+  disposables = [];
+  /** Active session-detection polling intervals, keyed by agentId. */
+  detectors = /* @__PURE__ */ new Map();
+  /**
+   * agentIds currently being removed programmatically.
+   * When closeTerminal is called, the id is added here so that the
+   * onDidCloseTerminal handler (fired async by VS Code) skips the
+   * user-facing dialog and just cleans up the map entry.
+   */
+  removing = /* @__PURE__ */ new Set();
+  /**
+   * Create a terminal for an agent and start the agent command.
+   * Pass a sessionId to resume that exact Claude session.
+   * When no sessionId is given, a new session starts and we detect its id.
+   */
+  createTerminal = (agentId, agentName, repoName, cwd, sessionId) => {
+    const name = terminalName(agentName, repoName);
+    const terminal = vscode6.window.createTerminal({
+      name,
+      cwd,
+      location: { viewColumn: vscode6.ViewColumn.Two }
+    });
+    terminal.sendText(this.buildCommand(sessionId));
+    this.terminals.set(agentId, terminal);
+    if (!sessionId) {
+      this.detectSessionId(agentId, cwd);
+    }
+    return terminal;
+  };
+  /** Get the tracked terminal for an agent. */
+  getTerminal = (agentId) => {
+    return this.terminals.get(agentId);
+  };
+  /** Mark an agent as being removed programmatically, then dispose its terminal. */
+  closeTerminal = (agentId) => {
+    this.stopDetecting(agentId);
+    const terminal = this.terminals.get(agentId);
+    if (terminal) {
+      this.removing.add(agentId);
+      terminal.dispose();
+    }
+  };
+  /** Restore terminals for every agent in the database. Called once during activation. */
+  restoreAll = async () => {
+    const [repos, allWorktrees] = await Promise.all([
+      this.storage.getAllReposWithAgents(),
+      this.storage.getAllWorktrees()
+    ]);
+    const worktreeByAgent = new Map(allWorktrees.map((wt) => [wt.agentId, wt]));
+    const existingByName = new Map(vscode6.window.terminals.map((t) => [t.name, t]));
+    for (const repo of repos) {
+      for (const agent of repo.agents) {
+        const worktree = worktreeByAgent.get(agent.agentId);
+        if (!worktree) {
+          continue;
+        }
+        const name = terminalName(agent.name, repo.name);
+        const existing = existingByName.get(name);
+        if (existing) {
+          this.terminals.set(agent.agentId, existing);
+          existing.sendText(this.buildCommand(agent.sessionId));
+          if (!agent.sessionId) {
+            this.detectSessionId(agent.agentId, worktree.path);
+          }
+          continue;
+        }
+        this.createTerminal(agent.agentId, agent.name, repo.name, worktree.path, agent.sessionId);
+      }
+    }
+  };
+  // ── Private ───────────────────────────────────────────────────────
+  /**
+   * Build the shell command.
+   * When a sessionId is provided, appends `--resume <id>` to resume that exact session.
+   */
+  buildCommand = (sessionId) => {
+    const raw = vscode6.workspace.getConfiguration("vscode-agentic").get("agentCommand", "claude");
+    const base = raw?.trim() || "claude";
+    if (!sessionId || !UUID_RE.test(sessionId)) return base;
+    return `${base} --resume ${sessionId}`;
+  };
+  /**
+   * Poll the Claude project directory for a new session file and save
+   * its id to the agent record. Polls every 2s for up to 30s.
+   * Uses recursive setTimeout so each poll waits for the previous to finish.
+   */
+  detectSessionId = async (agentId, cwd) => {
+    this.stopDetecting(agentId);
+    const dir = claudeProjectDir(cwd);
+    let existing;
+    try {
+      const files = await (0, import_promises.readdir)(dir);
+      existing = new Set(files.filter((f) => f.endsWith(".jsonl")));
+    } catch {
+      existing = /* @__PURE__ */ new Set();
+    }
+    let attempts = 0;
+    const poll = async () => {
+      attempts++;
+      try {
+        const files = await (0, import_promises.readdir)(dir);
+        const newFile = files.find((f) => f.endsWith(".jsonl") && !existing.has(f));
+        if (newFile) {
+          const sessionId = (0, import_path.basename)(newFile, ".jsonl");
+          this.detectors.delete(agentId);
+          try {
+            await this.storage.updateAgent(agentId, { sessionId });
+          } catch {
+          }
+          return;
+        }
+      } catch {
+      }
+      if (attempts < 15) {
+        this.detectors.set(agentId, setTimeout(poll, 2e3));
+      } else {
+        this.detectors.delete(agentId);
+      }
+    };
+    this.detectors.set(agentId, setTimeout(poll, 2e3));
+  };
+  /** Stop session-detection polling for an agent. */
+  stopDetecting = (agentId) => {
+    const timeout = this.detectors.get(agentId);
+    if (timeout) {
+      clearTimeout(timeout);
+      this.detectors.delete(agentId);
+    }
+  };
+  onTerminalClosed = async (terminal) => {
+    let agentId;
+    for (const [id, t] of this.terminals) {
+      if (t === terminal) {
+        agentId = id;
+        break;
+      }
+    }
+    if (!agentId) {
+      return;
+    }
+    this.terminals.delete(agentId);
+    this.stopDetecting(agentId);
+    if (this.removing.has(agentId)) {
+      this.removing.delete(agentId);
+      return;
+    }
+    if (terminal.exitStatus?.code === 0) {
+      await this.storage.removeAgent(agentId);
+      return;
+    }
+    const ctx = await this.storage.getAgentContext(agentId);
+    if (!ctx) {
+      return;
+    }
+    const { agent, repo, worktree } = ctx;
+    let detail = `Closing the terminal kills the running agent "${agent.name}".`;
+    const dirty = await hasUncommittedChanges(worktree.path);
+    if (dirty) {
+      detail += " The worktree has uncommitted changes.";
+    }
+    const choice = await vscode6.window.showWarningMessage(
+      detail,
+      { modal: true },
+      "Remove & Delete Worktree",
+      "Remove & Keep Worktree",
+      "Reopen Terminal"
+    );
+    if (choice === "Remove & Delete Worktree") {
+      await removeWorktree(repo.localPath, worktree.path);
+      await deleteBranch(repo.localPath, agent.name);
+      await this.storage.removeAgent(agentId);
+      return;
+    }
+    if (choice === "Remove & Keep Worktree") {
+      await this.storage.removeAgent(agentId);
+      return;
+    }
+    const reopened = this.createTerminal(agentId, agent.name, repo.name, worktree.path, agent.sessionId);
+    reopened.show(false);
+  };
+  dispose() {
+    for (const d of this.disposables) {
+      d.dispose();
+    }
+    for (const timeout of this.detectors.values()) {
+      clearTimeout(timeout);
+    }
+    this.detectors.clear();
+    this.terminals.clear();
+    this.removing.clear();
+  }
+};
+
+// src/services/WebviewCommandHandler.ts
+var vscode13 = __toESM(require("vscode"));
+
 // src/features/addAgent.ts
+var vscode7 = __toESM(require("vscode"));
 var validateBranchName = (value) => {
   const trimmed = value.trim();
   if (!trimmed) {
@@ -50024,13 +50270,13 @@ var validateBranchName = (value) => {
   }
   return void 0;
 };
-var addAgent = async (storage, repoId) => {
+var addAgent = async (storage, terminalService, repoId) => {
   const repo = await storage.getRepository(repoId);
   if (!repo) {
-    vscode6.window.showErrorMessage("Repository not found.");
+    vscode7.window.showErrorMessage("Repository not found.");
     return;
   }
-  const name = await vscode6.window.showInputBox({
+  const name = await vscode7.window.showInputBox({
     title: "Add Agent",
     placeHolder: "Branch name for the agent",
     validateInput: validateBranchName,
@@ -50044,32 +50290,28 @@ var addAgent = async (storage, repoId) => {
   const wtPath = worktreePath(repoPath, branch);
   await ensureBranch(repoPath, branch);
   await createWorktree(repoPath, wtPath, branch);
+  let agent;
   try {
-    await storage.addAgent(repoId, branch, "claude-code");
+    agent = await storage.addAgent(repoId, branch, "claude-code");
   } catch (err) {
     await removeWorktree(repoPath, wtPath);
     throw err;
   }
-  const agentCommand = vscode6.workspace.getConfiguration("vscode-agentic").get("agentCommand", "claude");
-  const terminal = vscode6.window.createTerminal({
-    name: terminalName(branch, repo.name),
-    cwd: wtPath,
-    location: { viewColumn: vscode6.ViewColumn.Two }
-  });
-  terminal.sendText(agentCommand);
+  const terminal = terminalService.createTerminal(agent.agentId, branch, repo.name, wtPath);
+  terminal.show(false);
 };
 
 // src/features/addRepo.ts
 var import_fs2 = require("fs");
 var path3 = __toESM(require("path"));
-var vscode7 = __toESM(require("vscode"));
+var vscode8 = __toESM(require("vscode"));
 
 // src/constants/repo.ts
 var BROWSE_LABEL = "$(folder-opened) Browse\u2026";
 
 // src/features/addRepo.ts
 var getWorkspaceGitFolders = () => {
-  const folders = vscode7.workspace.workspaceFolders ?? [];
+  const folders = vscode8.workspace.workspaceFolders ?? [];
   return folders.filter((wf) => (0, import_fs2.existsSync)(path3.join(wf.uri.fsPath, ".git"))).map((wf) => ({
     label: wf.name,
     description: wf.uri.fsPath,
@@ -50077,7 +50319,7 @@ var getWorkspaceGitFolders = () => {
   }));
 };
 var pickViaOsDialog = async () => {
-  const result = await vscode7.window.showOpenDialog({
+  const result = await vscode8.window.showOpenDialog({
     canSelectFiles: false,
     canSelectFolders: true,
     canSelectMany: false,
@@ -50088,7 +50330,7 @@ var pickViaOsDialog = async () => {
   }
   const folderPath = result[0].fsPath;
   if (!(0, import_fs2.existsSync)(path3.join(folderPath, ".git"))) {
-    vscode7.window.showErrorMessage("Selected folder is not a git repository (no .git found).");
+    vscode8.window.showErrorMessage("Selected folder is not a git repository (no .git found).");
     return void 0;
   }
   return folderPath;
@@ -50099,10 +50341,10 @@ var addRepo = async (storage) => {
   const suggestions = getWorkspaceGitFolders().filter((f) => !existingPaths.has(f.folderPath));
   const items = [
     ...suggestions,
-    ...suggestions.length > 0 ? [{ label: "", kind: vscode7.QuickPickItemKind.Separator }] : [],
+    ...suggestions.length > 0 ? [{ label: "", kind: vscode8.QuickPickItemKind.Separator }] : [],
     { label: BROWSE_LABEL, alwaysShow: true }
   ];
-  const picked = await vscode7.window.showQuickPick(items, {
+  const picked = await vscode8.window.showQuickPick(items, {
     placeHolder: suggestions.length > 0 ? "Select a workspace repository or browse\u2026" : "No workspace repositories found \u2014 browse to add one",
     title: "Add Repository"
   });
@@ -50114,67 +50356,65 @@ var addRepo = async (storage) => {
     return;
   }
   if (existingPaths.has(folderPath)) {
-    vscode7.window.showInformationMessage("Repository is already added.");
+    vscode8.window.showInformationMessage("Repository is already added.");
     return;
   }
   const name = path3.basename(folderPath);
   await storage.addRepository(name, folderPath, "staging");
-  const alreadyInWorkspace = (vscode7.workspace.workspaceFolders ?? []).some(
+  const alreadyInWorkspace = (vscode8.workspace.workspaceFolders ?? []).some(
     (wf) => wf.uri.fsPath === folderPath
   );
   if (!alreadyInWorkspace) {
-    const insertAt = vscode7.workspace.workspaceFolders?.length ?? 0;
-    vscode7.workspace.updateWorkspaceFolders(insertAt, 0, { uri: vscode7.Uri.file(folderPath) });
+    const insertAt = vscode8.workspace.workspaceFolders?.length ?? 0;
+    vscode8.workspace.updateWorkspaceFolders(insertAt, 0, { uri: vscode8.Uri.file(folderPath) });
   }
 };
 
 // src/features/removeAgent.ts
-var vscode8 = __toESM(require("vscode"));
-var removeAgent = async (storage, agentId) => {
-  const agent = await storage.getAgent(agentId);
-  if (!agent) {
-    vscode8.window.showErrorMessage("Agent not found.");
+var vscode9 = __toESM(require("vscode"));
+var removeAgent = async (storage, terminalService, agentId) => {
+  const ctx = await storage.getAgentContext(agentId);
+  if (!ctx) {
+    vscode9.window.showErrorMessage("Agent, repository, or worktree not found.");
     return;
   }
-  const [repo, worktree] = await Promise.all([
-    storage.getRepository(agent.repoId),
-    storage.getWorktree(agentId)
-  ]);
-  if (!repo) {
-    vscode8.window.showErrorMessage("Repository not found.");
-    return;
+  const { agent, repo, worktree } = ctx;
+  let detail = `Remove agent "${agent.name}"?`;
+  const dirty = await hasUncommittedChanges(worktree.path);
+  if (dirty) {
+    detail += " The worktree has uncommitted changes that will be lost if deleted.";
   }
-  if (!worktree) {
-    vscode8.window.showErrorMessage("Worktree not found.");
-    return;
-  }
-  const confirm = await vscode8.window.showWarningMessage(
-    `Remove agent "${agent.name}"? This will delete its worktree and branch.`,
+  const choice = await vscode9.window.showWarningMessage(
+    detail,
     { modal: true },
-    "Remove"
+    "Delete Worktree",
+    "Keep Worktree"
   );
-  if (confirm !== "Remove") {
+  if (!choice) {
     return;
   }
-  await removeWorktree(repo.localPath, worktree.path);
-  await deleteBranch(repo.localPath, agent.name);
+  terminalService.closeTerminal(agentId);
+  if (choice === "Delete Worktree") {
+    await removeWorktree(repo.localPath, worktree.path);
+    await deleteBranch(repo.localPath, agent.name);
+  }
   await storage.removeAgent(agentId);
 };
 
 // src/features/removeRepo.ts
-var vscode9 = __toESM(require("vscode"));
+var vscode10 = __toESM(require("vscode"));
 var removeRepo = async (storage, repoId) => {
   const repo = await storage.getRepository(repoId);
   if (!repo) {
-    vscode9.window.showErrorMessage("Repository not found.");
+    vscode10.window.showErrorMessage("Repository not found.");
     return;
   }
-  const isInWorkspace = (vscode9.workspace.workspaceFolders ?? []).some(
+  const isInWorkspace = (vscode10.workspace.workspaceFolders ?? []).some(
     (wf) => wf.uri.fsPath === repo.localPath
   );
   const REMOVE_WITH_WORKSPACE = "Remove & Workspace";
   const buttons = isInWorkspace ? ["Remove", REMOVE_WITH_WORKSPACE] : ["Remove"];
-  const confirm = await vscode9.window.showWarningMessage(
+  const confirm = await vscode10.window.showWarningMessage(
     `Remove repository "${repo.name}"? This will also delete all its agents and worktrees.`,
     { modal: true },
     ...buttons
@@ -50184,82 +50424,68 @@ var removeRepo = async (storage, repoId) => {
   }
   await storage.removeRepository(repoId);
   if (confirm === REMOVE_WITH_WORKSPACE) {
-    const folders = vscode9.workspace.workspaceFolders ?? [];
+    const folders = vscode10.workspace.workspaceFolders ?? [];
     const idx = folders.findIndex((wf) => wf.uri.fsPath === repo.localPath);
     if (idx !== -1) {
-      vscode9.workspace.updateWorkspaceFolders(idx, 1);
+      vscode10.workspace.updateWorkspaceFolders(idx, 1);
     }
   }
 };
 
 // src/features/rootClick.ts
-var vscode10 = __toESM(require("vscode"));
+var vscode11 = __toESM(require("vscode"));
 var rootClick = async (storage, explorer) => {
   const repos = await storage.getAllRepositories();
   if (repos.length === 0) {
-    vscode10.window.showInformationMessage("No repositories added.");
+    vscode11.window.showInformationMessage("No repositories added.");
     return;
   }
   explorer.showAllRepos(repos.map((r) => r.localPath));
-  const config = vscode10.workspace.getConfiguration("terminal.integrated");
-  config.update("cwd", void 0, vscode10.ConfigurationTarget.Workspace).then(void 0, (err) => {
+  const config = vscode11.workspace.getConfiguration("terminal.integrated");
+  config.update("cwd", void 0, vscode11.ConfigurationTarget.Workspace).then(void 0, (err) => {
     console.error("[rootClick] Failed to clear terminal cwd:", err);
   });
 };
 
 // src/features/repoRootClick.ts
-var vscode11 = __toESM(require("vscode"));
+var vscode12 = __toESM(require("vscode"));
 var repoRootClick = async (storage, explorer, repoId) => {
   const repo = await storage.getRepository(repoId);
   if (!repo) {
-    vscode11.window.showErrorMessage("Repository not found.");
+    vscode12.window.showErrorMessage("Repository not found.");
     return;
   }
   explorer.showRepo(repoId, repo.localPath);
-  const config = vscode11.workspace.getConfiguration("terminal.integrated");
-  config.update("cwd", repo.localPath, vscode11.ConfigurationTarget.Workspace).then(void 0, (err) => {
+  const config = vscode12.workspace.getConfiguration("terminal.integrated");
+  config.update("cwd", repo.localPath, vscode12.ConfigurationTarget.Workspace).then(void 0, (err) => {
     console.error("[repoRootClick] Failed to update terminal cwd:", err);
   });
 };
 
 // src/features/agentClick.ts
-var vscode12 = __toESM(require("vscode"));
 var generation = 0;
-var agentClick = async (storage, explorer, agentId) => {
+var agentClick = async (storage, explorer, terminalService, agentId) => {
   const gen = ++generation;
-  const agent = await storage.getAgent(agentId);
-  if (!agent) {
-    throw new Error(`Agent not found`);
+  const ctx = await storage.getAgentContext(agentId);
+  if (!ctx) {
+    throw new Error("Agent not found");
   }
   if (gen !== generation) {
     return;
   }
-  const [repo, worktree] = await Promise.all([
-    storage.getRepository(agent.repoId),
-    storage.getWorktree(agentId)
-  ]);
-  if (!repo) {
-    throw new Error(`Repository not found for agent "${agent.name}"`);
-  }
-  if (!worktree) {
-    throw new Error(`Worktree not found for agent "${agent.name}"`);
-  }
-  if (gen !== generation) {
-    return;
-  }
-  explorer.showRepo(agentId, worktree.path);
-  const name = terminalName(agent.name, repo.name);
-  const terminal = vscode12.window.terminals.find((t) => t.name === name);
+  explorer.showRepo(agentId, ctx.worktree.path);
+  const terminal = terminalService.getTerminal(agentId);
   if (terminal) {
-    terminal.show(true);
+    terminal.show(false);
   }
 };
 
 // src/services/WebviewCommandHandler.ts
 var WebviewCommandHandler = class {
-  constructor(provider, storage, explorer) {
+  constructor(provider, storage, explorer, terminalService) {
     this.storage = storage;
     this.explorer = explorer;
+    this.terminalService = terminalService;
     this.disposables.push(
       provider.onDidResolveView((view) => {
         this.messageDisposable?.dispose();
@@ -50276,13 +50502,13 @@ var WebviewCommandHandler = class {
     try {
       switch (message.function) {
         case "addAgent":
-          await addAgent(this.storage, message.args.repoId);
+          await addAgent(this.storage, this.terminalService, message.args.repoId);
           break;
         case "addRepo":
           await addRepo(this.storage);
           break;
         case "removeAgent":
-          await removeAgent(this.storage, message.args.agentId);
+          await removeAgent(this.storage, this.terminalService, message.args.agentId);
           break;
         case "removeRepo":
           await removeRepo(this.storage, message.args.repoId);
@@ -50297,7 +50523,7 @@ var WebviewCommandHandler = class {
           await repoRootClick(this.storage, this.explorer, message.args.repoId);
           break;
         case "agentClick":
-          await agentClick(this.storage, this.explorer, message.args.agentId);
+          await agentClick(this.storage, this.explorer, this.terminalService, message.args.agentId);
           break;
       }
       console.log('[WebviewCommandHandler] handled "%s" successfully', message.function);
@@ -50328,13 +50554,16 @@ var activate = async (context) => {
   });
   explorer.attachTreeView(treeView);
   context.subscriptions.push(treeView);
-  const commandHandler = new WebviewCommandHandler(provider, storage, explorer);
+  const terminalService = new TerminalService(storage);
+  context.subscriptions.push(terminalService);
+  const commandHandler = new WebviewCommandHandler(provider, storage, explorer, terminalService);
   context.subscriptions.push(commandHandler);
   context.subscriptions.push(
     vscode14.window.registerWebviewViewProvider(AgentPanelProvider.viewType, provider)
   );
   setTimeout(() => {
     syncWorkspaceRepos(storage).catch((err) => console.error("[Agentic] workspace sync failed:", err));
+    terminalService.restoreAll().catch((err) => console.error("[Agentic] terminal restore failed:", err));
   }, 0);
 };
 var deactivate = () => {
