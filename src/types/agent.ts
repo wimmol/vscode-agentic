@@ -1,3 +1,3 @@
-export type AgentStatus = 'created' | 'running' | 'completed' | 'error';
+export type AgentStatus = 'created' | 'running' | 'idle' | 'error';
 
 export type AgentCli = 'claude-code';

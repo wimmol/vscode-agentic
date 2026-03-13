@@ -167,13 +167,17 @@ export class SessionWatcher {
           lastPrompt,
           startedAt: promptTimestamp,
           completedAt: endTurnTimestamp,
+          status: endTurnTimestamp ? 'idle' : 'running',
         });
       } catch {
         // Agent may have been removed.
       }
     } else if (endTurnTimestamp !== null) {
       try {
-        await this.storage.updateAgent(agentId, { completedAt: endTurnTimestamp });
+        await this.storage.updateAgent(agentId, {
+          completedAt: endTurnTimestamp,
+          status: 'idle',
+        });
       } catch {
         // Agent may have been removed.
       }

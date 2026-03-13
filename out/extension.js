@@ -50194,13 +50194,17 @@ var SessionWatcher = class {
         await this.storage.updateAgent(agentId, {
           lastPrompt,
           startedAt: promptTimestamp,
-          completedAt: endTurnTimestamp
+          completedAt: endTurnTimestamp,
+          status: endTurnTimestamp ? "idle" : "running"
         });
       } catch {
       }
     } else if (endTurnTimestamp !== null) {
       try {
-        await this.storage.updateAgent(agentId, { completedAt: endTurnTimestamp });
+        await this.storage.updateAgent(agentId, {
+          completedAt: endTurnTimestamp,
+          status: "idle"
+        });
       } catch {
       }
     }
@@ -50243,7 +50247,7 @@ var TerminalService = class {
    * Pass a sessionId to resume that exact Claude session.
    * When no sessionId is given, a new session starts and we detect its id.
    */
-  createTerminal = (agentId, agentName, repoName, cwd, sessionId) => {
+  createTerminal = (agentId, agentName, repoName, cwd, sessionId, opts) => {
     const name = terminalName(agentName, repoName);
     const terminal = vscode6.window.createTerminal({
       name,
@@ -50252,6 +50256,10 @@ var TerminalService = class {
     });
     terminal.sendText(this.buildCommand(sessionId));
     this.terminals.set(agentId, terminal);
+    if (!opts?.skipStatusUpdate) {
+      this.storage.updateAgent(agentId, { status: "running" }).catch(() => {
+      });
+    }
     if (sessionId) {
       this.sessionWatcher.startWatching(agentId, sessionId, cwd);
     } else {
@@ -50299,7 +50307,7 @@ var TerminalService = class {
           }
           continue;
         }
-        this.createTerminal(agent.agentId, agent.name, repo.name, worktree.path, agent.sessionId);
+        this.createTerminal(agent.agentId, agent.name, repo.name, worktree.path, agent.sessionId, { skipStatusUpdate: true });
       }
     }
   };
@@ -50385,6 +50393,8 @@ var TerminalService = class {
       await this.storage.removeAgent(agentId);
       return;
     }
+    await this.storage.updateAgent(agentId, { status: "error" }).catch(() => {
+    });
     const ctx = await this.storage.getAgentContext(agentId);
     if (!ctx) {
       return;

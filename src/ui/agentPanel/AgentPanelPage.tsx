@@ -4,8 +4,6 @@ import { useAgentPanel } from './useAgentPanel';
 import { vscode } from '../index';
 import { addAgentMessage, addRepoMessage, agentClickMessage, removeAgentMessage, removeRepoMessage, repoRootClickMessage, rootClickMessage, toggleRepoExpandedMessage } from '../../types/messages';
 
-const noop = (_id: string) => {};
-
 export const AgentPanelPage = () => {
   const repos = useAgentPanel();
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
@@ -54,10 +52,7 @@ export const AgentPanelPage = () => {
       onRemoveRepoClick={onRemoveRepoClick}
       onToggleRepoClick={onToggleRepoClick}
       onAgentClick={onAgentClick}
-      onCloneAgentClick={noop}
-      onStopAgentClick={noop}
       onRemoveAgentClick={onRemoveAgentClick}
-      onClearAgentClick={noop}
     />
   );
 };

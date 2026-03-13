@@ -340,7 +340,7 @@ var require_react_development = __commonJS({
         this.refs = emptyObject;
         this.updater = updater || ReactNoopUpdateQueue;
       }
-      function noop2() {
+      function noop() {
       }
       function testStringCoercion(value) {
         return "" + value;
@@ -531,7 +531,7 @@ var require_react_development = __commonJS({
           case "rejected":
             throw thenable.reason;
           default:
-            switch ("string" === typeof thenable.status ? thenable.then(noop2, noop2) : (thenable.status = "pending", thenable.then(
+            switch ("string" === typeof thenable.status ? thenable.then(noop, noop) : (thenable.status = "pending", thenable.then(
               function(fulfilledValue) {
                 "pending" === thenable.status && (thenable.status = "fulfilled", thenable.value = fulfilledValue);
               },
@@ -1169,7 +1169,7 @@ var require_react_development = __commonJS({
         try {
           var returnValue = scope(), onStartTransitionFinish = ReactSharedInternals.S;
           null !== onStartTransitionFinish && onStartTransitionFinish(currentTransition, returnValue);
-          "object" === typeof returnValue && null !== returnValue && "function" === typeof returnValue.then && (ReactSharedInternals.asyncTransitions++, returnValue.then(releaseAsyncTransition, releaseAsyncTransition), returnValue.then(noop2, reportGlobalError));
+          "object" === typeof returnValue && null !== returnValue && "function" === typeof returnValue.then && (ReactSharedInternals.asyncTransitions++, returnValue.then(releaseAsyncTransition, releaseAsyncTransition), returnValue.then(noop, reportGlobalError));
         } catch (error) {
           reportGlobalError(error);
         } finally {
@@ -1284,7 +1284,7 @@ var require_react_dom_development = __commonJS({
   "node_modules/react-dom/cjs/react-dom.development.js"(exports) {
     "use strict";
     (function() {
-      function noop2() {
+      function noop() {
       }
       function testStringCoercion(value) {
         return "" + value;
@@ -1330,19 +1330,19 @@ var require_react_dom_development = __commonJS({
       "undefined" !== typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ && "function" === typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart && __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart(Error());
       var React = require_react(), Internals = {
         d: {
-          f: noop2,
+          f: noop,
           r: function() {
             throw Error(
               "Invalid form element. requestFormReset must be passed a form that was rendered by React."
             );
           },
-          D: noop2,
-          C: noop2,
-          L: noop2,
-          m: noop2,
-          X: noop2,
-          S: noop2,
-          M: noop2
+          D: noop,
+          C: noop,
+          L: noop,
+          m: noop,
+          X: noop,
+          S: noop,
+          M: noop
         },
         p: 0,
         findDOMNode: null
@@ -1599,7 +1599,7 @@ var require_react_dom_client_development = __commonJS({
           "Context can only be read while React is rendering. In classes, you can read it in the render method or getDerivedStateFromProps. In function components, you can read it directly in the function body, but not inside Hooks like useReducer() or useMemo()."
         );
       }
-      function noop2() {
+      function noop() {
       }
       function warnForMissingKey() {
       }
@@ -7914,7 +7914,7 @@ var require_react_dom_client_development = __commonJS({
           queue,
           pendingState,
           NotPendingTransition,
-          null === action ? noop2 : function() {
+          null === action ? noop : function() {
             requestFormReset$1(formFiber);
             return action(formData);
           }
@@ -21784,15 +21784,17 @@ var RepoHeader = ({
 var import_jsx_runtime4 = __toESM(require_jsx_runtime());
 var STATUS_ICONS = {
   created: "circle-outline",
-  running: "sync~spin",
+  running: "sync",
+  idle: "check",
   completed: "check",
   error: "error"
 };
 var StatusIcon = ({ status }) => {
+  const spin = status === "running" ? " codicon-modifier-spin" : "";
   return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
     "i",
     {
-      className: `codicon codicon-${STATUS_ICONS[status]}`,
+      className: `codicon codicon-${STATUS_ICONS[status]}${spin}`,
       title: status,
       "aria-label": status
     }
@@ -21851,17 +21853,11 @@ var AgentTile = ({
   completedAt,
   isSelected,
   onClick,
-  onCloneClick,
-  onStopClick,
-  onRemoveClick,
-  onClearClick
+  onRemoveClick
 }) => {
   const handleClick = (0, import_react2.useCallback)(() => onClick(agentId), [onClick, agentId]);
-  const handleClone = (0, import_react2.useCallback)(() => onCloneClick(agentId), [onCloneClick, agentId]);
-  const handleStop = (0, import_react2.useCallback)(() => onStopClick(agentId), [onStopClick, agentId]);
   const handleRemove = (0, import_react2.useCallback)(() => onRemoveClick(agentId), [onRemoveClick, agentId]);
-  const handleClear = (0, import_react2.useCallback)(() => onClearClick(agentId), [onClearClick, agentId]);
-  const className = isSelected ? "agent-tile agent-tile--selected" : "agent-tile";
+  const className = `agent-tile agent-tile--${status}${isSelected ? " agent-tile--selected" : ""}`;
   const showTimer = startedAt !== null && completedAt === null;
   const showElapsed = startedAt !== null && completedAt !== null;
   return /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("article", { className, onClick: handleClick, tabIndex: 0, children: [
@@ -21872,12 +21868,7 @@ var AgentTile = ({
       showElapsed && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(ElapsedTime, { startedAt, completedAt })
     ] }),
     /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "agent-tile-prompt", children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(TruncatedText, { text: lastPrompt }) }),
-    /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("nav", { className: "agent-tile-actions", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(IconButton, { icon: "copy", onClick: handleClone, title: "Clone agent" }),
-      /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(IconButton, { icon: "debug-stop", onClick: handleStop, title: "Stop agent" }),
-      /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(IconButton, { icon: "trash", onClick: handleRemove, title: "Remove agent", disabled: status === "running" }),
-      /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(IconButton, { icon: "clear-all", onClick: handleClear, title: "Clear context" })
-    ] })
+    /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("nav", { className: "agent-tile-actions", children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(IconButton, { icon: "trash", onClick: handleRemove, title: "Remove agent", disabled: status === "running" }) })
   ] });
 };
 
@@ -21897,10 +21888,7 @@ var RepoSection = ({
   onRemoveRepoClick,
   onToggleRepoClick,
   onAgentClick,
-  onCloneAgentClick,
-  onStopAgentClick,
-  onRemoveAgentClick,
-  onClearAgentClick
+  onRemoveAgentClick
 }) => {
   return /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("section", { className: "repo-section", children: [
     /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
@@ -21925,10 +21913,7 @@ var RepoSection = ({
         completedAt: agent.completedAt,
         isSelected: agent.agentId === selectedAgentId,
         onClick: onAgentClick,
-        onCloneClick: onCloneAgentClick,
-        onStopClick: onStopAgentClick,
-        onRemoveClick: onRemoveAgentClick,
-        onClearClick: onClearAgentClick
+        onRemoveClick: onRemoveAgentClick
       },
       agent.agentId
     )) })
@@ -21947,10 +21932,7 @@ var AgentPanelView = ({
   onRemoveRepoClick,
   onToggleRepoClick,
   onAgentClick,
-  onCloneAgentClick,
-  onStopAgentClick,
-  onRemoveAgentClick,
-  onClearAgentClick
+  onRemoveAgentClick
 }) => {
   return /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("section", { className: "agent-panel", children: [
     /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(TabHeader, { onRootClick, onAddRepoClick }),
@@ -21964,10 +21946,7 @@ var AgentPanelView = ({
         onRemoveRepoClick: () => onRemoveRepoClick(repo.repositoryId),
         onToggleRepoClick: () => onToggleRepoClick(repo.repositoryId),
         onAgentClick,
-        onCloneAgentClick,
-        onStopAgentClick,
-        onRemoveAgentClick,
-        onClearAgentClick
+        onRemoveAgentClick
       },
       repo.repositoryId
     ))
@@ -22035,8 +22014,6 @@ var agentClickMessage = (agentId) => ({
 
 // src/ui/agentPanel/AgentPanelPage.tsx
 var import_jsx_runtime12 = __toESM(require_jsx_runtime());
-var noop = (_id) => {
-};
 var AgentPanelPage = () => {
   const repos = useAgentPanel();
   const [selectedAgentId, setSelectedAgentId] = (0, import_react4.useState)(null);
@@ -22077,10 +22054,7 @@ var AgentPanelPage = () => {
       onRemoveRepoClick,
       onToggleRepoClick,
       onAgentClick,
-      onCloneAgentClick: noop,
-      onStopAgentClick: noop,
-      onRemoveAgentClick,
-      onClearAgentClick: noop
+      onRemoveAgentClick
     }
   );
 };

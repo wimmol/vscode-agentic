@@ -15,10 +15,7 @@ interface AgentTileProps {
   completedAt: number | null;
   isSelected: boolean;
   onClick: (agentId: string) => void;
-  onCloneClick: (agentId: string) => void;
-  onStopClick: (agentId: string) => void;
   onRemoveClick: (agentId: string) => void;
-  onClearClick: (agentId: string) => void;
 }
 
 export const AgentTile = ({
@@ -30,18 +27,12 @@ export const AgentTile = ({
   completedAt,
   isSelected,
   onClick,
-  onCloneClick,
-  onStopClick,
   onRemoveClick,
-  onClearClick,
 }: AgentTileProps) => {
   const handleClick = useCallback(() => onClick(agentId), [onClick, agentId]);
-  const handleClone = useCallback(() => onCloneClick(agentId), [onCloneClick, agentId]);
-  const handleStop = useCallback(() => onStopClick(agentId), [onStopClick, agentId]);
   const handleRemove = useCallback(() => onRemoveClick(agentId), [onRemoveClick, agentId]);
-  const handleClear = useCallback(() => onClearClick(agentId), [onClearClick, agentId]);
 
-  const className = isSelected ? 'agent-tile agent-tile--selected' : 'agent-tile';
+  const className = `agent-tile agent-tile--${status}${isSelected ? ' agent-tile--selected' : ''}`;
 
   // Live timer when task is in progress (startedAt set, no completedAt yet).
   const showTimer = startedAt !== null && completedAt === null;
@@ -60,10 +51,7 @@ export const AgentTile = ({
         <TruncatedText text={lastPrompt} />
       </div>
       <nav className="agent-tile-actions">
-        <IconButton icon="copy" onClick={handleClone} title="Clone agent" />
-        <IconButton icon="debug-stop" onClick={handleStop} title="Stop agent" />
         <IconButton icon="trash" onClick={handleRemove} title="Remove agent" disabled={status === 'running'} />
-        <IconButton icon="clear-all" onClick={handleClear} title="Clear context" />
       </nav>
     </article>
   );

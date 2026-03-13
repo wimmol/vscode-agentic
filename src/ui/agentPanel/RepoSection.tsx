@@ -11,10 +11,7 @@ interface RepoSectionProps {
   onRemoveRepoClick: () => void;
   onToggleRepoClick: () => void;
   onAgentClick: (agentId: string) => void;
-  onCloneAgentClick: (agentId: string) => void;
-  onStopAgentClick: (agentId: string) => void;
   onRemoveAgentClick: (agentId: string) => void;
-  onClearAgentClick: (agentId: string) => void;
 }
 
 export const RepoSection = ({
@@ -25,10 +22,7 @@ export const RepoSection = ({
   onRemoveRepoClick,
   onToggleRepoClick,
   onAgentClick,
-  onCloneAgentClick,
-  onStopAgentClick,
   onRemoveAgentClick,
-  onClearAgentClick,
 }: RepoSectionProps) => {
   return (
     <section className="repo-section">
@@ -57,10 +51,7 @@ export const RepoSection = ({
                 completedAt={agent.completedAt}
                 isSelected={agent.agentId === selectedAgentId}
                 onClick={onAgentClick}
-                onCloneClick={onCloneAgentClick}
-                onStopClick={onStopAgentClick}
                 onRemoveClick={onRemoveAgentClick}
-                onClearClick={onClearAgentClick}
               />
             ))
           )}

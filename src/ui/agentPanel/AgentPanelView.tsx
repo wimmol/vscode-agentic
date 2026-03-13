@@ -13,10 +13,7 @@ interface AgentPanelViewProps {
   onRemoveRepoClick: (repoId: string) => void;
   onToggleRepoClick: (repoId: string) => void;
   onAgentClick: (agentId: string) => void;
-  onCloneAgentClick: (agentId: string) => void;
-  onStopAgentClick: (agentId: string) => void;
   onRemoveAgentClick: (agentId: string) => void;
-  onClearAgentClick: (agentId: string) => void;
 }
 
 export const AgentPanelView = ({
@@ -29,10 +26,7 @@ export const AgentPanelView = ({
   onRemoveRepoClick,
   onToggleRepoClick,
   onAgentClick,
-  onCloneAgentClick,
-  onStopAgentClick,
   onRemoveAgentClick,
-  onClearAgentClick,
 }: AgentPanelViewProps) => {
   return (
     <section className="agent-panel">
@@ -51,10 +45,7 @@ export const AgentPanelView = ({
             onRemoveRepoClick={() => onRemoveRepoClick(repo.repositoryId)}
             onToggleRepoClick={() => onToggleRepoClick(repo.repositoryId)}
             onAgentClick={onAgentClick}
-            onCloneAgentClick={onCloneAgentClick}
-            onStopAgentClick={onStopAgentClick}
             onRemoveAgentClick={onRemoveAgentClick}
-            onClearAgentClick={onClearAgentClick}
           />
         ))
       )}

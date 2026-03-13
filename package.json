@@ -2,8 +2,8 @@
   "name": "vscode-agentic",
   "displayName": "Agentic",
   "description": "Work on multiple repositories using AI agents on own worktrees",
-  "version": "0.0.1",
-  "publisher": "norules",
+  "version": "0.1.0",
+  "publisher": "wimmol",
   "engines": {
     "vscode": "^1.74.0"
   },

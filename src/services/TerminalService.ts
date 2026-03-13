@@ -68,6 +68,7 @@ export class TerminalService implements vscode.Disposable {
     repoName: string,
     cwd: string,
     sessionId?: string | null,
+    opts?: { skipStatusUpdate?: boolean },
   ): vscode.Terminal => {
     const name = terminalName(agentName, repoName);
 
@@ -78,6 +79,12 @@ export class TerminalService implements vscode.Disposable {
     });
     terminal.sendText(this.buildCommand(sessionId));
     this.terminals.set(agentId, terminal);
+
+    if (!opts?.skipStatusUpdate) {
+      this.storage.updateAgent(agentId, { status: 'running' }).catch(() => {
+        // Agent may have been removed before the update landed.
+      });
+    }
 
     if (sessionId) {
       this.sessionWatcher.startWatching(agentId, sessionId, cwd);
@@ -138,7 +145,7 @@ export class TerminalService implements vscode.Disposable {
           continue;
         }
 
-        this.createTerminal(agent.agentId, agent.name, repo.name, worktree.path, agent.sessionId);
+        this.createTerminal(agent.agentId, agent.name, repo.name, worktree.path, agent.sessionId, { skipStatusUpdate: true });
       }
     }
   };
@@ -245,12 +252,21 @@ export class TerminalService implements vscode.Disposable {
       return;
     }
 
-    // Terminal was closed by the user — ask what to do.
-    const ctx = await this.storage.getAgentContext(agentId);
-    if (!ctx) {
+    // Terminal was closed by the user or errored — mark as error.
+    let agent;
+    try {
+      agent = await this.storage.updateAgent(agentId, { status: 'error' });
+    } catch {
       return;
     }
-    const { agent, repo, worktree } = ctx;
+
+    const [worktree, repo] = await Promise.all([
+      this.storage.getWorktree(agentId),
+      this.storage.getRepository(agent.repoId),
+    ]);
+    if (!worktree || !repo) {
+      return;
+    }
 
     let detail = `Closing the terminal kills the running agent "${agent.name}".`;
     const dirty = await hasUncommittedChanges(worktree.path);
