@@ -49417,6 +49417,15 @@ var Validator = import_index.default.Validator;
 var ValidationErrorItemOrigin = import_index.default.ValidationErrorItemOrigin;
 var ValidationErrorItemType = import_index.default.ValidationErrorItemType;
 
+// src/constants/db.ts
+var DB_FILENAME = "state.db";
+var DB_DIALECT = "sqlite";
+var DB_PRAGMA = "PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL;";
+var TABLE_REPOSITORIES = "repositories";
+var TABLE_AGENTS = "agents";
+var TABLE_WORKTREES = "worktrees";
+var TABLE_EXPLORER_STATE = "explorer_state";
+
 // src/db/models.ts
 var ExplorerStateModel = class extends Model {
 };
@@ -49436,7 +49445,7 @@ var initModels = (sequelize) => {
       isExpanded: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
       createdAt: { type: DataTypes.INTEGER, allowNull: false }
     },
-    { sequelize, tableName: "repositories", timestamps: false }
+    { sequelize, tableName: TABLE_REPOSITORIES, timestamps: false }
   );
   AgentModel.init(
     {
@@ -49451,7 +49460,7 @@ var initModels = (sequelize) => {
       completedAt: { type: DataTypes.INTEGER },
       createdAt: { type: DataTypes.INTEGER, allowNull: false }
     },
-    { sequelize, tableName: "agents", timestamps: false }
+    { sequelize, tableName: TABLE_AGENTS, timestamps: false }
   );
   WorktreeModel.init(
     {
@@ -49459,14 +49468,14 @@ var initModels = (sequelize) => {
       agentId: { type: DataTypes.TEXT, allowNull: false, unique: true },
       path: { type: DataTypes.TEXT, allowNull: false }
     },
-    { sequelize, tableName: "worktrees", timestamps: false }
+    { sequelize, tableName: TABLE_WORKTREES, timestamps: false }
   );
   ExplorerStateModel.init(
     {
       scopeKey: { type: DataTypes.TEXT, primaryKey: true },
       expandedPaths: { type: DataTypes.TEXT, allowNull: false, defaultValue: "[]" }
     },
-    { sequelize, tableName: "explorer_state", timestamps: false }
+    { sequelize, tableName: TABLE_EXPLORER_STATE, timestamps: false }
   );
   RepositoryModel.hasMany(AgentModel, { foreignKey: "repoId", onDelete: "CASCADE" });
   AgentModel.belongsTo(RepositoryModel, { foreignKey: "repoId" });
@@ -49488,6 +49497,12 @@ var GIT_WORKTREE_TIMEOUT = 12e4;
 var GIT_MAX_BUFFER = 10 * 1024 * 1024;
 var INVALID_BRANCH_RE = /[~^:?*[\\\s]|\.\.|\.lock$/;
 
+// src/constants/paths.ts
+var GIT_DIR = ".git";
+var WORKTREES_DIR = ".worktrees";
+var CLAUDE_DIR = ".claude";
+var CLAUDE_PROJECTS_DIR = "projects";
+
 // src/services/GitService.ts
 var execFile = (0, import_util.promisify)(import_child_process.execFile);
 var gitOpts = (cwd, timeout = GIT_TIMEOUT) => ({
@@ -49495,7 +49510,7 @@ var gitOpts = (cwd, timeout = GIT_TIMEOUT) => ({
   timeout,
   maxBuffer: GIT_MAX_BUFFER
 });
-var worktreePath = (repoPath, branch) => `${repoPath}/.worktrees/${branch}`;
+var worktreePath = (repoPath, branch) => `${repoPath}/${WORKTREES_DIR}/${branch}`;
 var ensureBranch = async (repoPath, branch) => {
   try {
     await execFile("git", ["branch", branch], gitOpts(repoPath));
@@ -49542,6 +49557,53 @@ var deleteBranch = async (repoPath, branch) => {
   }
 };
 
+// src/constants/agent.ts
+var AGENT_STATUS_CREATED = "created";
+var AGENT_STATUS_RUNNING = "running";
+var AGENT_STATUS_IDLE = "idle";
+var AGENT_STATUS_ERROR = "error";
+var AGENT_CLI_CLAUDE_CODE = "claude-code";
+var DEFAULT_AGENT_COMMAND = "claude";
+var DEFAULT_STAGING_BRANCH = "staging";
+
+// src/constants/messages.ts
+var ERR_NO_WORKSPACE = "Agentic: Open a folder or workspace to use this extension.";
+var ERR_NO_WORKSPACE_STORAGE = "No workspace storage available.";
+var ERR_NOT_GIT_REPO = "Selected folder is not a git repository (no .git found).";
+var ERR_REPO_ALREADY_ADDED = "Repository is already added.";
+var ERR_REPO_NOT_FOUND = "Repository not found.";
+var ERR_NO_REPOS = "No repositories added.";
+var ERR_AGENT_CONTEXT_NOT_FOUND = "Agent, repository, or worktree not found.";
+var ERR_AGENT_NOT_FOUND = "Agent not found";
+var ERR_REPO_NAME_EMPTY = "Repository name cannot be empty";
+var ERR_REPO_PATH_EMPTY = "Repository path cannot be empty";
+var ERR_STAGING_BRANCH_EMPTY = "Staging branch cannot be empty";
+var ERR_AGENT_NAME_EMPTY = "Agent name cannot be empty";
+var ERR_BRANCH_EMPTY = "Branch name cannot be empty";
+var ERR_BRANCH_INVALID = "Invalid branch name (contains forbidden characters)";
+var errRepoIdNotFound = (id) => `Repository ${id} not found`;
+var errAgentIdNotFound = (id) => `Agent ${id} not found`;
+var dialogRemoveRepo = (name) => `Remove repository "${name}"? This will also delete all its agents and worktrees.`;
+var dialogRemoveAgent = (name) => `Remove agent "${name}"?`;
+var DIALOG_UNCOMMITTED_REMOVE = " The worktree has uncommitted changes that will be lost if deleted.";
+var dialogTerminalClosed = (name) => `Closing the terminal kills the running agent "${name}".`;
+var DIALOG_UNCOMMITTED_TERMINAL = " The worktree has uncommitted changes.";
+var BTN_DELETE_WORKTREE = "Delete Worktree";
+var BTN_KEEP_WORKTREE = "Keep Worktree";
+var BTN_REMOVE_DELETE_WORKTREE = "Remove & Delete Worktree";
+var BTN_REMOVE_KEEP_WORKTREE = "Remove & Keep Worktree";
+var BTN_REOPEN_TERMINAL = "Reopen Terminal";
+var BTN_REMOVE = "Remove";
+var BTN_REMOVE_WITH_WORKSPACE = "Remove & Workspace";
+var INPUT_ADD_AGENT_TITLE = "Add Agent";
+var INPUT_ADD_AGENT_PLACEHOLDER = "Branch name for the agent";
+var INPUT_ADD_REPO_LABEL = "Add Repository";
+var INPUT_REPO_PICKER_PLACEHOLDER = "Select a workspace repository or browse\u2026";
+var INPUT_REPO_PICKER_EMPTY = "No workspace repositories found \u2014 browse to add one";
+var LABEL_WORKSPACE = "WORKSPACE";
+var LABEL_OPEN_FILE = "Open File";
+var LABEL_AGENT_PREFIX = "\u203A ";
+
 // src/db/StateStorage.ts
 var StateStorage = class {
   constructor(sequelize) {
@@ -49553,17 +49615,17 @@ var StateStorage = class {
   addRepository = async (name, localPath, stagingBranch) => {
     const trimmedName = name.trim();
     if (!trimmedName) {
-      throw new Error("Repository name cannot be empty");
+      throw new Error(ERR_REPO_NAME_EMPTY);
     }
     const trimmedPath = localPath.trim();
     if (!trimmedPath) {
-      throw new Error("Repository path cannot be empty");
+      throw new Error(ERR_REPO_PATH_EMPTY);
     }
     const repo = {
       repositoryId: (0, import_crypto4.randomUUID)(),
       name: trimmedName,
       localPath: trimmedPath,
-      stagingBranch: stagingBranch.trim() || "staging",
+      stagingBranch: stagingBranch.trim() || DEFAULT_STAGING_BRANCH,
       isExpanded: true,
       createdAt: Date.now()
     };
@@ -49603,19 +49665,19 @@ var StateStorage = class {
   updateRepository = async (id, data) => {
     const repo = await RepositoryModel.findByPk(id);
     if (!repo) {
-      throw new Error(`Repository ${id} not found`);
+      throw new Error(errRepoIdNotFound(id));
     }
     if (data.name !== void 0) {
       const trimmed = data.name.trim();
       if (!trimmed) {
-        throw new Error("Repository name cannot be empty");
+        throw new Error(ERR_REPO_NAME_EMPTY);
       }
       repo.name = trimmed;
     }
     if (data.stagingBranch !== void 0) {
       const trimmed = data.stagingBranch.trim();
       if (!trimmed) {
-        throw new Error("Staging branch cannot be empty");
+        throw new Error(ERR_STAGING_BRANCH_EMPTY);
       }
       repo.stagingBranch = trimmed;
     }
@@ -49630,7 +49692,7 @@ var StateStorage = class {
   toggleRepoExpanded = async (id) => {
     const repo = await RepositoryModel.findByPk(id);
     if (!repo) {
-      throw new Error(`Repository ${id} not found`);
+      throw new Error(errRepoIdNotFound(id));
     }
     repo.isExpanded = !repo.isExpanded;
     await repo.save();
@@ -49648,14 +49710,14 @@ var StateStorage = class {
   addAgent = async (repoId, name, cli) => {
     const trimmedName = name.trim();
     if (!trimmedName) {
-      throw new Error("Agent name cannot be empty");
+      throw new Error(ERR_AGENT_NAME_EMPTY);
     }
     const agent = {
       agentId: (0, import_crypto4.randomUUID)(),
       repoId,
       name: trimmedName,
       cli,
-      status: "created",
+      status: AGENT_STATUS_CREATED,
       sessionId: null,
       lastPrompt: null,
       startedAt: null,
@@ -49665,7 +49727,7 @@ var StateStorage = class {
     await this.sequelize.transaction(async (t) => {
       const repo = await RepositoryModel.findByPk(repoId, { transaction: t });
       if (!repo) {
-        throw new Error(`Repository ${repoId} not found`);
+        throw new Error(errRepoIdNotFound(repoId));
       }
       await AgentModel.create(agent, { transaction: t });
       await WorktreeModel.create(
@@ -49695,12 +49757,12 @@ var StateStorage = class {
   updateAgent = async (id, data) => {
     const agent = await AgentModel.findByPk(id);
     if (!agent) {
-      throw new Error(`Agent ${id} not found`);
+      throw new Error(errAgentIdNotFound(id));
     }
     if (data.name !== void 0) {
       const trimmed = data.name.trim();
       if (!trimmed) {
-        throw new Error("Agent name cannot be empty");
+        throw new Error(ERR_AGENT_NAME_EMPTY);
       }
       agent.name = trimmed;
     }
@@ -49774,18 +49836,18 @@ var StateStorage = class {
 // src/db/index.ts
 var createStateStorage = async (context) => {
   if (!context.storageUri) {
-    vscode2.window.showErrorMessage("Agentic: Open a folder or workspace to use this extension.");
-    throw new Error("No workspace storage available.");
+    vscode2.window.showErrorMessage(ERR_NO_WORKSPACE);
+    throw new Error(ERR_NO_WORKSPACE_STORAGE);
   }
   await vscode2.workspace.fs.createDirectory(context.storageUri);
-  const dbPath = vscode2.Uri.joinPath(context.storageUri, "state.db").fsPath;
+  const dbPath = vscode2.Uri.joinPath(context.storageUri, DB_FILENAME).fsPath;
   console.log("[createStateStorage] initializing SQLite at", dbPath);
   const sequelize = new Sequelize({
-    dialect: "sqlite",
+    dialect: DB_DIALECT,
     storage: dbPath,
     logging: false
   });
-  await sequelize.query("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL;");
+  await sequelize.query(DB_PRAGMA);
   initModels(sequelize);
   await sequelize.sync();
   console.log("[createStateStorage] SQLite ready");
@@ -49808,16 +49870,37 @@ var syncWorkspaceRepos = async (storage) => {
     if (existingPaths.has(fsPath)) {
       continue;
     }
-    if (!(0, import_fs.existsSync)(path.join(fsPath, ".git"))) {
+    if (!(0, import_fs.existsSync)(path.join(fsPath, GIT_DIR))) {
       continue;
     }
-    await storage.addRepository(folder.name, fsPath, "staging");
+    await storage.addRepository(folder.name, fsPath, DEFAULT_STAGING_BRANCH);
   }
 };
 
 // src/services/AgentPanelProvider.ts
 var import_crypto5 = require("crypto");
 var vscode4 = __toESM(require("vscode"));
+
+// src/constants/views.ts
+var VIEW_AGENTS = "vscode-agentic.agents";
+var VIEW_EXPLORER = "vscode-agentic.explorer";
+var CONFIG_SECTION = "vscode-agentic";
+var CONFIG_AGENT_COMMAND = "agentCommand";
+var CONFIG_TERMINAL_SECTION = "terminal.integrated";
+
+// src/constants/commands.ts
+var CMD_TOGGLE_REPO_EXPANDED = "toggleRepoExpanded";
+var CMD_ADD_REPO = "addRepo";
+var CMD_REMOVE_REPO = "removeRepo";
+var CMD_ROOT_CLICK = "rootClick";
+var CMD_REPO_ROOT_CLICK = "repoRootClick";
+var CMD_ADD_AGENT = "addAgent";
+var CMD_REMOVE_AGENT = "removeAgent";
+var CMD_AGENT_CLICK = "agentClick";
+var CMD_READY = "ready";
+var MSG_TYPE_UPDATE = "update";
+
+// src/services/AgentPanelProvider.ts
 var AgentPanelProvider = class {
   constructor(extensionUri, storage) {
     this.extensionUri = extensionUri;
@@ -49826,7 +49909,7 @@ var AgentPanelProvider = class {
       this.storage.onDidChange(() => this.pushState())
     );
   }
-  static viewType = "vscode-agentic.agents";
+  static viewType = VIEW_AGENTS;
   _onDidResolveView = new vscode4.EventEmitter();
   onDidResolveView = this._onDidResolveView.event;
   view;
@@ -49844,7 +49927,7 @@ var AgentPanelProvider = class {
       }
     }, null, this.disposables);
     webviewView.webview.onDidReceiveMessage((message) => {
-      if (message.function === "ready") {
+      if (message.function === CMD_READY) {
         console.log("[AgentPanelProvider] webview ready, pushing initial state");
         void this.pushState();
       }
@@ -49861,7 +49944,7 @@ var AgentPanelProvider = class {
     }
     const repos = await this.storage.getAllReposWithAgents();
     console.log("[AgentPanelProvider] pushState: sending to webview:", JSON.stringify(repos, null, 2));
-    const message = { type: "update", repos };
+    const message = { type: MSG_TYPE_UPDATE, repos };
     await this.view.webview.postMessage(message);
   };
   getHtml = (webview) => {
@@ -50014,7 +50097,7 @@ var FileExplorerProvider = class {
   async readDirectory(dirPath) {
     try {
       const entries = await fs.readdir(dirPath, { withFileTypes: true });
-      return entries.filter((e) => e.name !== ".git").sort((a, b) => {
+      return entries.filter((e) => e.name !== GIT_DIR).sort((a, b) => {
         if (a.isDirectory() !== b.isDirectory()) {
           return a.isDirectory() ? -1 : 1;
         }
@@ -50037,20 +50120,21 @@ var FileExplorerProvider = class {
     }
   }
 };
+var CONTEXT_SCOPE_HEADER = "scopeHeader";
 var ScopeHeaderItem = class _ScopeHeaderItem extends vscode5.TreeItem {
   static workspace() {
-    return new _ScopeHeaderItem("WORKSPACE", "home");
+    return new _ScopeHeaderItem(LABEL_WORKSPACE, "home");
   }
   static repo(repoName) {
     return new _ScopeHeaderItem(repoName, "repo");
   }
   static agent(repoName, agentName) {
-    return new _ScopeHeaderItem(repoName, "terminal", `\u203A ${agentName}`);
+    return new _ScopeHeaderItem(repoName, "terminal", `${LABEL_AGENT_PREFIX}${agentName}`);
   }
   constructor(label, icon, desc) {
     super(label, vscode5.TreeItemCollapsibleState.None);
     this.iconPath = new vscode5.ThemeIcon(icon);
-    this.contextValue = "scopeHeader";
+    this.contextValue = CONTEXT_SCOPE_HEADER;
     if (desc) {
       this.description = desc;
     }
@@ -50068,7 +50152,7 @@ var FileItem = class extends vscode5.TreeItem {
     if (!isDir) {
       this.command = {
         command: "vscode.open",
-        title: "Open File",
+        title: LABEL_OPEN_FILE,
         arguments: [this.resourceUri]
       };
     }
@@ -50083,6 +50167,10 @@ var vscode6 = __toESM(require("vscode"));
 
 // src/constants/terminal.ts
 var terminalName = (agentName, repoName) => `${agentName} (${repoName})`;
+
+// src/constants/timing.ts
+var SESSION_POLL_INTERVAL_MS = 2e3;
+var SESSION_POLL_MAX_ATTEMPTS = 15;
 
 // src/services/SessionWatcher.ts
 var import_promises = require("fs/promises");
@@ -50195,7 +50283,7 @@ var SessionWatcher = class {
           lastPrompt,
           startedAt: promptTimestamp,
           completedAt: endTurnTimestamp,
-          status: endTurnTimestamp ? "idle" : "running"
+          status: endTurnTimestamp ? AGENT_STATUS_IDLE : AGENT_STATUS_RUNNING
         });
       } catch {
       }
@@ -50203,7 +50291,7 @@ var SessionWatcher = class {
       try {
         await this.storage.updateAgent(agentId, {
           completedAt: endTurnTimestamp,
-          status: "idle"
+          status: AGENT_STATUS_IDLE
         });
       } catch {
       }
@@ -50212,7 +50300,7 @@ var SessionWatcher = class {
 };
 
 // src/services/TerminalService.ts
-var claudeProjectDir = (cwd) => (0, import_path2.join)((0, import_os.homedir)(), ".claude", "projects", cwd.replace(/[/.]/g, "-"));
+var claudeProjectDir = (cwd) => (0, import_path2.join)((0, import_os.homedir)(), CLAUDE_DIR, CLAUDE_PROJECTS_DIR, cwd.replace(/[/.]/g, "-"));
 var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 var TerminalService = class {
   constructor(storage) {
@@ -50257,7 +50345,7 @@ var TerminalService = class {
     terminal.sendText(this.buildCommand(sessionId));
     this.terminals.set(agentId, terminal);
     if (!opts?.skipStatusUpdate) {
-      this.storage.updateAgent(agentId, { status: "running" }).catch(() => {
+      this.storage.updateAgent(agentId, { status: AGENT_STATUS_RUNNING }).catch(() => {
       });
     }
     if (sessionId) {
@@ -50317,8 +50405,8 @@ var TerminalService = class {
    * When a sessionId is provided, appends `--resume <id>` to resume that exact session.
    */
   buildCommand = (sessionId) => {
-    const raw = vscode6.workspace.getConfiguration("vscode-agentic").get("agentCommand", "claude");
-    const base = raw?.trim() || "claude";
+    const raw = vscode6.workspace.getConfiguration(CONFIG_SECTION).get(CONFIG_AGENT_COMMAND, DEFAULT_AGENT_COMMAND);
+    const base = raw?.trim() || DEFAULT_AGENT_COMMAND;
     if (!sessionId || !UUID_RE.test(sessionId)) return base;
     return `${base} --resume ${sessionId}`;
   };
@@ -50355,13 +50443,13 @@ var TerminalService = class {
         }
       } catch {
       }
-      if (attempts < 15) {
-        this.detectors.set(agentId, setTimeout(poll, 2e3));
+      if (attempts < SESSION_POLL_MAX_ATTEMPTS) {
+        this.detectors.set(agentId, setTimeout(poll, SESSION_POLL_INTERVAL_MS));
       } else {
         this.detectors.delete(agentId);
       }
     };
-    this.detectors.set(agentId, setTimeout(poll, 2e3));
+    this.detectors.set(agentId, setTimeout(poll, SESSION_POLL_INTERVAL_MS));
   };
   /** Stop session-detection polling for an agent. */
   stopDetecting = (agentId) => {
@@ -50393,32 +50481,38 @@ var TerminalService = class {
       await this.storage.removeAgent(agentId);
       return;
     }
-    await this.storage.updateAgent(agentId, { status: "error" }).catch(() => {
-    });
-    const ctx = await this.storage.getAgentContext(agentId);
-    if (!ctx) {
+    let agent;
+    try {
+      agent = await this.storage.updateAgent(agentId, { status: AGENT_STATUS_ERROR });
+    } catch {
       return;
     }
-    const { agent, repo, worktree } = ctx;
-    let detail = `Closing the terminal kills the running agent "${agent.name}".`;
+    const [worktree, repo] = await Promise.all([
+      this.storage.getWorktree(agentId),
+      this.storage.getRepository(agent.repoId)
+    ]);
+    if (!worktree || !repo) {
+      return;
+    }
+    let detail = dialogTerminalClosed(agent.name);
     const dirty = await hasUncommittedChanges(worktree.path);
     if (dirty) {
-      detail += " The worktree has uncommitted changes.";
+      detail += DIALOG_UNCOMMITTED_TERMINAL;
     }
     const choice = await vscode6.window.showWarningMessage(
       detail,
       { modal: true },
-      "Remove & Delete Worktree",
-      "Remove & Keep Worktree",
-      "Reopen Terminal"
+      BTN_REMOVE_DELETE_WORKTREE,
+      BTN_REMOVE_KEEP_WORKTREE,
+      BTN_REOPEN_TERMINAL
     );
-    if (choice === "Remove & Delete Worktree") {
+    if (choice === BTN_REMOVE_DELETE_WORKTREE) {
       await removeWorktree(repo.localPath, worktree.path);
       await deleteBranch(repo.localPath, agent.name);
       await this.storage.removeAgent(agentId);
       return;
     }
-    if (choice === "Remove & Keep Worktree") {
+    if (choice === BTN_REMOVE_KEEP_WORKTREE) {
       await this.storage.removeAgent(agentId);
       return;
     }
@@ -50447,22 +50541,22 @@ var vscode7 = __toESM(require("vscode"));
 var validateBranchName = (value) => {
   const trimmed = value.trim();
   if (!trimmed) {
-    return "Branch name cannot be empty";
+    return ERR_BRANCH_EMPTY;
   }
   if (INVALID_BRANCH_RE.test(trimmed)) {
-    return "Invalid branch name (contains forbidden characters)";
+    return ERR_BRANCH_INVALID;
   }
   return void 0;
 };
 var addAgent = async (storage, terminalService, repoId) => {
   const repo = await storage.getRepository(repoId);
   if (!repo) {
-    vscode7.window.showErrorMessage("Repository not found.");
+    vscode7.window.showErrorMessage(ERR_REPO_NOT_FOUND);
     return;
   }
   const name = await vscode7.window.showInputBox({
-    title: "Add Agent",
-    placeHolder: "Branch name for the agent",
+    title: INPUT_ADD_AGENT_TITLE,
+    placeHolder: INPUT_ADD_AGENT_PLACEHOLDER,
     validateInput: validateBranchName,
     ignoreFocusOut: true
   });
@@ -50476,7 +50570,7 @@ var addAgent = async (storage, terminalService, repoId) => {
   await createWorktree(repoPath, wtPath, branch);
   let agent;
   try {
-    agent = await storage.addAgent(repoId, branch, "claude-code");
+    agent = await storage.addAgent(repoId, branch, AGENT_CLI_CLAUDE_CODE);
   } catch (err) {
     await removeWorktree(repoPath, wtPath);
     throw err;
@@ -50496,7 +50590,7 @@ var BROWSE_LABEL = "$(folder-opened) Browse\u2026";
 // src/features/addRepo.ts
 var getWorkspaceGitFolders = () => {
   const folders = vscode8.workspace.workspaceFolders ?? [];
-  return folders.filter((wf) => (0, import_fs2.existsSync)(path3.join(wf.uri.fsPath, ".git"))).map((wf) => ({
+  return folders.filter((wf) => (0, import_fs2.existsSync)(path3.join(wf.uri.fsPath, GIT_DIR))).map((wf) => ({
     label: wf.name,
     description: wf.uri.fsPath,
     folderPath: wf.uri.fsPath
@@ -50507,14 +50601,14 @@ var pickViaOsDialog = async () => {
     canSelectFiles: false,
     canSelectFolders: true,
     canSelectMany: false,
-    openLabel: "Add Repository"
+    openLabel: INPUT_ADD_REPO_LABEL
   });
   if (!result || result.length === 0) {
     return void 0;
   }
   const folderPath = result[0].fsPath;
-  if (!(0, import_fs2.existsSync)(path3.join(folderPath, ".git"))) {
-    vscode8.window.showErrorMessage("Selected folder is not a git repository (no .git found).");
+  if (!(0, import_fs2.existsSync)(path3.join(folderPath, GIT_DIR))) {
+    vscode8.window.showErrorMessage(ERR_NOT_GIT_REPO);
     return void 0;
   }
   return folderPath;
@@ -50529,8 +50623,8 @@ var addRepo = async (storage) => {
     { label: BROWSE_LABEL, alwaysShow: true }
   ];
   const picked = await vscode8.window.showQuickPick(items, {
-    placeHolder: suggestions.length > 0 ? "Select a workspace repository or browse\u2026" : "No workspace repositories found \u2014 browse to add one",
-    title: "Add Repository"
+    placeHolder: suggestions.length > 0 ? INPUT_REPO_PICKER_PLACEHOLDER : INPUT_REPO_PICKER_EMPTY,
+    title: INPUT_ADD_REPO_LABEL
   });
   if (!picked) {
     return;
@@ -50540,11 +50634,11 @@ var addRepo = async (storage) => {
     return;
   }
   if (existingPaths.has(folderPath)) {
-    vscode8.window.showInformationMessage("Repository is already added.");
+    vscode8.window.showInformationMessage(ERR_REPO_ALREADY_ADDED);
     return;
   }
   const name = path3.basename(folderPath);
-  await storage.addRepository(name, folderPath, "staging");
+  await storage.addRepository(name, folderPath, DEFAULT_STAGING_BRANCH);
   const alreadyInWorkspace = (vscode8.workspace.workspaceFolders ?? []).some(
     (wf) => wf.uri.fsPath === folderPath
   );
@@ -50559,26 +50653,26 @@ var vscode9 = __toESM(require("vscode"));
 var removeAgent = async (storage, terminalService, agentId) => {
   const ctx = await storage.getAgentContext(agentId);
   if (!ctx) {
-    vscode9.window.showErrorMessage("Agent, repository, or worktree not found.");
+    vscode9.window.showErrorMessage(ERR_AGENT_CONTEXT_NOT_FOUND);
     return;
   }
   const { agent, repo, worktree } = ctx;
-  let detail = `Remove agent "${agent.name}"?`;
+  let detail = dialogRemoveAgent(agent.name);
   const dirty = await hasUncommittedChanges(worktree.path);
   if (dirty) {
-    detail += " The worktree has uncommitted changes that will be lost if deleted.";
+    detail += DIALOG_UNCOMMITTED_REMOVE;
   }
   const choice = await vscode9.window.showWarningMessage(
     detail,
     { modal: true },
-    "Delete Worktree",
-    "Keep Worktree"
+    BTN_DELETE_WORKTREE,
+    BTN_KEEP_WORKTREE
   );
   if (!choice) {
     return;
   }
   terminalService.closeTerminal(agentId);
-  if (choice === "Delete Worktree") {
+  if (choice === BTN_DELETE_WORKTREE) {
     await removeWorktree(repo.localPath, worktree.path);
     await deleteBranch(repo.localPath, agent.name);
   }
@@ -50590,16 +50684,15 @@ var vscode10 = __toESM(require("vscode"));
 var removeRepo = async (storage, repoId) => {
   const repo = await storage.getRepository(repoId);
   if (!repo) {
-    vscode10.window.showErrorMessage("Repository not found.");
+    vscode10.window.showErrorMessage(ERR_REPO_NOT_FOUND);
     return;
   }
   const isInWorkspace = (vscode10.workspace.workspaceFolders ?? []).some(
     (wf) => wf.uri.fsPath === repo.localPath
   );
-  const REMOVE_WITH_WORKSPACE = "Remove & Workspace";
-  const buttons = isInWorkspace ? ["Remove", REMOVE_WITH_WORKSPACE] : ["Remove"];
+  const buttons = isInWorkspace ? [BTN_REMOVE, BTN_REMOVE_WITH_WORKSPACE] : [BTN_REMOVE];
   const confirm = await vscode10.window.showWarningMessage(
-    `Remove repository "${repo.name}"? This will also delete all its agents and worktrees.`,
+    dialogRemoveRepo(repo.name),
     { modal: true },
     ...buttons
   );
@@ -50607,7 +50700,7 @@ var removeRepo = async (storage, repoId) => {
     return;
   }
   await storage.removeRepository(repoId);
-  if (confirm === REMOVE_WITH_WORKSPACE) {
+  if (confirm === BTN_REMOVE_WITH_WORKSPACE) {
     const folders = vscode10.workspace.workspaceFolders ?? [];
     const idx = folders.findIndex((wf) => wf.uri.fsPath === repo.localPath);
     if (idx !== -1) {
@@ -50622,11 +50715,11 @@ var vscode11 = __toESM(require("vscode"));
 var rootClick = async (storage, explorer) => {
   const repos = await storage.getAllRepositories();
   if (repos.length === 0) {
-    vscode11.window.showInformationMessage("No repositories added.");
+    vscode11.window.showInformationMessage(ERR_NO_REPOS);
     return;
   }
   explorer.showAllRepos(repos.map((r) => r.localPath));
-  const config = vscode11.workspace.getConfiguration("terminal.integrated");
+  const config = vscode11.workspace.getConfiguration(CONFIG_TERMINAL_SECTION);
   config.update("cwd", (0, import_os2.homedir)(), vscode11.ConfigurationTarget.Workspace).then(void 0, (err) => {
     console.error("[rootClick] Failed to update terminal cwd:", err);
   });
@@ -50637,11 +50730,11 @@ var vscode12 = __toESM(require("vscode"));
 var repoRootClick = async (storage, explorer, repoId) => {
   const repo = await storage.getRepository(repoId);
   if (!repo) {
-    vscode12.window.showErrorMessage("Repository not found.");
+    vscode12.window.showErrorMessage(ERR_REPO_NOT_FOUND);
     return;
   }
   explorer.showRepo(repoId, repo.localPath, repo.name);
-  const config = vscode12.workspace.getConfiguration("terminal.integrated");
+  const config = vscode12.workspace.getConfiguration(CONFIG_TERMINAL_SECTION);
   config.update("cwd", repo.localPath, vscode12.ConfigurationTarget.Workspace).then(void 0, (err) => {
     console.error("[repoRootClick] Failed to update terminal cwd:", err);
   });
@@ -50653,7 +50746,7 @@ var agentClick = async (storage, explorer, terminalService, agentId) => {
   const gen = ++generation;
   const ctx = await storage.getAgentContext(agentId);
   if (!ctx) {
-    throw new Error("Agent not found");
+    throw new Error(ERR_AGENT_NOT_FOUND);
   }
   if (gen !== generation) {
     return;
@@ -50686,28 +50779,28 @@ var WebviewCommandHandler = class {
     console.log("[WebviewCommandHandler] received message:", message);
     try {
       switch (message.function) {
-        case "addAgent":
+        case CMD_ADD_AGENT:
           await addAgent(this.storage, this.terminalService, message.args.repoId);
           break;
-        case "addRepo":
+        case CMD_ADD_REPO:
           await addRepo(this.storage);
           break;
-        case "removeAgent":
+        case CMD_REMOVE_AGENT:
           await removeAgent(this.storage, this.terminalService, message.args.agentId);
           break;
-        case "removeRepo":
+        case CMD_REMOVE_REPO:
           await removeRepo(this.storage, message.args.repoId);
           break;
-        case "toggleRepoExpanded":
+        case CMD_TOGGLE_REPO_EXPANDED:
           await this.storage.toggleRepoExpanded(message.args.repoId);
           break;
-        case "rootClick":
+        case CMD_ROOT_CLICK:
           await rootClick(this.storage, this.explorer);
           break;
-        case "repoRootClick":
+        case CMD_REPO_ROOT_CLICK:
           await repoRootClick(this.storage, this.explorer, message.args.repoId);
           break;
-        case "agentClick":
+        case CMD_AGENT_CLICK:
           await agentClick(this.storage, this.explorer, this.terminalService, message.args.agentId);
           break;
       }
@@ -50734,7 +50827,7 @@ var activate = async (context) => {
   context.subscriptions.push(provider);
   const explorer = new FileExplorerProvider(storage);
   context.subscriptions.push(explorer);
-  const treeView = vscode14.window.createTreeView("vscode-agentic.explorer", {
+  const treeView = vscode14.window.createTreeView(VIEW_EXPLORER, {
     treeDataProvider: explorer
   });
   explorer.attachTreeView(treeView);

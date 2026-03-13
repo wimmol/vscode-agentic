@@ -1,5 +1,11 @@
 import { DataTypes, Model, type Sequelize } from 'sequelize';
 import type { AgentCli, AgentStatus } from '../types/agent';
+import {
+  TABLE_REPOSITORIES,
+  TABLE_AGENTS,
+  TABLE_WORKTREES,
+  TABLE_EXPLORER_STATE,
+} from '../constants/db';
 
 // ── Attribute interfaces (plain objects for UI / transport) ─────────
 
@@ -83,7 +89,7 @@ export const initModels = (sequelize: Sequelize): void => {
       isExpanded: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
       createdAt: { type: DataTypes.INTEGER, allowNull: false },
     },
-    { sequelize, tableName: 'repositories', timestamps: false },
+    { sequelize, tableName: TABLE_REPOSITORIES, timestamps: false },
   );
 
   AgentModel.init(
@@ -99,7 +105,7 @@ export const initModels = (sequelize: Sequelize): void => {
       completedAt: { type: DataTypes.INTEGER },
       createdAt: { type: DataTypes.INTEGER, allowNull: false },
     },
-    { sequelize, tableName: 'agents', timestamps: false },
+    { sequelize, tableName: TABLE_AGENTS, timestamps: false },
   );
 
   WorktreeModel.init(
@@ -108,7 +114,7 @@ export const initModels = (sequelize: Sequelize): void => {
       agentId: { type: DataTypes.TEXT, allowNull: false, unique: true },
       path: { type: DataTypes.TEXT, allowNull: false },
     },
-    { sequelize, tableName: 'worktrees', timestamps: false },
+    { sequelize, tableName: TABLE_WORKTREES, timestamps: false },
   );
 
   ExplorerStateModel.init(
@@ -116,7 +122,7 @@ export const initModels = (sequelize: Sequelize): void => {
       scopeKey: { type: DataTypes.TEXT, primaryKey: true },
       expandedPaths: { type: DataTypes.TEXT, allowNull: false, defaultValue: '[]' },
     },
-    { sequelize, tableName: 'explorer_state', timestamps: false },
+    { sequelize, tableName: TABLE_EXPLORER_STATE, timestamps: false },
   );
 
   RepositoryModel.hasMany(AgentModel, { foreignKey: 'repoId', onDelete: 'CASCADE' });

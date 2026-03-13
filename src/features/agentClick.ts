@@ -1,6 +1,7 @@
 import type { StateStorage } from '../db';
 import type { FileExplorerProvider } from '../services/FileExplorerProvider';
 import type { TerminalService } from '../services/TerminalService';
+import { ERR_AGENT_NOT_FOUND } from '../constants/messages';
 
 /** Monotonic counter — prevents stale clicks from mutating explorer state. */
 let generation = 0;
@@ -15,7 +16,7 @@ export const agentClick = async (
 
   const ctx = await storage.getAgentContext(agentId);
   if (!ctx) {
-    throw new Error('Agent not found');
+    throw new Error(ERR_AGENT_NOT_FOUND);
   }
   if (gen !== generation) {
     return;

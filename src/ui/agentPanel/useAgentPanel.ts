@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { vscode } from '../index';
 import type { RepoWithAgents } from '../../types';
 import type { ExtensionToWebviewMessage } from '../../types/messages';
+import { MSG_TYPE_UPDATE, CMD_READY } from '../../constants/commands';
 
 const getCachedRepos = (): RepoWithAgents[] => {
   const state = vscode.getState();
@@ -15,7 +16,7 @@ export const useAgentPanel = (): RepoWithAgents[] => {
     const handler = (event: MessageEvent<ExtensionToWebviewMessage>) => {
       const message = event.data;
       console.log('[useAgentPanel] received message:', message);
-      if (message.type === 'update') {
+      if (message.type === MSG_TYPE_UPDATE) {
         console.log('[useAgentPanel] setting repos:', message.repos);
         setRepos(message.repos);
         vscode.setState({ repos: message.repos });
@@ -23,7 +24,7 @@ export const useAgentPanel = (): RepoWithAgents[] => {
     };
 
     window.addEventListener('message', handler);
-    vscode.postMessage({ function: 'ready', args: {} });
+    vscode.postMessage({ function: CMD_READY, args: {} });
     return () => window.removeEventListener('message', handler);
   }, []);
 

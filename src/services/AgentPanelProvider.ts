@@ -2,6 +2,8 @@ import { randomBytes } from 'crypto';
 import * as vscode from 'vscode';
 import type { StateStorage } from '../db';
 import type { ExtensionToWebviewMessage } from '../types/messages';
+import { VIEW_AGENTS } from '../constants/views';
+import { CMD_READY, MSG_TYPE_UPDATE } from '../constants/commands';
 
 /**
  * Bridges StateStorage and the Agent Panel webview.
@@ -12,20 +14,21 @@ import type { ExtensionToWebviewMessage } from '../types/messages';
  * This is the only place where extension→webview communication happens.
  */
 export class AgentPanelProvider implements vscode.WebviewViewProvider, vscode.Disposable {
-  static readonly viewType = 'vscode-agentic.agents';
+  static readonly viewType = VIEW_AGENTS;
 
   private readonly _onDidResolveView = new vscode.EventEmitter<vscode.WebviewView>();
   readonly onDidResolveView: vscode.Event<vscode.WebviewView> = this._onDidResolveView.event;
 
   private view: vscode.WebviewView | undefined;
   private readonly disposables: vscode.Disposable[] = [];
+  private pushStateTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(
     private readonly extensionUri: vscode.Uri,
     private readonly storage: StateStorage,
   ) {
     this.disposables.push(
-      this.storage.onDidChange(() => this.pushState()),
+      this.storage.onDidChange(() => this.debouncedPushState()),
     );
   }
 
@@ -46,7 +49,7 @@ export class AgentPanelProvider implements vscode.WebviewViewProvider, vscode.Di
     }, null, this.disposables);
 
     webviewView.webview.onDidReceiveMessage((message) => {
-      if (message.function === 'ready') {
+      if (message.function === CMD_READY) {
         console.log('[AgentPanelProvider] webview ready, pushing initial state');
         void this.pushState();
       }
@@ -59,15 +62,23 @@ export class AgentPanelProvider implements vscode.WebviewViewProvider, vscode.Di
     this._onDidResolveView.fire(webviewView);
   }
 
+  private debouncedPushState = (): void => {
+    if (this.pushStateTimer) {
+      clearTimeout(this.pushStateTimer);
+    }
+    this.pushStateTimer = setTimeout(() => {
+      this.pushStateTimer = undefined;
+      void this.pushState();
+    }, 100);
+  };
+
   private pushState = async (): Promise<void> => {
     if (!this.view) {
-      console.log('[AgentPanelProvider] pushState: no view, skipping');
       return;
     }
 
     const repos = await this.storage.getAllReposWithAgents();
-    console.log('[AgentPanelProvider] pushState: sending to webview:', JSON.stringify(repos, null, 2));
-    const message: ExtensionToWebviewMessage = { type: 'update', repos };
+    const message: ExtensionToWebviewMessage = { type: MSG_TYPE_UPDATE, repos };
     await this.view.webview.postMessage(message);
   };
 
@@ -98,6 +109,9 @@ export class AgentPanelProvider implements vscode.WebviewViewProvider, vscode.Di
   };
 
   dispose(): void {
+    if (this.pushStateTimer) {
+      clearTimeout(this.pushStateTimer);
+    }
     this._onDidResolveView.dispose();
     for (const d of this.disposables) {
       d.dispose();

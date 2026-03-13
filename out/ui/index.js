@@ -21752,6 +21752,14 @@ var TabHeader = ({ onRootClick, onAddRepoClick }) => {
   ] });
 };
 
+// src/constants/messages.ts
+var LABEL_REMOVE_AGENT = "Remove agent";
+var LABEL_NAVIGATE_REPO = "Navigate to repo";
+var LABEL_ADD_AGENT = "Add agent";
+var LABEL_REMOVE_REPO = "Remove repo";
+var LABEL_COLLAPSE = "Collapse";
+var LABEL_EXPAND = "Expand";
+
 // src/ui/shared/molecules/RepoHeader.tsx
 var import_jsx_runtime3 = __toESM(require_jsx_runtime());
 var RepoHeader = ({
@@ -21765,32 +21773,37 @@ var RepoHeader = ({
   return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("header", { className: "repo-header", children: [
     /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { className: "repo-header-name", children: name }),
     /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("nav", { className: "repo-header-actions", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(IconButton, { icon: "root-folder", onClick: onRootClick, title: "Navigate to repo" }),
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(IconButton, { icon: "add", onClick: onAddAgentClick, title: "Add agent" }),
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(IconButton, { icon: "close", onClick: onRemoveClick, title: "Remove repo" }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(IconButton, { icon: "root-folder", onClick: onRootClick, title: LABEL_NAVIGATE_REPO }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(IconButton, { icon: "add", onClick: onAddAgentClick, title: LABEL_ADD_AGENT }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(IconButton, { icon: "close", onClick: onRemoveClick, title: LABEL_REMOVE_REPO }),
       /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
         IconButton,
         {
           icon: expanded ? "chevron-down" : "chevron-right",
           onClick: onToggleClick,
-          title: expanded ? "Collapse" : "Expand"
+          title: expanded ? LABEL_COLLAPSE : LABEL_EXPAND
         }
       )
     ] })
   ] });
 };
 
+// src/constants/agent.ts
+var AGENT_STATUS_CREATED = "created";
+var AGENT_STATUS_RUNNING = "running";
+var AGENT_STATUS_IDLE = "idle";
+var AGENT_STATUS_ERROR = "error";
+
 // src/ui/shared/atoms/StatusIcon.tsx
 var import_jsx_runtime4 = __toESM(require_jsx_runtime());
 var STATUS_ICONS = {
-  created: "circle-outline",
-  running: "sync",
-  idle: "check",
-  completed: "check",
-  error: "error"
+  [AGENT_STATUS_CREATED]: "circle-outline",
+  [AGENT_STATUS_RUNNING]: "sync",
+  [AGENT_STATUS_IDLE]: "check",
+  [AGENT_STATUS_ERROR]: "error"
 };
 var StatusIcon = ({ status }) => {
-  const spin = status === "running" ? " codicon-modifier-spin" : "";
+  const spin = status === AGENT_STATUS_RUNNING ? " codicon-modifier-spin" : "";
   return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
     "i",
     {
@@ -21804,10 +21817,15 @@ var StatusIcon = ({ status }) => {
 // src/ui/shared/molecules/Timer.tsx
 var import_react = __toESM(require_react());
 
+// src/constants/timing.ts
+var TIMER_INTERVAL_MS = 1e3;
+var MS_PER_SECOND = 1e3;
+var SECONDS_PER_MINUTE = 60;
+
 // src/ui/shared/utils/formatTime.ts
 var formatTime = (seconds) => {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
+  const mins = Math.floor(seconds / SECONDS_PER_MINUTE);
+  const secs = seconds % SECONDS_PER_MINUTE;
   if (mins === 0) {
     return `${secs}s`;
   }
@@ -21817,12 +21835,12 @@ var formatTime = (seconds) => {
 // src/ui/shared/molecules/Timer.tsx
 var import_jsx_runtime5 = __toESM(require_jsx_runtime());
 var Timer = ({ startedAt }) => {
-  const [elapsed, setElapsed] = (0, import_react.useState)(() => Math.max(0, Math.floor((Date.now() - startedAt) / 1e3)));
+  const [elapsed, setElapsed] = (0, import_react.useState)(() => Math.max(0, Math.floor((Date.now() - startedAt) / MS_PER_SECOND)));
   (0, import_react.useEffect)(() => {
     const interval = setInterval(() => {
-      const next = Math.max(0, Math.floor((Date.now() - startedAt) / 1e3));
+      const next = Math.max(0, Math.floor((Date.now() - startedAt) / MS_PER_SECOND));
       setElapsed((prev) => prev === next ? prev : next);
-    }, 1e3);
+    }, TIMER_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [startedAt]);
   return /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: "timer", children: formatTime(elapsed) });
@@ -21868,7 +21886,7 @@ var AgentTile = ({
       showElapsed && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(ElapsedTime, { startedAt, completedAt })
     ] }),
     /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "agent-tile-prompt", children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(TruncatedText, { text: lastPrompt }) }),
-    /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("nav", { className: "agent-tile-actions", children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(IconButton, { icon: "trash", onClick: handleRemove, title: "Remove agent", disabled: status === "running" }) })
+    /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("nav", { className: "agent-tile-actions", children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(IconButton, { icon: "trash", onClick: handleRemove, title: LABEL_REMOVE_AGENT, disabled: status === AGENT_STATUS_RUNNING }) })
   ] });
 };
 
@@ -21955,6 +21973,20 @@ var AgentPanelView = ({
 
 // src/ui/agentPanel/useAgentPanel.ts
 var import_react3 = __toESM(require_react());
+
+// src/constants/commands.ts
+var CMD_TOGGLE_REPO_EXPANDED = "toggleRepoExpanded";
+var CMD_ADD_REPO = "addRepo";
+var CMD_REMOVE_REPO = "removeRepo";
+var CMD_ROOT_CLICK = "rootClick";
+var CMD_REPO_ROOT_CLICK = "repoRootClick";
+var CMD_ADD_AGENT = "addAgent";
+var CMD_REMOVE_AGENT = "removeAgent";
+var CMD_AGENT_CLICK = "agentClick";
+var CMD_READY = "ready";
+var MSG_TYPE_UPDATE = "update";
+
+// src/ui/agentPanel/useAgentPanel.ts
 var getCachedRepos = () => {
   const state = vscode.getState();
   return state?.repos ?? [];
@@ -21965,14 +21997,14 @@ var useAgentPanel = () => {
     const handler = (event) => {
       const message = event.data;
       console.log("[useAgentPanel] received message:", message);
-      if (message.type === "update") {
+      if (message.type === MSG_TYPE_UPDATE) {
         console.log("[useAgentPanel] setting repos:", message.repos);
         setRepos(message.repos);
         vscode.setState({ repos: message.repos });
       }
     };
     window.addEventListener("message", handler);
-    vscode.postMessage({ function: "ready", args: {} });
+    vscode.postMessage({ function: CMD_READY, args: {} });
     return () => window.removeEventListener("message", handler);
   }, []);
   return repos;
@@ -21980,35 +22012,35 @@ var useAgentPanel = () => {
 
 // src/types/messages.ts
 var toggleRepoExpandedMessage = (repoId) => ({
-  function: "toggleRepoExpanded",
+  function: CMD_TOGGLE_REPO_EXPANDED,
   args: { repoId }
 });
 var addRepoMessage = () => ({
-  function: "addRepo",
+  function: CMD_ADD_REPO,
   args: {}
 });
 var removeRepoMessage = (repoId) => ({
-  function: "removeRepo",
+  function: CMD_REMOVE_REPO,
   args: { repoId }
 });
 var rootClickMessage = () => ({
-  function: "rootClick",
+  function: CMD_ROOT_CLICK,
   args: {}
 });
 var repoRootClickMessage = (repoId) => ({
-  function: "repoRootClick",
+  function: CMD_REPO_ROOT_CLICK,
   args: { repoId }
 });
 var addAgentMessage = (repoId) => ({
-  function: "addAgent",
+  function: CMD_ADD_AGENT,
   args: { repoId }
 });
 var removeAgentMessage = (agentId) => ({
-  function: "removeAgent",
+  function: CMD_REMOVE_AGENT,
   args: { agentId }
 });
 var agentClickMessage = (agentId) => ({
-  function: "agentClick",
+  function: CMD_AGENT_CLICK,
   args: { agentId }
 });
 
