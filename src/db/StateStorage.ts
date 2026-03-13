@@ -1,13 +1,17 @@
 import { randomUUID } from 'crypto';
 import * as vscode from 'vscode';
-import type { Sequelize } from 'sequelize';
-import { RepositoryModel, AgentModel, WorktreeModel, ExplorerStateModel } from './models';
 import type { Repository, Worktree, Agent } from './models';
 import type { RepoWithAgents } from '../types';
 import type { AgentCli } from '../types/agent';
 import { worktreePath } from '../services/GitService';
 import { AGENT_STATUS_CREATED } from '../constants/agent';
 import { DEFAULT_STAGING_BRANCH } from '../constants/repo';
+import {
+  STORE_REPOSITORIES,
+  STORE_AGENTS,
+  STORE_WORKTREES,
+  STORE_EXPLORER_STATE,
+} from '../constants/db';
 import {
   ERR_REPO_NAME_EMPTY,
   ERR_REPO_PATH_EMPTY,
@@ -18,20 +22,38 @@ import {
 } from '../constants/messages';
 
 /**
- * Manages all read/write operations against the file-based SQLite database.
+ * Manages all read/write operations against VS Code workspaceState.
  *
  * Fits between the extension layer (commands, webview provider) and the
- * raw database — every public method validates input, mutates via Sequelize,
+ * storage — every public method validates input, mutates via Memento,
  * and emits a change event.
  *
  * Exists as a class (rather than loose functions) because it owns the
- * Sequelize instance and the EventEmitter, both of which share a lifetime.
+ * Memento reference and the EventEmitter, both of which share a lifetime.
  */
 export class StateStorage implements vscode.Disposable {
   private readonly _onDidChange = new vscode.EventEmitter<void>();
   readonly onDidChange: vscode.Event<void> = this._onDidChange.event;
 
-  constructor(private readonly sequelize: Sequelize) {}
+  constructor(private readonly state: vscode.Memento) {}
+
+  // ── Helpers ─────────────────────────────────────────────────────
+
+  private repos(): Repository[] {
+    return this.state.get<Repository[]>(STORE_REPOSITORIES, []);
+  }
+
+  private agents(): Agent[] {
+    return this.state.get<Agent[]>(STORE_AGENTS, []);
+  }
+
+  private worktrees(): Worktree[] {
+    return this.state.get<Worktree[]>(STORE_WORKTREES, []);
+  }
+
+  private explorerState(): Record<string, string[]> {
+    return this.state.get<Record<string, string[]>>(STORE_EXPLORER_STATE, {});
+  }
 
   // ── Repositories ───────────────────────────────────────────────
 
@@ -55,53 +77,52 @@ export class StateStorage implements vscode.Disposable {
       createdAt: Date.now(),
     };
 
-    await RepositoryModel.create(repo);
+    await this.state.update(STORE_REPOSITORIES, [...this.repos(), repo]);
     this._onDidChange.fire();
     console.log('[StateStorage] addRepository: result:', repo);
     return repo;
   };
 
   getRepository = async (id: string): Promise<Repository | undefined> => {
-    const repo = await RepositoryModel.findByPk(id);
-    return repo?.get({ plain: true });
+    return this.repos().find((r) => r.repositoryId === id);
   };
 
   getAllRepositories = async (): Promise<Repository[]> => {
-    const rows = await RepositoryModel.findAll({ order: [['createdAt', 'ASC']] });
-    return rows.map((r) => r.get({ plain: true }));
+    return this.repos();
   };
 
   getAllReposWithAgents = async (): Promise<RepoWithAgents[]> => {
-    const [repos, agents] = await Promise.all([
-      RepositoryModel.findAll({ order: [['createdAt', 'ASC']] }),
-      AgentModel.findAll({ order: [['createdAt', 'ASC']] }),
-    ]);
+    const repos = this.repos();
+    const allAgents = this.agents();
 
     const agentsByRepo = new Map<string, Agent[]>();
-    for (const agent of agents) {
-      const plain = agent.get({ plain: true });
-      const list = agentsByRepo.get(plain.repoId);
+    for (const agent of allAgents) {
+      const list = agentsByRepo.get(agent.repoId);
       if (list) {
-        list.push(plain);
+        list.push(agent);
       } else {
-        agentsByRepo.set(plain.repoId, [plain]);
+        agentsByRepo.set(agent.repoId, [agent]);
       }
     }
 
-    return repos.map((r) => {
-      const repo = r.get({ plain: true });
-      return { ...repo, agents: agentsByRepo.get(repo.repositoryId) ?? [] };
-    });
+    return repos.map((repo) => ({
+      ...repo,
+      agents: agentsByRepo.get(repo.repositoryId) ?? [],
+    }));
   };
 
   updateRepository = async (
     id: string,
     data: Partial<Pick<Repository, 'name' | 'stagingBranch'>>,
   ): Promise<Repository> => {
-    const repo = await RepositoryModel.findByPk(id);
-    if (!repo) {
+    const list = this.repos();
+    const idx = list.findIndex((r) => r.repositoryId === id);
+    if (idx === -1) {
       throw new Error(errRepoIdNotFound(id));
     }
+
+    const original = list[idx];
+    const repo = { ...original };
 
     if (data.name !== undefined) {
       const trimmed = data.name.trim();
@@ -119,32 +140,48 @@ export class StateStorage implements vscode.Disposable {
       repo.stagingBranch = trimmed;
     }
 
-    if (repo.changed()) {
-      await repo.save();
-      this._onDidChange.fire();
+    if (repo.name === original.name && repo.stagingBranch === original.stagingBranch) {
+      return original;
     }
 
-    const result = repo.get({ plain: true });
-    console.log('[StateStorage] updateRepository: result:', result);
-    return result;
+    list[idx] = repo;
+    await this.state.update(STORE_REPOSITORIES, list);
+    this._onDidChange.fire();
+    console.log('[StateStorage] updateRepository: result:', repo);
+    return repo;
   };
 
   toggleRepoExpanded = async (id: string): Promise<void> => {
-    const repo = await RepositoryModel.findByPk(id);
-    if (!repo) {
+    const list = this.repos();
+    const idx = list.findIndex((r) => r.repositoryId === id);
+    if (idx === -1) {
       throw new Error(errRepoIdNotFound(id));
     }
 
-    repo.isExpanded = !repo.isExpanded;
-    await repo.save();
+    list[idx] = { ...list[idx], isExpanded: !list[idx].isExpanded };
+    await this.state.update(STORE_REPOSITORIES, list);
     this._onDidChange.fire();
-    console.log('[StateStorage] toggleRepoExpanded:', { id, isExpanded: repo.isExpanded });
+    console.log('[StateStorage] toggleRepoExpanded:', { id, isExpanded: list[idx].isExpanded });
   };
 
   removeRepository = async (id: string): Promise<void> => {
     console.log('[StateStorage] removeRepository:', { id });
-    const count = await RepositoryModel.destroy({ where: { repositoryId: id } });
-    if (count > 0) {
+    const list = this.repos();
+    const filtered = list.filter((r) => r.repositoryId !== id);
+    if (filtered.length < list.length) {
+      // Cascade: remove agents, worktrees, and explorer state for this repo
+      const agentList = this.agents();
+      const removedAgentIds = new Set(agentList.filter((a) => a.repoId === id).map((a) => a.agentId));
+      await this.state.update(STORE_AGENTS, agentList.filter((a) => a.repoId !== id));
+      await this.state.update(STORE_WORKTREES, this.worktrees().filter((w) => !removedAgentIds.has(w.agentId)));
+      await this.state.update(STORE_REPOSITORIES, filtered);
+      const es = this.explorerState();
+      const cleanedKeys = Object.keys(es).filter((k) => k !== id && !removedAgentIds.has(k));
+      if (cleanedKeys.length < Object.keys(es).length) {
+        const cleaned: Record<string, string[]> = {};
+        for (const k of cleanedKeys) cleaned[k] = es[k];
+        await this.state.update(STORE_EXPLORER_STATE, cleaned);
+      }
       this._onDidChange.fire();
     }
   };
@@ -155,6 +192,12 @@ export class StateStorage implements vscode.Disposable {
     const trimmedName = name.trim();
     if (!trimmedName) {
       throw new Error(ERR_AGENT_NAME_EMPTY);
+    }
+
+    const repos = this.repos();
+    const repo = repos.find((r) => r.repositoryId === repoId);
+    if (!repo) {
+      throw new Error(errRepoIdNotFound(repoId));
     }
 
     const agent: Agent = {
@@ -171,49 +214,39 @@ export class StateStorage implements vscode.Disposable {
       createdAt: Date.now(),
     };
 
-    await this.sequelize.transaction(async (t) => {
-      const repo = await RepositoryModel.findByPk(repoId, { transaction: t });
-      if (!repo) {
-        throw new Error(errRepoIdNotFound(repoId));
-      }
+    const worktree: Worktree = {
+      worktreeId: randomUUID(),
+      agentId: agent.agentId,
+      path: worktreePath(repo.localPath, trimmedName),
+    };
 
-      await AgentModel.create(agent, { transaction: t });
-      await WorktreeModel.create(
-        {
-          worktreeId: randomUUID(),
-          agentId: agent.agentId,
-          path: worktreePath(repo.localPath, trimmedName),
-        },
-        { transaction: t },
-      );
-    });
-
+    await this.state.update(STORE_AGENTS, [...this.agents(), agent]);
+    await this.state.update(STORE_WORKTREES, [...this.worktrees(), worktree]);
     this._onDidChange.fire();
     console.log('[StateStorage] addAgent: result:', agent);
     return agent;
   };
 
   getAgent = async (id: string): Promise<Agent | undefined> => {
-    const agent = await AgentModel.findByPk(id);
-    return agent?.get({ plain: true });
+    return this.agents().find((a) => a.agentId === id);
   };
 
   getAgentsByRepo = async (repoId: string): Promise<Agent[]> => {
-    const rows = await AgentModel.findAll({
-      where: { repoId },
-      order: [['createdAt', 'ASC']],
-    });
-    return rows.map((r) => r.get({ plain: true }));
+    return this.agents().filter((a) => a.repoId === repoId);
   };
 
   updateAgent = async (
     id: string,
     data: Partial<Pick<Agent, 'name' | 'status' | 'sessionId' | 'lastPrompt' | 'startedAt' | 'completedAt'>>,
   ): Promise<Agent> => {
-    const agent = await AgentModel.findByPk(id);
-    if (!agent) {
+    const list = this.agents();
+    const idx = list.findIndex((a) => a.agentId === id);
+    if (idx === -1) {
       throw new Error(errAgentIdNotFound(id));
     }
+
+    const original = list[idx];
+    const agent = { ...original };
 
     if (data.name !== undefined) {
       const trimmed = data.name.trim();
@@ -229,52 +262,65 @@ export class StateStorage implements vscode.Disposable {
     if (data.startedAt !== undefined) agent.startedAt = data.startedAt;
     if (data.completedAt !== undefined) agent.completedAt = data.completedAt;
 
-    if (agent.changed()) {
-      await agent.save();
-      this._onDidChange.fire();
+    if (
+      agent.name === original.name &&
+      agent.status === original.status &&
+      agent.sessionId === original.sessionId &&
+      agent.lastPrompt === original.lastPrompt &&
+      agent.startedAt === original.startedAt &&
+      agent.completedAt === original.completedAt
+    ) {
+      return original;
     }
 
-    const result = agent.get({ plain: true });
-    console.log('[StateStorage] updateAgent: result:', result);
-    return result;
+    list[idx] = agent;
+    await this.state.update(STORE_AGENTS, list);
+    this._onDidChange.fire();
+    console.log('[StateStorage] updateAgent: result:', agent);
+    return agent;
   };
 
   removeAgent = async (id: string): Promise<void> => {
     console.log('[StateStorage] removeAgent:', { id });
-    const count = await AgentModel.destroy({ where: { agentId: id } });
-    if (count > 0) {
+    const list = this.agents();
+    const filtered = list.filter((a) => a.agentId !== id);
+    if (filtered.length < list.length) {
+      await this.state.update(STORE_AGENTS, filtered);
+      await this.state.update(STORE_WORKTREES, this.worktrees().filter((w) => w.agentId !== id));
+      const es = this.explorerState();
+      if (id in es) {
+        const { [id]: _, ...rest } = es;
+        await this.state.update(STORE_EXPLORER_STATE, rest);
+      }
       this._onDidChange.fire();
     }
   };
 
   focusAgent = async (agentId: string): Promise<void> => {
-    const agent = await AgentModel.findByPk(agentId);
-    if (!agent) {
+    const list = this.agents();
+    const idx = list.findIndex((a) => a.agentId === agentId);
+    if (idx === -1) {
       throw new Error(errAgentIdNotFound(agentId));
     }
-    if (agent.isFocused) {
+    const alreadySole = list[idx].isFocused && list.every((a) => a.agentId === agentId || !a.isFocused);
+    if (alreadySole) {
       return;
     }
 
-    await this.sequelize.transaction(async (t) => {
-      await AgentModel.update({ isFocused: false }, { where: { isFocused: true }, transaction: t });
-      await AgentModel.update({ isFocused: true }, { where: { agentId }, transaction: t });
-    });
+    const updated = list.map((a) => ({ ...a, isFocused: a.agentId === agentId }));
+    await this.state.update(STORE_AGENTS, updated);
     this._onDidChange.fire();
     console.log('[StateStorage] focusAgent:', { agentId });
   };
 
-
   // ── Worktrees (read-only) ─────────────────────────────────────
 
   getWorktree = async (agentId: string): Promise<Worktree | undefined> => {
-    const worktree = await WorktreeModel.findOne({ where: { agentId } });
-    return worktree?.get({ plain: true });
+    return this.worktrees().find((w) => w.agentId === agentId);
   };
 
   getAllWorktrees = async (): Promise<Worktree[]> => {
-    const rows = await WorktreeModel.findAll();
-    return rows.map((r) => r.get({ plain: true }));
+    return this.worktrees();
   };
 
   // ── Convenience ─────────────────────────────────────────────────
@@ -299,26 +345,17 @@ export class StateStorage implements vscode.Disposable {
   // ── Explorer state ───────────────────────────────────────────
 
   getExpandedPaths = async (scopeKey: string): Promise<string[]> => {
-    const row = await ExplorerStateModel.findByPk(scopeKey);
-    if (!row) return [];
-    try {
-      return JSON.parse(row.expandedPaths);
-    } catch {
-      return [];
-    }
+    const map = this.explorerState();
+    return map[scopeKey] ?? [];
   };
 
   setExpandedPaths = async (scopeKey: string, paths: string[]): Promise<void> => {
-    await ExplorerStateModel.upsert({
-      scopeKey,
-      expandedPaths: JSON.stringify(paths),
-    });
+    await this.state.update(STORE_EXPLORER_STATE, { ...this.explorerState(), [scopeKey]: paths });
   };
 
   // ── Internal ───────────────────────────────────────────────────
 
   dispose = (): void => {
     this._onDidChange.dispose();
-    void this.sequelize.close();
   };
 }

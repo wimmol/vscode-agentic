@@ -19,7 +19,7 @@ Work on multiple repositories using AI agents, each in its own git worktree.
 
 | Setting | Default | Description |
 |---|---|---|
-| `vscode-agentic.agentCommand` | `claude` | Command to execute in agent terminals |
+| `vscode-agentic.dangerouslyBypassPermissions` | `false` | Run agents with --dangerously-skip-permissions flag (no confirmation prompts) |
 
 ## Requirements
 

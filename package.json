@@ -2,12 +2,13 @@
   "name": "vscode-agentic",
   "displayName": "Agentic",
   "description": "Work on multiple repositories using AI agents on own worktrees",
-  "version": "0.1.0",
+  "icon": "images/icon.png",
+  "version": "0.2.0",
   "publisher": "wimmol",
   "engines": {
     "vscode": "^1.74.0"
   },
-  "license": "MIT",
+  "license": "FSL-1.1-MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/wimmol/vscode-agentic"
@@ -45,10 +46,10 @@
     "configuration": {
       "title": "Agentic",
       "properties": {
-        "vscode-agentic.agentCommand": {
-          "type": "string",
-          "default": "claude",
-          "description": "Command to execute in agent terminals."
+        "vscode-agentic.dangerouslyBypassPermissions": {
+          "type": "boolean",
+          "default": false,
+          "description": "Run agents with --dangerously-skip-permissions flag (no confirmation prompts)."
         }
       }
     },
@@ -68,8 +69,8 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run compile:prod",
-    "compile:prod": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --external:pg-hstore --format=cjs --platform=node --minify && esbuild src/ui/index.tsx --bundle --outfile=out/ui/index.js --format=esm --jsx=automatic --loader:.ttf=file --minify",
-    "compile": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --external:pg-hstore --format=cjs --platform=node --sourcemap && esbuild src/ui/index.tsx --bundle --outfile=out/ui/index.js --format=esm --jsx=automatic --loader:.ttf=file --sourcemap",
+    "compile:prod": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --minify && esbuild src/ui/index.tsx --bundle --outfile=out/ui/index.js --format=esm --jsx=automatic --loader:.ttf=file --minify",
+    "compile": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --sourcemap && esbuild src/ui/index.tsx --bundle --outfile=out/ui/index.js --format=esm --jsx=automatic --loader:.ttf=file --sourcemap",
     "package": "npx vsce package",
     "watch": "npm run compile -- --watch",
     "lint": "eslint src/",
@@ -94,8 +95,6 @@
   },
   "dependencies": {
     "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "sequelize": "^6.37.8",
-    "sqlite3": "^5.1.7"
+    "react-dom": "^19.0.0"
   }
 }
