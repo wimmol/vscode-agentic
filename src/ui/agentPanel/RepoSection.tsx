@@ -2,10 +2,10 @@ import { RepoHeader } from '../shared/molecules/RepoHeader';
 import { AgentTile } from '../shared/molecules/AgentTile';
 import { EmptyState } from '../shared/atoms/EmptyState';
 import type { RepoWithAgents } from '../../types';
+import { LABEL_EMPTY_AGENTS } from '../../constants/messages';
 
 interface RepoSectionProps {
   repo: RepoWithAgents;
-  selectedAgentId: string | null;
   onRepoRootClick: () => void;
   onAddAgentClick: () => void;
   onRemoveRepoClick: () => void;
@@ -16,7 +16,6 @@ interface RepoSectionProps {
 
 export const RepoSection = ({
   repo,
-  selectedAgentId,
   onRepoRootClick,
   onAddAgentClick,
   onRemoveRepoClick,
@@ -38,7 +37,7 @@ export const RepoSection = ({
       {repo.isExpanded && (
         <div className="repo-agents">
           {repo.agents.length === 0 ? (
-            <EmptyState text="press + to add agent" />
+            <EmptyState text={LABEL_EMPTY_AGENTS} />
           ) : (
             repo.agents.map((agent) => (
               <AgentTile
@@ -49,7 +48,7 @@ export const RepoSection = ({
                 lastPrompt={agent.lastPrompt}
                 startedAt={agent.startedAt}
                 completedAt={agent.completedAt}
-                isSelected={agent.agentId === selectedAgentId}
+                isSelected={agent.isFocused}
                 onClick={onAgentClick}
                 onRemoveClick={onRemoveAgentClick}
               />

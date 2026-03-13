@@ -163,6 +163,7 @@ export class StateStorage implements vscode.Disposable {
       name: trimmedName,
       cli,
       status: AGENT_STATUS_CREATED,
+      isFocused: false,
       sessionId: null,
       lastPrompt: null,
       startedAt: null,
@@ -245,6 +246,24 @@ export class StateStorage implements vscode.Disposable {
       this._onDidChange.fire();
     }
   };
+
+  focusAgent = async (agentId: string): Promise<void> => {
+    const agent = await AgentModel.findByPk(agentId);
+    if (!agent) {
+      throw new Error(errAgentIdNotFound(agentId));
+    }
+    if (agent.isFocused) {
+      return;
+    }
+
+    await this.sequelize.transaction(async (t) => {
+      await AgentModel.update({ isFocused: false }, { where: { isFocused: true }, transaction: t });
+      await AgentModel.update({ isFocused: true }, { where: { agentId }, transaction: t });
+    });
+    this._onDidChange.fire();
+    console.log('[StateStorage] focusAgent:', { agentId });
+  };
+
 
   // ── Worktrees (read-only) ─────────────────────────────────────
 

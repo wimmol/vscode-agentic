@@ -1,8 +1,9 @@
-import { open, watch, stat } from 'fs/promises';
+import { open, stat } from 'fs/promises';
 import { join } from 'path';
 import type { StateStorage } from '../db';
 import { claudeProjectDir } from './TerminalService';
 import { AGENT_STATUS_IDLE, AGENT_STATUS_RUNNING } from '../constants/agent';
+import { SESSION_WATCH_POLL_MS } from '../constants/timing';
 
 /**
  * Extract the user prompt text from a JSONL user message content field.
@@ -25,8 +26,9 @@ const extractPromptText = (content: unknown): string | null => {
 };
 
 interface WatcherEntry {
-  abort: AbortController;
   offset: number;
+  timer: NodeJS.Timeout;
+  reading: boolean;
 }
 
 /**
@@ -36,8 +38,12 @@ interface WatcherEntry {
  * updates the agent's lastPrompt and startedAt. When an assistant end_turn
  * is detected, sets completedAt.
  *
- * Exists as a class because it owns per-agent watcher state and abort
- * controllers that share a lifetime.
+ * Uses interval-based polling instead of fs.watch because fs.watch (kqueue)
+ * on macOS unreliably detects file appends, causing agent status to stay
+ * stuck on "running".
+ *
+ * Exists as a class because it owns per-agent watcher state and timers
+ * that share a lifetime.
  */
 export class SessionWatcher {
   private readonly watchers = new Map<string, WatcherEntry>();
@@ -46,31 +52,32 @@ export class SessionWatcher {
 
   /**
    * Start watching a session file for an agent.
-   * Reads any existing content first, then watches for changes.
+   * Reads any existing content first, then polls for changes.
    */
   startWatching = (agentId: string, sessionId: string, cwd: string): void => {
     this.stopWatching(agentId);
 
     const dir = claudeProjectDir(cwd);
     const filePath = join(dir, `${sessionId}.jsonl`);
-    const abort = new AbortController();
-    const entry: WatcherEntry = { abort, offset: 0 };
+    console.log('[SessionWatcher] startWatching:', { agentId, filePath });
+    const entry: WatcherEntry = {
+      offset: 0,
+      reading: false,
+      timer: setInterval(() => {
+        this.readNewContent(agentId, filePath, entry);
+      }, SESSION_WATCH_POLL_MS),
+    };
     this.watchers.set(agentId, entry);
 
-    // Read existing content to populate initial state, then start watching.
-    this.readNewContent(agentId, filePath, entry)
-      .then(() => this.watchFile(agentId, filePath, entry, abort.signal))
-      .catch(() => {
-        // File may not exist yet — try watching anyway.
-        this.watchFile(agentId, filePath, entry, abort.signal);
-      });
+    // Read existing content immediately to populate initial state.
+    this.readNewContent(agentId, filePath, entry);
   };
 
   /** Stop watching a session file for an agent. */
   stopWatching = (agentId: string): void => {
     const entry = this.watchers.get(agentId);
     if (entry) {
-      entry.abort.abort();
+      clearInterval(entry.timer);
       this.watchers.delete(agentId);
     }
   };
@@ -78,33 +85,12 @@ export class SessionWatcher {
   /** Stop all watchers. */
   dispose = (): void => {
     for (const entry of this.watchers.values()) {
-      entry.abort.abort();
+      clearInterval(entry.timer);
     }
     this.watchers.clear();
   };
 
   // ── Private ───────────────────────────────────────────────────────
-
-  /** Watch the file for changes using fs.watch. */
-  private watchFile = async (
-    agentId: string,
-    filePath: string,
-    entry: WatcherEntry,
-    signal: AbortSignal,
-  ): Promise<void> => {
-    try {
-      const watcher = watch(filePath, { signal });
-      for await (const event of watcher) {
-        if (event.eventType === 'change') {
-          await this.readNewContent(agentId, filePath, entry);
-        }
-      }
-    } catch (err: unknown) {
-      // AbortError is expected when we stop watching.
-      if (err instanceof Error && err.name === 'AbortError') return;
-      // File may not exist — silently ignore.
-    }
-  };
 
   /** Read new content from the file starting at the tracked offset. */
   private readNewContent = async (
@@ -112,6 +98,9 @@ export class SessionWatcher {
     filePath: string,
     entry: WatcherEntry,
   ): Promise<void> => {
+    if (entry.reading) return;
+    entry.reading = true;
+
     let fd;
     try {
       const fileInfo = await stat(filePath);
@@ -120,16 +109,25 @@ export class SessionWatcher {
       fd = await open(filePath, 'r');
       const buf = Buffer.alloc(fileInfo.size - entry.offset);
       await fd.read(buf, 0, buf.length, entry.offset);
-      entry.offset = fileInfo.size;
 
       const newContent = buf.toString('utf-8');
-      const lines = newContent.split('\n').filter((l) => l.trim());
+
+      // Only process complete lines (up to last newline).
+      // A partial trailing line is re-read on the next poll to avoid
+      // permanently missing an entry if the file was mid-write.
+      const lastNewline = newContent.lastIndexOf('\n');
+      if (lastNewline === -1) return;
+
+      entry.offset += lastNewline + 1;
+      const lines = newContent.slice(0, lastNewline + 1).split('\n').filter((l) => l.trim());
+      console.log('[SessionWatcher] read', lines.length, 'lines for', agentId);
 
       await this.processLines(agentId, lines);
     } catch {
       // File read errors are non-fatal.
     } finally {
       await fd?.close();
+      entry.reading = false;
     }
   };
 
@@ -163,17 +161,20 @@ export class SessionWatcher {
 
     // Apply the latest state to the agent.
     if (lastPrompt !== null && promptTimestamp !== null) {
+      const status = endTurnTimestamp ? AGENT_STATUS_IDLE : AGENT_STATUS_RUNNING;
+      console.log('[SessionWatcher] status →', status, '| prompt:', lastPrompt?.slice(0, 40), '| agentId:', agentId);
       try {
         await this.storage.updateAgent(agentId, {
           lastPrompt,
           startedAt: promptTimestamp,
           completedAt: endTurnTimestamp,
-          status: endTurnTimestamp ? AGENT_STATUS_IDLE : AGENT_STATUS_RUNNING,
+          status,
         });
       } catch {
         // Agent may have been removed.
       }
     } else if (endTurnTimestamp !== null) {
+      console.log('[SessionWatcher] status → idle (end_turn only) | agentId:', agentId);
       try {
         await this.storage.updateAgent(agentId, {
           completedAt: endTurnTimestamp,

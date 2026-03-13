@@ -2,10 +2,10 @@ import { TabHeader } from '../shared/molecules/TabHeader';
 import { RepoSection } from './RepoSection';
 import { EmptyState } from '../shared/atoms/EmptyState';
 import type { RepoWithAgents } from '../../types';
+import { LABEL_EMPTY_REPOS } from '../../constants/messages';
 
 interface AgentPanelViewProps {
   repos: RepoWithAgents[];
-  selectedAgentId: string | null;
   onRootClick: () => void;
   onAddRepoClick: () => void;
   onRepoRootClick: (repoId: string) => void;
@@ -18,7 +18,6 @@ interface AgentPanelViewProps {
 
 export const AgentPanelView = ({
   repos,
-  selectedAgentId,
   onRootClick,
   onAddRepoClick,
   onRepoRootClick,
@@ -33,13 +32,12 @@ export const AgentPanelView = ({
       <TabHeader onRootClick={onRootClick} onAddRepoClick={onAddRepoClick} />
 
       {repos.length === 0 ? (
-        <EmptyState text="press + to add repo" />
+        <EmptyState text={LABEL_EMPTY_REPOS} />
       ) : (
         repos.map((repo) => (
           <RepoSection
             key={repo.repositoryId}
             repo={repo}
-            selectedAgentId={selectedAgentId}
             onRepoRootClick={() => onRepoRootClick(repo.repositoryId)}
             onAddAgentClick={() => onAddAgentClick(repo.repositoryId)}
             onRemoveRepoClick={() => onRemoveRepoClick(repo.repositoryId)}

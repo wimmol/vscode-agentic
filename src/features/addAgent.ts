@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import type { StateStorage } from '../db';
+import type { FileExplorerProvider } from '../services/FileExplorerProvider';
 import type { TerminalService } from '../services/TerminalService';
 import { INVALID_BRANCH_RE } from '../constants/git';
 import { AGENT_CLI_CLAUDE_CODE } from '../constants/agent';
@@ -25,9 +26,10 @@ const validateBranchName = (value: string): string | undefined => {
 
 export const addAgent = async (
   storage: StateStorage,
+  explorer: FileExplorerProvider,
   terminalService: TerminalService,
   repoId: string,
-): Promise<void> => {
+): Promise<string | undefined> => {
   const repo = await storage.getRepository(repoId);
   if (!repo) {
     vscode.window.showErrorMessage(ERR_REPO_NOT_FOUND);
@@ -60,6 +62,8 @@ export const addAgent = async (
     throw err;
   }
 
-  const terminal = terminalService.createTerminal(agent.agentId, branch, repo.name, wtPath);
-  terminal.show(false);
+  explorer.showRepo(agent.agentId, wtPath, repo.name, branch);
+  terminalService.createTerminal(agent.agentId, branch, repo.name, wtPath);
+  await storage.focusAgent(agent.agentId);
+  return agent.agentId;
 };

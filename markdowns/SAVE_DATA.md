@@ -65,6 +65,7 @@ DB row types (`Repository`, `Worktree`) in `src/db/models.ts`.
 | name       | TEXT    | NOT NULL                   |                               |
 | cli        | TEXT    | NOT NULL                   | `claude-code` for now         |
 | status     | TEXT    | NOT NULL                   | `created` / `running` / `completed` / `error` |
+| isFocused  | BOOLEAN | NOT NULL, default false    | whether agent is currently selected in UI |
 | sessionId  | TEXT    |                            | CLI session id to resume      |
 | lastPrompt | TEXT    |                            | last prompt sent              |
 | startedAt  | INTEGER |                            | unix ms, when last task started |

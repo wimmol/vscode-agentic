@@ -52,9 +52,10 @@ export class WebviewCommandHandler implements vscode.Disposable {
     console.log('[WebviewCommandHandler] received message:', message);
     try {
       switch (message.function) {
-        case CMD_ADD_AGENT:
-          await addAgent(this.storage, this.terminalService, message.args.repoId);
+        case CMD_ADD_AGENT: {
+          await addAgent(this.storage, this.explorer, this.terminalService, message.args.repoId);
           break;
+        }
         case CMD_ADD_REPO:
           await addRepo(this.storage);
           break;

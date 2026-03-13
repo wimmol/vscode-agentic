@@ -28,4 +28,6 @@ export const agentClick = async (
   if (terminal) {
     terminal.show(false);
   }
+
+  await storage.focusAgent(agentId);
 };

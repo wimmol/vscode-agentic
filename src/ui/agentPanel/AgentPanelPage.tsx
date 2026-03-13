@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 import { AgentPanelView } from './AgentPanelView';
 import { useAgentPanel } from './useAgentPanel';
 import { vscode } from '../index';
@@ -6,7 +6,6 @@ import { addAgentMessage, addRepoMessage, agentClickMessage, removeAgentMessage,
 
 export const AgentPanelPage = () => {
   const repos = useAgentPanel();
-  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
 
   const onAddAgentClick = useCallback((repoId: string) => {
     vscode.postMessage(addAgentMessage(repoId));
@@ -37,14 +36,12 @@ export const AgentPanelPage = () => {
   }, []);
 
   const onAgentClick = useCallback((agentId: string) => {
-    setSelectedAgentId(agentId);
     vscode.postMessage(agentClickMessage(agentId));
   }, []);
 
   return (
     <AgentPanelView
       repos={repos}
-      selectedAgentId={selectedAgentId}
       onRootClick={onRootClick}
       onAddRepoClick={onAddRepoClick}
       onRepoRootClick={onRepoRootClick}
