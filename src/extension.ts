@@ -5,6 +5,7 @@ import { AgentPanelProvider } from './services/AgentPanelProvider';
 import { FileExplorerProvider } from './services/FileExplorerProvider';
 import { TerminalService } from './services/TerminalService';
 import { WebviewCommandHandler } from './services/WebviewCommandHandler';
+import { VIEW_EXPLORER } from './constants/views';
 
 export const activate = async (context: vscode.ExtensionContext) => {
   const storage = await createStateStorage(context);
@@ -16,7 +17,7 @@ export const activate = async (context: vscode.ExtensionContext) => {
   const explorer = new FileExplorerProvider(storage);
   context.subscriptions.push(explorer);
 
-  const treeView = vscode.window.createTreeView('vscode-agentic.explorer', {
+  const treeView = vscode.window.createTreeView(VIEW_EXPLORER, {
     treeDataProvider: explorer,
   });
   explorer.attachTreeView(treeView);

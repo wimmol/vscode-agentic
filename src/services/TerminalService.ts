@@ -4,6 +4,17 @@ import { homedir } from 'os';
 import * as vscode from 'vscode';
 import type { StateStorage } from '../db';
 import { terminalName } from '../constants/terminal';
+import { CLAUDE_DIR, CLAUDE_PROJECTS_DIR } from '../constants/paths';
+import { AGENT_STATUS_RUNNING, AGENT_STATUS_ERROR, DEFAULT_AGENT_COMMAND } from '../constants/agent';
+import { CONFIG_SECTION, CONFIG_AGENT_COMMAND } from '../constants/views';
+import { SESSION_POLL_INTERVAL_MS, SESSION_POLL_MAX_ATTEMPTS } from '../constants/timing';
+import {
+  dialogTerminalClosed,
+  DIALOG_UNCOMMITTED_TERMINAL,
+  BTN_REMOVE_DELETE_WORKTREE,
+  BTN_REMOVE_KEEP_WORKTREE,
+  BTN_REOPEN_TERMINAL,
+} from '../constants/messages';
 import { removeWorktree, deleteBranch, hasUncommittedChanges } from './GitService';
 import { SessionWatcher } from './SessionWatcher';
 
@@ -13,7 +24,7 @@ import { SessionWatcher } from './SessionWatcher';
  * where the encoded path replaces `/` and `.` with `-`.
  */
 export const claudeProjectDir = (cwd: string): string =>
-  join(homedir(), '.claude', 'projects', cwd.replace(/[/.]/g, '-'));
+  join(homedir(), CLAUDE_DIR, CLAUDE_PROJECTS_DIR, cwd.replace(/[/.]/g, '-'));
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -81,7 +92,7 @@ export class TerminalService implements vscode.Disposable {
     this.terminals.set(agentId, terminal);
 
     if (!opts?.skipStatusUpdate) {
-      this.storage.updateAgent(agentId, { status: 'running' }).catch(() => {
+      this.storage.updateAgent(agentId, { status: AGENT_STATUS_RUNNING }).catch(() => {
         // Agent may have been removed before the update landed.
       });
     }
@@ -131,16 +142,13 @@ export class TerminalService implements vscode.Disposable {
         }
 
         // Adopt an existing terminal if one already matches by name.
+        // Don't send any command — the terminal is already running.
         const name = terminalName(agent.name, repo.name);
         const existing = existingByName.get(name);
         if (existing) {
           this.terminals.set(agent.agentId, existing);
-          // Resume the exact session (or start fresh if no session was saved).
-          existing.sendText(this.buildCommand(agent.sessionId));
           if (agent.sessionId) {
             this.sessionWatcher.startWatching(agent.agentId, agent.sessionId, worktree.path);
-          } else {
-            this.detectSessionId(agent.agentId, worktree.path);
           }
           continue;
         }
@@ -158,9 +166,9 @@ export class TerminalService implements vscode.Disposable {
    */
   private buildCommand = (sessionId?: string | null): string => {
     const raw = vscode.workspace
-      .getConfiguration('vscode-agentic')
-      .get<string>('agentCommand', 'claude');
-    const base = raw?.trim() || 'claude';
+      .getConfiguration(CONFIG_SECTION)
+      .get<string>(CONFIG_AGENT_COMMAND, DEFAULT_AGENT_COMMAND);
+    const base = raw?.trim() || DEFAULT_AGENT_COMMAND;
     if (!sessionId || !UUID_RE.test(sessionId)) return base;
     return `${base} --resume ${sessionId}`;
   };
@@ -203,14 +211,14 @@ export class TerminalService implements vscode.Disposable {
       } catch {
         // Directory may not exist yet — keep trying.
       }
-      if (attempts < 15) {
-        this.detectors.set(agentId, setTimeout(poll, 2000));
+      if (attempts < SESSION_POLL_MAX_ATTEMPTS) {
+        this.detectors.set(agentId, setTimeout(poll, SESSION_POLL_INTERVAL_MS));
       } else {
         this.detectors.delete(agentId);
       }
     };
 
-    this.detectors.set(agentId, setTimeout(poll, 2000));
+    this.detectors.set(agentId, setTimeout(poll, SESSION_POLL_INTERVAL_MS));
   };
 
   /** Stop session-detection polling for an agent. */
@@ -255,7 +263,7 @@ export class TerminalService implements vscode.Disposable {
     // Terminal was closed by the user or errored — mark as error.
     let agent;
     try {
-      agent = await this.storage.updateAgent(agentId, { status: 'error' });
+      agent = await this.storage.updateAgent(agentId, { status: AGENT_STATUS_ERROR });
     } catch {
       return;
     }
@@ -268,28 +276,28 @@ export class TerminalService implements vscode.Disposable {
       return;
     }
 
-    let detail = `Closing the terminal kills the running agent "${agent.name}".`;
+    let detail = dialogTerminalClosed(agent.name);
     const dirty = await hasUncommittedChanges(worktree.path);
     if (dirty) {
-      detail += ' The worktree has uncommitted changes.';
+      detail += DIALOG_UNCOMMITTED_TERMINAL;
     }
 
     const choice = await vscode.window.showWarningMessage(
       detail,
       { modal: true },
-      'Remove & Delete Worktree',
-      'Remove & Keep Worktree',
-      'Reopen Terminal',
+      BTN_REMOVE_DELETE_WORKTREE,
+      BTN_REMOVE_KEEP_WORKTREE,
+      BTN_REOPEN_TERMINAL,
     );
 
-    if (choice === 'Remove & Delete Worktree') {
+    if (choice === BTN_REMOVE_DELETE_WORKTREE) {
       await removeWorktree(repo.localPath, worktree.path);
       await deleteBranch(repo.localPath, agent.name);
       await this.storage.removeAgent(agentId);
       return;
     }
 
-    if (choice === 'Remove & Keep Worktree') {
+    if (choice === BTN_REMOVE_KEEP_WORKTREE) {
       await this.storage.removeAgent(agentId);
       return;
     }

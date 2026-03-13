@@ -7,8 +7,26 @@
   "engines": {
     "vscode": "^1.74.0"
   },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wimmol/vscode-agentic"
+  },
   "categories": [
+    "Machine Learning",
+    "SCM Providers",
+    "Chat",
     "Other"
+  ],
+  "keywords": [
+    "ai",
+    "ai-agents",
+    "agents",
+    "automation",
+    "worktree",
+    "workspace",
+    "git",
+    "multi-repo"
   ],
   "activationEvents": [
     "onView:vscode-agentic.agents"
@@ -49,7 +67,10 @@
     }
   },
   "scripts": {
+    "vscode:prepublish": "npm run compile:prod",
+    "compile:prod": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --external:pg-hstore --format=cjs --platform=node --minify && esbuild src/ui/index.tsx --bundle --outfile=out/ui/index.js --format=esm --jsx=automatic --loader:.ttf=file --minify",
     "compile": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --external:pg-hstore --format=cjs --platform=node --sourcemap && esbuild src/ui/index.tsx --bundle --outfile=out/ui/index.js --format=esm --jsx=automatic --loader:.ttf=file --sourcemap",
+    "package": "npx vsce package",
     "watch": "npm run compile -- --watch",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
@@ -68,6 +89,7 @@
     "eslint-plugin-react-hooks": "^5.0.0",
     "prettier": "^3.4.0",
     "typescript": "^5.7.0",
+    "@vscode/vsce": "^3.0.0",
     "typescript-eslint": "^8.0.0"
   },
   "dependencies": {

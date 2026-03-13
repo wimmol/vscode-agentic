@@ -2,6 +2,7 @@ import { open, watch, stat } from 'fs/promises';
 import { join } from 'path';
 import type { StateStorage } from '../db';
 import { claudeProjectDir } from './TerminalService';
+import { AGENT_STATUS_IDLE, AGENT_STATUS_RUNNING } from '../constants/agent';
 
 /**
  * Extract the user prompt text from a JSONL user message content field.
@@ -167,7 +168,7 @@ export class SessionWatcher {
           lastPrompt,
           startedAt: promptTimestamp,
           completedAt: endTurnTimestamp,
-          status: endTurnTimestamp ? 'idle' : 'running',
+          status: endTurnTimestamp ? AGENT_STATUS_IDLE : AGENT_STATUS_RUNNING,
         });
       } catch {
         // Agent may have been removed.
@@ -176,7 +177,7 @@ export class SessionWatcher {
       try {
         await this.storage.updateAgent(agentId, {
           completedAt: endTurnTimestamp,
-          status: 'idle',
+          status: AGENT_STATUS_IDLE,
         });
       } catch {
         // Agent may have been removed.

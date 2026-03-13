@@ -3,6 +3,8 @@ import * as path from 'path';
 import * as fs from 'fs/promises';
 import type { StateStorage } from '../db';
 import { WORKSPACE_SCOPE_KEY, PERSIST_DEBOUNCE_MS } from '../constants/explorer';
+import { GIT_DIR } from '../constants/paths';
+import { LABEL_WORKSPACE, LABEL_OPEN_FILE, LABEL_AGENT_PREFIX } from '../constants/messages';
 
 type ExplorerItem = ScopeHeaderItem | FileItem;
 
@@ -137,7 +139,7 @@ export class FileExplorerProvider implements vscode.TreeDataProvider<ExplorerIte
     try {
       const entries = await fs.readdir(dirPath, { withFileTypes: true });
       return entries
-        .filter((e) => e.name !== '.git')
+        .filter((e) => e.name !== GIT_DIR)
         .sort((a, b) => {
           if (a.isDirectory() !== b.isDirectory()) {
             return a.isDirectory() ? -1 : 1;
@@ -165,9 +167,11 @@ export class FileExplorerProvider implements vscode.TreeDataProvider<ExplorerIte
   }
 }
 
+const CONTEXT_SCOPE_HEADER = 'scopeHeader';
+
 class ScopeHeaderItem extends vscode.TreeItem {
   static workspace(): ScopeHeaderItem {
-    return new ScopeHeaderItem('WORKSPACE', 'home');
+    return new ScopeHeaderItem(LABEL_WORKSPACE, 'home');
   }
 
   static repo(repoName: string): ScopeHeaderItem {
@@ -175,13 +179,13 @@ class ScopeHeaderItem extends vscode.TreeItem {
   }
 
   static agent(repoName: string, agentName: string): ScopeHeaderItem {
-    return new ScopeHeaderItem(repoName, 'terminal', `› ${agentName}`);
+    return new ScopeHeaderItem(repoName, 'terminal', `${LABEL_AGENT_PREFIX}${agentName}`);
   }
 
   private constructor(label: string, icon: 'home' | 'repo' | 'terminal', desc?: string) {
     super(label, vscode.TreeItemCollapsibleState.None);
     this.iconPath = new vscode.ThemeIcon(icon);
-    this.contextValue = 'scopeHeader';
+    this.contextValue = CONTEXT_SCOPE_HEADER;
     if (desc) {
       this.description = desc;
     }
@@ -207,7 +211,7 @@ class FileItem extends vscode.TreeItem {
     if (!isDir) {
       this.command = {
         command: 'vscode.open',
-        title: 'Open File',
+        title: LABEL_OPEN_FILE,
         arguments: [this.resourceUri],
       };
     }

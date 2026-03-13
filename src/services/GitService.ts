@@ -1,6 +1,7 @@
 import { execFile as execFileCb } from 'child_process';
 import { promisify } from 'util';
 import { GIT_TIMEOUT, GIT_WORKTREE_TIMEOUT, GIT_MAX_BUFFER } from '../constants/git';
+import { WORKTREES_DIR } from '../constants/paths';
 
 const execFile = promisify(execFileCb);
 
@@ -11,7 +12,7 @@ const gitOpts = (cwd: string, timeout = GIT_TIMEOUT) => ({
 });
 
 export const worktreePath = (repoPath: string, branch: string): string =>
-  `${repoPath}/.worktrees/${branch}`;
+  `${repoPath}/${WORKTREES_DIR}/${branch}`;
 
 export const ensureBranch = async (repoPath: string, branch: string): Promise<void> => {
   try {

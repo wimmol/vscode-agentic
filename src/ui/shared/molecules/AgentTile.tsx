@@ -4,6 +4,8 @@ import { Timer } from './Timer';
 import { ElapsedTime } from '../atoms/ElapsedTime';
 import { TruncatedText } from '../atoms/TruncatedText';
 import type { AgentStatus } from '../../../types';
+import { AGENT_STATUS_RUNNING } from '../../../constants/agent';
+import { LABEL_REMOVE_AGENT } from '../../../constants/messages';
 import { useCallback } from 'react';
 
 interface AgentTileProps {
@@ -51,7 +53,7 @@ export const AgentTile = ({
         <TruncatedText text={lastPrompt} />
       </div>
       <nav className="agent-tile-actions">
-        <IconButton icon="trash" onClick={handleRemove} title="Remove agent" disabled={status === 'running'} />
+        <IconButton icon="trash" onClick={handleRemove} title={LABEL_REMOVE_AGENT} disabled={status === AGENT_STATUS_RUNNING} />
       </nav>
     </article>
   );

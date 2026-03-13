@@ -4,6 +4,16 @@ import type { AgentPanelProvider } from './AgentPanelProvider';
 import type { FileExplorerProvider } from './FileExplorerProvider';
 import type { TerminalService } from './TerminalService';
 import type { WebviewToExtensionMessage } from '../types/messages';
+import {
+  CMD_ADD_AGENT,
+  CMD_ADD_REPO,
+  CMD_REMOVE_AGENT,
+  CMD_REMOVE_REPO,
+  CMD_TOGGLE_REPO_EXPANDED,
+  CMD_ROOT_CLICK,
+  CMD_REPO_ROOT_CLICK,
+  CMD_AGENT_CLICK,
+} from '../constants/commands';
 import { addAgent } from '../features/addAgent';
 import { addRepo } from '../features/addRepo';
 import { removeAgent } from '../features/removeAgent';
@@ -42,28 +52,28 @@ export class WebviewCommandHandler implements vscode.Disposable {
     console.log('[WebviewCommandHandler] received message:', message);
     try {
       switch (message.function) {
-        case 'addAgent':
+        case CMD_ADD_AGENT:
           await addAgent(this.storage, this.terminalService, message.args.repoId);
           break;
-        case 'addRepo':
+        case CMD_ADD_REPO:
           await addRepo(this.storage);
           break;
-        case 'removeAgent':
+        case CMD_REMOVE_AGENT:
           await removeAgent(this.storage, this.terminalService, message.args.agentId);
           break;
-        case 'removeRepo':
+        case CMD_REMOVE_REPO:
           await removeRepo(this.storage, message.args.repoId);
           break;
-        case 'toggleRepoExpanded':
+        case CMD_TOGGLE_REPO_EXPANDED:
           await this.storage.toggleRepoExpanded(message.args.repoId);
           break;
-        case 'rootClick':
+        case CMD_ROOT_CLICK:
           await rootClick(this.storage, this.explorer);
           break;
-        case 'repoRootClick':
+        case CMD_REPO_ROOT_CLICK:
           await repoRootClick(this.storage, this.explorer, message.args.repoId);
           break;
-        case 'agentClick':
+        case CMD_AGENT_CLICK:
           await agentClick(this.storage, this.explorer, this.terminalService, message.args.agentId);
           break;
       }

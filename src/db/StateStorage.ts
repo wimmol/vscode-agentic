@@ -6,6 +6,16 @@ import type { Repository, Worktree, Agent } from './models';
 import type { RepoWithAgents } from '../types';
 import type { AgentCli } from '../types/agent';
 import { worktreePath } from '../services/GitService';
+import { AGENT_STATUS_CREATED } from '../constants/agent';
+import { DEFAULT_STAGING_BRANCH } from '../constants/repo';
+import {
+  ERR_REPO_NAME_EMPTY,
+  ERR_REPO_PATH_EMPTY,
+  ERR_STAGING_BRANCH_EMPTY,
+  ERR_AGENT_NAME_EMPTY,
+  errRepoIdNotFound,
+  errAgentIdNotFound,
+} from '../constants/messages';
 
 /**
  * Manages all read/write operations against the file-based SQLite database.
@@ -28,19 +38,19 @@ export class StateStorage implements vscode.Disposable {
   addRepository = async (name: string, localPath: string, stagingBranch: string): Promise<Repository> => {
     const trimmedName = name.trim();
     if (!trimmedName) {
-      throw new Error('Repository name cannot be empty');
+      throw new Error(ERR_REPO_NAME_EMPTY);
     }
 
     const trimmedPath = localPath.trim();
     if (!trimmedPath) {
-      throw new Error('Repository path cannot be empty');
+      throw new Error(ERR_REPO_PATH_EMPTY);
     }
 
     const repo: Repository = {
       repositoryId: randomUUID(),
       name: trimmedName,
       localPath: trimmedPath,
-      stagingBranch: stagingBranch.trim() || 'staging',
+      stagingBranch: stagingBranch.trim() || DEFAULT_STAGING_BRANCH,
       isExpanded: true,
       createdAt: Date.now(),
     };
@@ -90,13 +100,13 @@ export class StateStorage implements vscode.Disposable {
   ): Promise<Repository> => {
     const repo = await RepositoryModel.findByPk(id);
     if (!repo) {
-      throw new Error(`Repository ${id} not found`);
+      throw new Error(errRepoIdNotFound(id));
     }
 
     if (data.name !== undefined) {
       const trimmed = data.name.trim();
       if (!trimmed) {
-        throw new Error('Repository name cannot be empty');
+        throw new Error(ERR_REPO_NAME_EMPTY);
       }
       repo.name = trimmed;
     }
@@ -104,7 +114,7 @@ export class StateStorage implements vscode.Disposable {
     if (data.stagingBranch !== undefined) {
       const trimmed = data.stagingBranch.trim();
       if (!trimmed) {
-        throw new Error('Staging branch cannot be empty');
+        throw new Error(ERR_STAGING_BRANCH_EMPTY);
       }
       repo.stagingBranch = trimmed;
     }
@@ -122,7 +132,7 @@ export class StateStorage implements vscode.Disposable {
   toggleRepoExpanded = async (id: string): Promise<void> => {
     const repo = await RepositoryModel.findByPk(id);
     if (!repo) {
-      throw new Error(`Repository ${id} not found`);
+      throw new Error(errRepoIdNotFound(id));
     }
 
     repo.isExpanded = !repo.isExpanded;
@@ -144,7 +154,7 @@ export class StateStorage implements vscode.Disposable {
   addAgent = async (repoId: string, name: string, cli: AgentCli): Promise<Agent> => {
     const trimmedName = name.trim();
     if (!trimmedName) {
-      throw new Error('Agent name cannot be empty');
+      throw new Error(ERR_AGENT_NAME_EMPTY);
     }
 
     const agent: Agent = {
@@ -152,7 +162,7 @@ export class StateStorage implements vscode.Disposable {
       repoId,
       name: trimmedName,
       cli,
-      status: 'created',
+      status: AGENT_STATUS_CREATED,
       sessionId: null,
       lastPrompt: null,
       startedAt: null,
@@ -163,7 +173,7 @@ export class StateStorage implements vscode.Disposable {
     await this.sequelize.transaction(async (t) => {
       const repo = await RepositoryModel.findByPk(repoId, { transaction: t });
       if (!repo) {
-        throw new Error(`Repository ${repoId} not found`);
+        throw new Error(errRepoIdNotFound(repoId));
       }
 
       await AgentModel.create(agent, { transaction: t });
@@ -201,13 +211,13 @@ export class StateStorage implements vscode.Disposable {
   ): Promise<Agent> => {
     const agent = await AgentModel.findByPk(id);
     if (!agent) {
-      throw new Error(`Agent ${id} not found`);
+      throw new Error(errAgentIdNotFound(id));
     }
 
     if (data.name !== undefined) {
       const trimmed = data.name.trim();
       if (!trimmed) {
-        throw new Error('Agent name cannot be empty');
+        throw new Error(ERR_AGENT_NAME_EMPTY);
       }
       agent.name = trimmed;
     }

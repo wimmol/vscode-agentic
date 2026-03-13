@@ -2,6 +2,13 @@ import * as vscode from 'vscode';
 import type { StateStorage } from '../db';
 import type { TerminalService } from '../services/TerminalService';
 import { removeWorktree, deleteBranch, hasUncommittedChanges } from '../services/GitService';
+import {
+  ERR_AGENT_CONTEXT_NOT_FOUND,
+  dialogRemoveAgent,
+  DIALOG_UNCOMMITTED_REMOVE,
+  BTN_DELETE_WORKTREE,
+  BTN_KEEP_WORKTREE,
+} from '../constants/messages';
 
 export const removeAgent = async (
   storage: StateStorage,
@@ -10,22 +17,22 @@ export const removeAgent = async (
 ): Promise<void> => {
   const ctx = await storage.getAgentContext(agentId);
   if (!ctx) {
-    vscode.window.showErrorMessage('Agent, repository, or worktree not found.');
+    vscode.window.showErrorMessage(ERR_AGENT_CONTEXT_NOT_FOUND);
     return;
   }
   const { agent, repo, worktree } = ctx;
 
-  let detail = `Remove agent "${agent.name}"?`;
+  let detail = dialogRemoveAgent(agent.name);
   const dirty = await hasUncommittedChanges(worktree.path);
   if (dirty) {
-    detail += ' The worktree has uncommitted changes that will be lost if deleted.';
+    detail += DIALOG_UNCOMMITTED_REMOVE;
   }
 
   const choice = await vscode.window.showWarningMessage(
     detail,
     { modal: true },
-    'Delete Worktree',
-    'Keep Worktree',
+    BTN_DELETE_WORKTREE,
+    BTN_KEEP_WORKTREE,
   );
 
   if (!choice) {
@@ -34,7 +41,7 @@ export const removeAgent = async (
 
   terminalService.closeTerminal(agentId);
 
-  if (choice === 'Delete Worktree') {
+  if (choice === BTN_DELETE_WORKTREE) {
     await removeWorktree(repo.localPath, worktree.path);
     await deleteBranch(repo.localPath, agent.name);
   }
