@@ -52,3 +52,8 @@ export const removeAgentMessage = (agentId: string): WebviewToExtensionMessage =
   function: 'removeAgent',
   args: { agentId },
 });
+
+export const agentClickMessage = (agentId: string): WebviewToExtensionMessage => ({
+  function: 'agentClick',
+  args: { agentId },
+});

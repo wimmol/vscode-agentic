@@ -5,6 +5,7 @@ import type { RepoWithAgents } from '../../types';
 
 interface RepoSectionProps {
   repo: RepoWithAgents;
+  selectedAgentId: string | null;
   onRepoRootClick: () => void;
   onAddAgentClick: () => void;
   onRemoveRepoClick: () => void;
@@ -18,6 +19,7 @@ interface RepoSectionProps {
 
 export const RepoSection = ({
   repo,
+  selectedAgentId,
   onRepoRootClick,
   onAddAgentClick,
   onRemoveRepoClick,
@@ -51,6 +53,7 @@ export const RepoSection = ({
                 status={agent.status}
                 lastPrompt={agent.lastPrompt}
                 startedAt={agent.startedAt}
+                isSelected={agent.agentId === selectedAgentId}
                 onClick={() => onAgentClick(agent.agentId)}
                 onCloneClick={() => onCloneAgentClick(agent.agentId)}
                 onStopClick={() => onStopAgentClick(agent.agentId)}

@@ -21721,7 +21721,7 @@ var require_jsx_runtime = __commonJS({
 var import_client = __toESM(require_client());
 
 // src/ui/agentPanel/AgentPanelPage.tsx
-var import_react3 = __toESM(require_react());
+var import_react4 = __toESM(require_react());
 
 // src/ui/shared/atoms/IconButton.tsx
 var import_jsx_runtime = __toESM(require_jsx_runtime());
@@ -21825,6 +21825,7 @@ var TruncatedText = ({ text }) => {
 };
 
 // src/ui/shared/molecules/AgentTile.tsx
+var import_react2 = __toESM(require_react());
 var import_jsx_runtime7 = __toESM(require_jsx_runtime());
 var stopPropagation = (e) => e.stopPropagation();
 var AgentTile = ({
@@ -21832,13 +21833,21 @@ var AgentTile = ({
   status,
   lastPrompt,
   startedAt,
+  isSelected,
   onClick,
   onCloneClick,
   onStopClick,
   onRemoveClick,
   onClearClick
 }) => {
-  return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("article", { className: "agent-tile", onClick, tabIndex: 0, children: [
+  const className = isSelected ? "agent-tile agent-tile--selected" : "agent-tile";
+  const onAgentClick = (0, import_react2.useMemo)(() => {
+    if (isSelected) {
+      return () => null;
+    }
+    return onClick;
+  }, [isSelected]);
+  return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("article", { className, onClick: onAgentClick, tabIndex: 0, children: [
     /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "agent-tile-header", children: [
       /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(StatusIcon, { status }),
       /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: "agent-tile-name", children: name }),
@@ -21864,6 +21873,7 @@ var EmptyState = ({ text }) => {
 var import_jsx_runtime9 = __toESM(require_jsx_runtime());
 var RepoSection = ({
   repo,
+  selectedAgentId,
   onRepoRootClick,
   onAddAgentClick,
   onRemoveRepoClick,
@@ -21893,6 +21903,7 @@ var RepoSection = ({
         status: agent.status,
         lastPrompt: agent.lastPrompt,
         startedAt: agent.startedAt,
+        isSelected: agent.agentId === selectedAgentId,
         onClick: () => onAgentClick(agent.agentId),
         onCloneClick: () => onCloneAgentClick(agent.agentId),
         onStopClick: () => onStopAgentClick(agent.agentId),
@@ -21908,6 +21919,7 @@ var RepoSection = ({
 var import_jsx_runtime10 = __toESM(require_jsx_runtime());
 var AgentPanelView = ({
   repos,
+  selectedAgentId,
   onRootClick,
   onAddRepoClick,
   onRepoRootClick,
@@ -21926,6 +21938,7 @@ var AgentPanelView = ({
       RepoSection,
       {
         repo,
+        selectedAgentId,
         onRepoRootClick: () => onRepoRootClick(repo.repositoryId),
         onAddAgentClick: () => onAddAgentClick(repo.repositoryId),
         onRemoveRepoClick: () => onRemoveRepoClick(repo.repositoryId),
@@ -21942,14 +21955,14 @@ var AgentPanelView = ({
 };
 
 // src/ui/agentPanel/useAgentPanel.ts
-var import_react2 = __toESM(require_react());
+var import_react3 = __toESM(require_react());
 var getCachedRepos = () => {
   const state = vscode.getState();
   return state?.repos ?? [];
 };
 var useAgentPanel = () => {
-  const [repos, setRepos] = (0, import_react2.useState)(getCachedRepos);
-  (0, import_react2.useEffect)(() => {
+  const [repos, setRepos] = (0, import_react3.useState)(getCachedRepos);
+  (0, import_react3.useEffect)(() => {
     const handler = (event) => {
       const message = event.data;
       console.log("[useAgentPanel] received message:", message);
@@ -21995,6 +22008,10 @@ var removeAgentMessage = (agentId) => ({
   function: "removeAgent",
   args: { agentId }
 });
+var agentClickMessage = (agentId) => ({
+  function: "agentClick",
+  args: { agentId }
+});
 
 // src/ui/agentPanel/AgentPanelPage.tsx
 var import_jsx_runtime11 = __toESM(require_jsx_runtime());
@@ -22002,38 +22019,48 @@ var noopId = (_id) => {
 };
 var AgentPanelPage = () => {
   const repos = useAgentPanel();
-  const onAddAgentClick = (0, import_react3.useCallback)((repoId) => {
+  const [selectedAgentId, setSelectedAgentId] = (0, import_react4.useState)(null);
+  const onAddAgentClick = (0, import_react4.useCallback)((repoId) => {
     vscode.postMessage(addAgentMessage(repoId));
   }, []);
-  const onRootClick = (0, import_react3.useCallback)(() => {
+  const onRootClick = (0, import_react4.useCallback)(() => {
     vscode.postMessage(rootClickMessage());
   }, []);
-  const onRepoRootClick = (0, import_react3.useCallback)((repoId) => {
+  const onRepoRootClick = (0, import_react4.useCallback)((repoId) => {
     vscode.postMessage(repoRootClickMessage(repoId));
   }, []);
-  const onAddRepoClick = (0, import_react3.useCallback)(() => {
+  const onAddRepoClick = (0, import_react4.useCallback)(() => {
     vscode.postMessage(addRepoMessage());
   }, []);
-  const onRemoveRepoClick = (0, import_react3.useCallback)((repoId) => {
+  const onRemoveRepoClick = (0, import_react4.useCallback)((repoId) => {
     vscode.postMessage(removeRepoMessage(repoId));
   }, []);
-  const onToggleRepoClick = (0, import_react3.useCallback)((repoId) => {
+  const onToggleRepoClick = (0, import_react4.useCallback)((repoId) => {
     vscode.postMessage(toggleRepoExpandedMessage(repoId));
   }, []);
-  const onRemoveAgentClick = (0, import_react3.useCallback)((agentId) => {
+  const onRemoveAgentClick = (0, import_react4.useCallback)((agentId) => {
+    setSelectedAgentId((prev) => prev === agentId ? null : prev);
     vscode.postMessage(removeAgentMessage(agentId));
+  }, []);
+  const onAgentClick = (0, import_react4.useCallback)((agentId) => {
+    setSelectedAgentId((prev) => {
+      if (prev === agentId) return prev;
+      vscode.postMessage(agentClickMessage(agentId));
+      return agentId;
+    });
   }, []);
   return /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(
     AgentPanelView,
     {
       repos,
+      selectedAgentId,
       onRootClick,
       onAddRepoClick,
       onRepoRootClick,
       onAddAgentClick,
       onRemoveRepoClick,
       onToggleRepoClick,
-      onAgentClick: noopId,
+      onAgentClick,
       onCloneAgentClick: noopId,
       onStopAgentClick: noopId,
       onRemoveAgentClick,

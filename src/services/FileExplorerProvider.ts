@@ -60,6 +60,9 @@ export class FileExplorerProvider implements vscode.TreeDataProvider<FileItem>, 
   }
 
   showRepo(repoId: string, repoPath: string): void {
+    if (this.mode === 'scoped' && this.scopeKey === repoId) {
+      return;
+    }
     this.mode = 'scoped';
     this.scopeKey = repoId;
     this.roots = [repoPath];

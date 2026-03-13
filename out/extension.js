@@ -49315,7 +49315,7 @@ __export(extension_exports, {
   deactivate: () => deactivate
 });
 module.exports = __toCommonJS(extension_exports);
-var vscode13 = __toESM(require("vscode"));
+var vscode14 = __toESM(require("vscode"));
 
 // src/db/index.ts
 var vscode2 = __toESM(require("vscode"));
@@ -49916,6 +49916,9 @@ var FileExplorerProvider = class {
     }
   }
   showRepo(repoId, repoPath) {
+    if (this.mode === "scoped" && this.scopeKey === repoId) {
+      return;
+    }
     this.mode = "scoped";
     this.scopeKey = repoId;
     this.roots = [repoPath];
@@ -50002,10 +50005,15 @@ var FileItem = class extends vscode5.TreeItem {
 };
 
 // src/services/WebviewCommandHandler.ts
-var vscode12 = __toESM(require("vscode"));
+var vscode13 = __toESM(require("vscode"));
 
 // src/features/addAgent.ts
 var vscode6 = __toESM(require("vscode"));
+
+// src/constants/terminal.ts
+var terminalName = (agentName, repoName) => `${agentName} (${repoName})`;
+
+// src/features/addAgent.ts
 var validateBranchName = (value) => {
   const trimmed = value.trim();
   if (!trimmed) {
@@ -50044,7 +50052,7 @@ var addAgent = async (storage, repoId) => {
   }
   const agentCommand = vscode6.workspace.getConfiguration("vscode-agentic").get("agentCommand", "claude");
   const terminal = vscode6.window.createTerminal({
-    name: `${branch} (${repo.name})`,
+    name: terminalName(branch, repo.name),
     cwd: wtPath,
     location: { viewColumn: vscode6.ViewColumn.Two }
   });
@@ -50214,6 +50222,28 @@ var repoRootClick = async (storage, explorer, repoId) => {
   });
 };
 
+// src/features/agentClick.ts
+var vscode12 = __toESM(require("vscode"));
+var agentClick = async (storage, explorer, agentId) => {
+  const agent = await storage.getAgent(agentId);
+  if (!agent) {
+    return;
+  }
+  const [repo, worktree] = await Promise.all([
+    storage.getRepository(agent.repoId),
+    storage.getWorktree(agentId)
+  ]);
+  if (!repo || !worktree) {
+    return;
+  }
+  explorer.showRepo(agentId, worktree.path);
+  const name = terminalName(agent.name, repo.name);
+  const terminal = vscode12.window.terminals.find((t) => t.name === name);
+  if (terminal) {
+    terminal.show(true);
+  }
+};
+
 // src/services/WebviewCommandHandler.ts
 var WebviewCommandHandler = class {
   constructor(provider, storage, explorer) {
@@ -50255,12 +50285,18 @@ var WebviewCommandHandler = class {
         case "repoRootClick":
           await repoRootClick(this.storage, this.explorer, message.args.repoId);
           break;
+        case "agentClick":
+          agentClick(this.storage, this.explorer, message.args.agentId).catch((err) => {
+            const errMsg = err instanceof Error ? err.message : String(err);
+            vscode13.window.showErrorMessage(errMsg);
+          });
+          break;
       }
       console.log('[WebviewCommandHandler] handled "%s" successfully', message.function);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error('[WebviewCommandHandler] error handling "%s":', message.function, msg);
-      vscode12.window.showErrorMessage(msg);
+      vscode13.window.showErrorMessage(msg);
     }
   };
   dispose() {
@@ -50279,7 +50315,7 @@ var activate = async (context) => {
   context.subscriptions.push(provider);
   const explorer = new FileExplorerProvider(storage);
   context.subscriptions.push(explorer);
-  const treeView = vscode13.window.createTreeView("vscode-agentic.explorer", {
+  const treeView = vscode14.window.createTreeView("vscode-agentic.explorer", {
     treeDataProvider: explorer
   });
   explorer.attachTreeView(treeView);
@@ -50287,7 +50323,7 @@ var activate = async (context) => {
   const commandHandler = new WebviewCommandHandler(provider, storage, explorer);
   context.subscriptions.push(commandHandler);
   context.subscriptions.push(
-    vscode13.window.registerWebviewViewProvider(AgentPanelProvider.viewType, provider)
+    vscode14.window.registerWebviewViewProvider(AgentPanelProvider.viewType, provider)
   );
   setTimeout(() => {
     syncWorkspaceRepos(storage).catch((err) => console.error("[Agentic] workspace sync failed:", err));

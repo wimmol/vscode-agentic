@@ -9,6 +9,7 @@ import { removeAgent } from '../features/removeAgent';
 import { removeRepo } from '../features/removeRepo';
 import { rootClick } from '../features/rootClick';
 import { repoRootClick } from '../features/repoRootClick';
+import { agentClick } from '../features/agentClick';
 
 /**
  * Handles all webview → extension communication.
@@ -59,6 +60,12 @@ export class WebviewCommandHandler implements vscode.Disposable {
           break;
         case 'repoRootClick':
           await repoRootClick(this.storage, this.explorer, message.args.repoId);
+          break;
+        case 'agentClick':
+          agentClick(this.storage, this.explorer, message.args.agentId).catch((err) => {
+            const errMsg = err instanceof Error ? err.message : String(err);
+            vscode.window.showErrorMessage(errMsg);
+          });
           break;
       }
       console.log('[WebviewCommandHandler] handled "%s" successfully', message.function);

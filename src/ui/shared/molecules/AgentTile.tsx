@@ -4,6 +4,7 @@ import { Timer } from './Timer';
 import { TruncatedText } from '../atoms/TruncatedText';
 import type { AgentStatus } from '../../../types';
 import type { MouseEvent } from 'react';
+import { useMemo } from 'react';
 
 const stopPropagation = (e: MouseEvent) => e.stopPropagation();
 
@@ -12,6 +13,7 @@ interface AgentTileProps {
   status: AgentStatus;
   lastPrompt: string | null;
   startedAt: number | null;
+  isSelected: boolean;
   onClick: () => void;
   onCloneClick: () => void;
   onStopClick: () => void;
@@ -24,14 +26,21 @@ export const AgentTile = ({
   status,
   lastPrompt,
   startedAt,
+  isSelected,
   onClick,
   onCloneClick,
   onStopClick,
   onRemoveClick,
   onClearClick,
 }: AgentTileProps) => {
+  const [onAgentClick, className] = useMemo(() => {
+    if (isSelected) {
+      return [() => null, 'agent-tile agent-tile--selected'];
+    }
+    return [onClick, 'agent-tile'];
+  }, [isSelected])
   return (
-    <article className="agent-tile" onClick={onClick} tabIndex={0}>
+    <article className={className} onClick={onAgentClick} tabIndex={0}>
       <div className="agent-tile-header">
         <StatusIcon status={status} />
         <span className="agent-tile-name">{name}</span>

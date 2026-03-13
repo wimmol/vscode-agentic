@@ -50,6 +50,10 @@
   cursor: pointer;
 }
 
+.agent-tile--selected {
+  border-color: var(--vscode-focusBorder);
+}
+
 .agent-tile:hover {
   background-color: var(--vscode-list-hoverBackground);
 }

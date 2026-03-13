@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import type { StateStorage } from '../db';
 import { INVALID_BRANCH_RE } from '../constants/git';
+import { terminalName } from '../constants/terminal';
 import { worktreePath, ensureBranch, createWorktree, removeWorktree } from '../services/GitService';
 
 const validateBranchName = (value: string): string | undefined => {
@@ -49,7 +50,7 @@ export const addAgent = async (storage: StateStorage, repoId: string): Promise<v
   const agentCommand = vscode.workspace.getConfiguration('vscode-agentic').get<string>('agentCommand', 'claude');
 
   const terminal = vscode.window.createTerminal({
-    name: `${branch} (${repo.name})`,
+    name: terminalName(branch, repo.name),
     cwd: wtPath,
     location: { viewColumn: vscode.ViewColumn.Two },
   });
