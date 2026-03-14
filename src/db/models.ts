@@ -6,7 +6,7 @@ export interface Repository {
   repositoryId: string;
   name: string;
   localPath: string;
-  developBranch: string;
+  currentBranch: string;
   isExpanded: boolean;
   createdAt: number;
 }

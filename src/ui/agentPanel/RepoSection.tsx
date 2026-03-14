@@ -50,12 +50,12 @@ export const RepoSection = ({
               <section key={zone.branch} className="zone-section">
                 <ZoneHeader
                   branch={zone.branch}
-                  isDevelop={zone.isDevelop}
+                  isCurrent={zone.isCurrent}
                   expanded={zone.isExpanded}
                   hasAgents={zone.agents.length > 0}
                   onToggleClick={() => onToggleZoneClick(repo.repositoryId, zone.branch)}
                   onCloseClick={
-                    zone.isDevelop
+                    zone.isCurrent
                       ? undefined
                       : () => onCloseWorktreeClick(repo.repositoryId, zone.branch)
                   }

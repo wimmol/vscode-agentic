@@ -53,7 +53,7 @@ DB row types (`Repository`, `Worktree`) in `src/db/models.ts`.
 | repositoryId  | TEXT    | PK               | UUID                    |
 | name          | TEXT    | NOT NULL         |                         |
 | localPath     | TEXT    | NOT NULL, UNIQUE | absolute path to repo   |
-| developBranch | TEXT    | NOT NULL         | e.g. `develop`          |
+| currentBranch | TEXT    | NOT NULL         | e.g. `current`          |
 | createdAt     | INTEGER | NOT NULL         | unix ms                 |
 
 #### `agents`
@@ -91,9 +91,9 @@ repositories 1───∞ worktrees
 
 - One repository has many agents.
 - One agent belongs to one repository.
-- One repository has many worktrees (one per non-develop branch).
+- One repository has many worktrees (one per non-current branch).
 - Multiple agents can share the same branch (zone).
-- Develop branch agents have no worktree record — they work on the main repo checkout.
+- Current branch agents have no worktree record — they work on the main repo checkout.
 - Deleting a repository cascades to its agents and worktrees.
 
 ### Additional State

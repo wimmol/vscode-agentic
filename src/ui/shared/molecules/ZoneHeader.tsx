@@ -3,7 +3,7 @@ import { LABEL_COLLAPSE, LABEL_EXPAND, LABEL_CLOSE_WORKTREE } from '../../../con
 
 interface ZoneHeaderProps {
   branch: string;
-  isDevelop: boolean;
+  isCurrent: boolean;
   expanded: boolean;
   hasAgents: boolean;
   onToggleClick: () => void;
@@ -12,16 +12,16 @@ interface ZoneHeaderProps {
 
 export const ZoneHeader = ({
   branch,
-  isDevelop,
+  isCurrent,
   expanded,
   hasAgents,
   onToggleClick,
   onCloseClick,
 }: ZoneHeaderProps) => {
-  const icon = isDevelop ? 'git-branch' : 'repo-forked';
+  const icon = isCurrent ? 'git-branch' : 'repo-forked';
 
   return (
-    <header className={`zone-header${isDevelop ? ' zone-header--develop' : ''}`}>
+    <header className={`zone-header${isCurrent ? ' zone-header--current' : ''}`}>
       {hasAgents ? (
         <IconButton
           icon={expanded ? 'chevron-down' : 'chevron-right'}

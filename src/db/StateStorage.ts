@@ -4,7 +4,7 @@ import type { Repository, Worktree, Agent } from './models';
 import type { RepoWithZones, BranchZone } from '../types';
 import type { AgentCli } from '../types/agent';
 import { AGENT_STATUS_CREATED } from '../constants/agent';
-import { DEFAULT_DEVELOP_BRANCH } from '../constants/repo';
+import { DEFAULT_CURRENT_BRANCH } from '../constants/repo';
 import {
   STORE_REPOSITORIES,
   STORE_AGENTS,
@@ -15,7 +15,7 @@ import {
 import {
   ERR_REPO_NAME_EMPTY,
   ERR_REPO_PATH_EMPTY,
-  ERR_DEVELOP_BRANCH_EMPTY,
+  ERR_CURRENT_BRANCH_EMPTY,
   ERR_AGENT_NAME_EMPTY,
   errRepoIdNotFound,
   errAgentIdNotFound,
@@ -63,7 +63,7 @@ export class StateStorage implements vscode.Disposable {
 
   // ── Repositories ───────────────────────────────────────────────
 
-  addRepository = async (name: string, localPath: string, developBranch: string): Promise<Repository> => {
+  addRepository = async (name: string, localPath: string, currentBranch: string): Promise<Repository> => {
     const trimmedName = name.trim();
     if (!trimmedName) {
       throw new Error(ERR_REPO_NAME_EMPTY);
@@ -78,7 +78,7 @@ export class StateStorage implements vscode.Disposable {
       repositoryId: randomUUID(),
       name: trimmedName,
       localPath: trimmedPath,
-      developBranch: developBranch.trim() || DEFAULT_DEVELOP_BRANCH,
+      currentBranch: currentBranch.trim() || DEFAULT_CURRENT_BRANCH,
       isExpanded: true,
       createdAt: Date.now(),
     };
@@ -134,31 +134,31 @@ export class StateStorage implements vscode.Disposable {
       const byBranch = agentsByRepoBranch.get(repo.repositoryId) ?? new Map<string, Agent[]>();
       const repoWorktrees = worktreesByRepo.get(repo.repositoryId) ?? [];
 
-      // Collect all known branches: develop + agent branches + worktree branches
+      // Collect all known branches: current + agent branches + worktree branches
       const branches = new Set<string>();
-      branches.add(repo.developBranch);
+      branches.add(repo.currentBranch);
       for (const b of byBranch.keys()) branches.add(b);
       for (const wt of repoWorktrees) branches.add(wt.branch);
 
       const zones: BranchZone[] = [];
 
-      // Develop zone first
+      // Current branch zone first
       zones.push({
-        branch: repo.developBranch,
-        isDevelop: true,
-        isExpanded: expanded[this.zoneKey(repo.repositoryId, repo.developBranch)] ?? true,
-        agents: byBranch.get(repo.developBranch) ?? [],
+        branch: repo.currentBranch,
+        isCurrent: true,
+        isExpanded: expanded[this.zoneKey(repo.repositoryId, repo.currentBranch)] ?? true,
+        agents: byBranch.get(repo.currentBranch) ?? [],
       });
 
       // Other zones, alphabetically sorted
       const otherBranches = Array.from(branches)
-        .filter((b) => b !== repo.developBranch)
+        .filter((b) => b !== repo.currentBranch)
         .sort((a, b) => a.localeCompare(b));
 
       for (const branch of otherBranches) {
         zones.push({
           branch,
-          isDevelop: false,
+          isCurrent: false,
           isExpanded: expanded[this.zoneKey(repo.repositoryId, branch)] ?? true,
           agents: byBranch.get(branch) ?? [],
         });
@@ -170,7 +170,7 @@ export class StateStorage implements vscode.Disposable {
 
   updateRepository = async (
     id: string,
-    data: Partial<Pick<Repository, 'name' | 'developBranch'>>,
+    data: Partial<Pick<Repository, 'name' | 'currentBranch'>>,
   ): Promise<Repository> => {
     const list = this.repos();
     const idx = list.findIndex((r) => r.repositoryId === id);
@@ -189,15 +189,15 @@ export class StateStorage implements vscode.Disposable {
       repo.name = trimmed;
     }
 
-    if (data.developBranch !== undefined) {
-      const trimmed = data.developBranch.trim();
+    if (data.currentBranch !== undefined) {
+      const trimmed = data.currentBranch.trim();
       if (!trimmed) {
-        throw new Error(ERR_DEVELOP_BRANCH_EMPTY);
+        throw new Error(ERR_CURRENT_BRANCH_EMPTY);
       }
-      repo.developBranch = trimmed;
+      repo.currentBranch = trimmed;
     }
 
-    if (repo.name === original.name && repo.developBranch === original.developBranch) {
+    if (repo.name === original.name && repo.currentBranch === original.currentBranch) {
       return original;
     }
 

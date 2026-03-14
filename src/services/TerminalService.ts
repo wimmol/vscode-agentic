@@ -294,7 +294,7 @@ export class TerminalService implements vscode.Disposable {
     if (!repo) {
       return;
     }
-    const isDevelop = agent.branch === repo.developBranch;
+    const isCurrent = agent.branch === repo.currentBranch;
     const cwd = worktree?.path ?? repo.localPath;
 
     let detail = dialogTerminalClosed(agent.name);
@@ -306,10 +306,10 @@ export class TerminalService implements vscode.Disposable {
       }
     }
 
-    const branchAgents = isDevelop ? [] : await this.storage.getAgentsByRepoBranch(agent.repoId, agent.branch);
-    const isLastOnWorktreeBranch = !isDevelop && branchAgents.length <= 1;
+    const branchAgents = isCurrent ? [] : await this.storage.getAgentsByRepoBranch(agent.repoId, agent.branch);
+    const isLastOnWorktreeBranch = !isCurrent && branchAgents.length <= 1;
 
-    // Develop branch or shared worktree — simple remove/reopen dialog
+    // Current branch or shared worktree — simple remove/reopen dialog
     if (!isLastOnWorktreeBranch) {
       const choice = await vscode.window.showWarningMessage(
         detail,

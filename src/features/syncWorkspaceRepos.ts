@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import type { StateStorage } from '../db';
 import { GIT_DIR } from '../constants/paths';
-import { DEFAULT_DEVELOP_BRANCH } from '../constants/repo';
+import { DEFAULT_CURRENT_BRANCH } from '../constants/repo';
 
 /**
  * Adds every workspace folder that contains a `.git` directory
@@ -28,6 +28,6 @@ export const syncWorkspaceRepos = async (storage: StateStorage): Promise<void> =
     if (!existsSync(path.join(fsPath, GIT_DIR))) {
       continue;
     }
-    await storage.addRepository(folder.name, fsPath, DEFAULT_DEVELOP_BRANCH);
+    await storage.addRepository(folder.name, fsPath, DEFAULT_CURRENT_BRANCH);
   }
 };
