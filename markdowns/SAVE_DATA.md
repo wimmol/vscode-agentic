@@ -53,7 +53,7 @@ DB row types (`Repository`, `Worktree`) in `src/db/models.ts`.
 | repositoryId  | TEXT    | PK               | UUID                    |
 | name          | TEXT    | NOT NULL         |                         |
 | localPath     | TEXT    | NOT NULL, UNIQUE | absolute path to repo   |
-| stagingBranch | TEXT    | NOT NULL         | e.g. `staging`          |
+| developBranch | TEXT    | NOT NULL         | e.g. `develop`          |
 | createdAt     | INTEGER | NOT NULL         | unix ms                 |
 
 #### `agents`

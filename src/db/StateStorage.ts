@@ -5,7 +5,7 @@ import type { RepoWithAgents } from '../types';
 import type { AgentCli } from '../types/agent';
 import { worktreePath } from '../services/GitService';
 import { AGENT_STATUS_CREATED } from '../constants/agent';
-import { DEFAULT_STAGING_BRANCH } from '../constants/repo';
+import { DEFAULT_DEVELOP_BRANCH } from '../constants/repo';
 import {
   STORE_REPOSITORIES,
   STORE_AGENTS,
@@ -15,7 +15,7 @@ import {
 import {
   ERR_REPO_NAME_EMPTY,
   ERR_REPO_PATH_EMPTY,
-  ERR_STAGING_BRANCH_EMPTY,
+  ERR_DEVELOP_BRANCH_EMPTY,
   ERR_AGENT_NAME_EMPTY,
   errRepoIdNotFound,
   errAgentIdNotFound,
@@ -57,7 +57,7 @@ export class StateStorage implements vscode.Disposable {
 
   // ── Repositories ───────────────────────────────────────────────
 
-  addRepository = async (name: string, localPath: string, stagingBranch: string): Promise<Repository> => {
+  addRepository = async (name: string, localPath: string, developBranch: string): Promise<Repository> => {
     const trimmedName = name.trim();
     if (!trimmedName) {
       throw new Error(ERR_REPO_NAME_EMPTY);
@@ -72,7 +72,7 @@ export class StateStorage implements vscode.Disposable {
       repositoryId: randomUUID(),
       name: trimmedName,
       localPath: trimmedPath,
-      stagingBranch: stagingBranch.trim() || DEFAULT_STAGING_BRANCH,
+      developBranch: developBranch.trim() || DEFAULT_DEVELOP_BRANCH,
       isExpanded: true,
       createdAt: Date.now(),
     };
@@ -113,7 +113,7 @@ export class StateStorage implements vscode.Disposable {
 
   updateRepository = async (
     id: string,
-    data: Partial<Pick<Repository, 'name' | 'stagingBranch'>>,
+    data: Partial<Pick<Repository, 'name' | 'developBranch'>>,
   ): Promise<Repository> => {
     const list = this.repos();
     const idx = list.findIndex((r) => r.repositoryId === id);
@@ -132,15 +132,15 @@ export class StateStorage implements vscode.Disposable {
       repo.name = trimmed;
     }
 
-    if (data.stagingBranch !== undefined) {
-      const trimmed = data.stagingBranch.trim();
+    if (data.developBranch !== undefined) {
+      const trimmed = data.developBranch.trim();
       if (!trimmed) {
-        throw new Error(ERR_STAGING_BRANCH_EMPTY);
+        throw new Error(ERR_DEVELOP_BRANCH_EMPTY);
       }
-      repo.stagingBranch = trimmed;
+      repo.developBranch = trimmed;
     }
 
-    if (repo.name === original.name && repo.stagingBranch === original.stagingBranch) {
+    if (repo.name === original.name && repo.developBranch === original.developBranch) {
       return original;
     }
 
