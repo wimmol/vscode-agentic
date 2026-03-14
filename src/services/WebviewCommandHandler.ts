@@ -13,6 +13,7 @@ import {
   CMD_ROOT_CLICK,
   CMD_REPO_ROOT_CLICK,
   CMD_AGENT_CLICK,
+  CMD_TOGGLE_ZONE_EXPANDED,
 } from '../constants/commands';
 import { addAgent } from '../features/addAgent';
 import { addRepo } from '../features/addRepo';
@@ -76,6 +77,9 @@ export class WebviewCommandHandler implements vscode.Disposable {
           break;
         case CMD_AGENT_CLICK:
           await agentClick(this.storage, this.explorer, this.terminalService, message.args.agentId);
+          break;
+        case CMD_TOGGLE_ZONE_EXPANDED:
+          await this.storage.toggleZoneExpanded(message.args.repoId, message.args.branch);
           break;
       }
       console.log('[WebviewCommandHandler] handled "%s" successfully', message.function);

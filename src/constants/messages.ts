@@ -5,12 +5,13 @@ export const ERR_NOT_GIT_REPO = 'Selected folder is not a git repository (no .gi
 export const ERR_REPO_ALREADY_ADDED = 'Repository is already added.';
 export const ERR_REPO_NOT_FOUND = 'Repository not found.';
 export const ERR_NO_REPOS = 'No repositories added.';
-export const ERR_AGENT_CONTEXT_NOT_FOUND = 'Agent, repository, or worktree not found.';
+export const ERR_AGENT_CONTEXT_NOT_FOUND = 'Agent or repository not found.';
 export const ERR_AGENT_NOT_FOUND = 'Agent not found';
 export const ERR_REPO_NAME_EMPTY = 'Repository name cannot be empty';
 export const ERR_REPO_PATH_EMPTY = 'Repository path cannot be empty';
 export const ERR_DEVELOP_BRANCH_EMPTY = 'Develop branch cannot be empty';
 export const ERR_AGENT_NAME_EMPTY = 'Agent name cannot be empty';
+export const ERR_WORKTREE_NOT_FOUND = 'Worktree not found for this branch.';
 export const ERR_BRANCH_EMPTY = 'Branch name cannot be empty';
 export const ERR_BRANCH_INVALID = 'Invalid branch name (contains forbidden characters)';
 export const errRepoIdNotFound = (id: string) => `Repository ${id} not found`;
@@ -55,3 +56,13 @@ export const LABEL_NAVIGATE_WORKSPACE = 'Navigate to workspace';
 export const LABEL_ADD_REPO = 'Add repo';
 export const LABEL_EMPTY_AGENTS = 'press + to add agent';
 export const LABEL_EMPTY_REPOS = 'press + to add repo';
+
+// ── Quick pick (add agent) ──────────────────────────────────────
+export const PICK_ADD_AGENT_TITLE = 'Add Agent — select branch';
+export const PICK_ADD_AGENT_PLACEHOLDER = 'Choose where to run the agent';
+export const PICK_DEVELOP_DESCRIPTION = 'main checkout';
+export const PICK_WORKTREE_DESCRIPTION = 'existing worktree';
+export const PICK_NEW_BRANCH_LABEL = '$(add) New branch…';
+export const PICK_NEW_BRANCH_DESCRIPTION = 'create worktree';
+export const PICK_SEPARATOR_WORKTREES = 'Worktrees';
+export const PICK_NEW_BRANCH_VALUE = '__new__';

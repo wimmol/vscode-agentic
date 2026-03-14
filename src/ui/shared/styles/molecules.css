@@ -39,6 +39,41 @@
   flex-shrink: 0;
 }
 
+.zone-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px 0 16px;
+  height: 24px;
+  cursor: default;
+}
+
+.zone-header-icon {
+  font-size: 14px;
+  color: var(--vscode-descriptionForeground);
+  flex-shrink: 0;
+}
+
+.zone-header--develop .zone-header-icon {
+  color: var(--vscode-foreground);
+}
+
+.zone-header-name {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--vscode-descriptionForeground);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+  text-transform: lowercase;
+}
+
+.zone-header--develop .zone-header-name {
+  color: var(--vscode-foreground);
+}
+
 .agent-tile {
   display: flex;
   flex-direction: column;

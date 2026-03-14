@@ -10,7 +10,7 @@ import { CMD_READY, MSG_TYPE_UPDATE } from '../constants/commands';
  *
  * Registers as a WebviewViewProvider for the sidebar panel.
  * On every StateStorage change (and on initial resolve), reads the full
- * state, assembles RepoWithAgents[], and pushes it to the webview.
+ * state, assembles RepoWithZones[], and pushes it to the webview.
  * This is the only place where extension→webview communication happens.
  */
 export class AgentPanelProvider implements vscode.WebviewViewProvider, vscode.Disposable {
@@ -77,7 +77,7 @@ export class AgentPanelProvider implements vscode.WebviewViewProvider, vscode.Di
       return;
     }
 
-    const repos = await this.storage.getAllReposWithAgents();
+    const repos = await this.storage.getAllReposWithZones();
     const message: ExtensionToWebviewMessage = { type: MSG_TYPE_UPDATE, repos };
     await this.view.webview.postMessage(message);
   };

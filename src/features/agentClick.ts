@@ -22,7 +22,9 @@ export const agentClick = async (
     return;
   }
 
-  explorer.showRepo(agentId, ctx.worktree.path, ctx.repo.name, ctx.agent.name);
+  const isWorktree = ctx.agent.branch !== ctx.repo.developBranch;
+  const cwd = ctx.worktree?.path ?? ctx.repo.localPath;
+  explorer.showRepo(agentId, cwd, ctx.repo.name, ctx.agent.branch, isWorktree);
 
   const terminal = terminalService.getTerminal(agentId);
   if (terminal) {

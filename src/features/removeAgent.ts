@@ -8,6 +8,7 @@ import {
   DIALOG_UNCOMMITTED_REMOVE,
   BTN_DELETE_WORKTREE,
   BTN_KEEP_WORKTREE,
+  BTN_REMOVE,
 } from '../constants/messages';
 
 export const removeAgent = async (
@@ -21,13 +22,29 @@ export const removeAgent = async (
     return;
   }
   const { agent, repo, worktree } = ctx;
+  const isDevelop = agent.branch === repo.developBranch;
 
   let detail = dialogRemoveAgent(agent.name);
-  const dirty = await hasUncommittedChanges(worktree.path);
+  const dirty = worktree ? await hasUncommittedChanges(worktree.path) : false;
   if (dirty) {
     detail += DIALOG_UNCOMMITTED_REMOVE;
   }
 
+  // Check if this is the last agent on a worktree branch
+  const branchAgents = isDevelop ? [] : await storage.getAgentsByRepoBranch(agent.repoId, agent.branch);
+  const isLastOnWorktreeBranch = !isDevelop && branchAgents.length <= 1;
+
+  // Develop branch or shared worktree — simple confirm
+  if (!isLastOnWorktreeBranch) {
+    const choice = await vscode.window.showWarningMessage(detail, { modal: true }, BTN_REMOVE);
+    if (!choice) return;
+
+    terminalService.closeTerminal(agentId);
+    await storage.removeAgent(agentId);
+    return;
+  }
+
+  // Last agent on worktree branch — offer worktree deletion
   const choice = await vscode.window.showWarningMessage(
     detail,
     { modal: true },
@@ -35,15 +52,14 @@ export const removeAgent = async (
     BTN_KEEP_WORKTREE,
   );
 
-  if (!choice) {
-    return;
-  }
+  if (!choice) return;
 
   terminalService.closeTerminal(agentId);
 
-  if (choice === BTN_DELETE_WORKTREE) {
+  if (choice === BTN_DELETE_WORKTREE && worktree) {
     await removeWorktree(repo.localPath, worktree.path);
-    await deleteBranch(repo.localPath, agent.name);
+    await deleteBranch(repo.localPath, agent.branch);
+    await storage.removeWorktreeByBranch(agent.repoId, agent.branch);
   }
 
   await storage.removeAgent(agentId);

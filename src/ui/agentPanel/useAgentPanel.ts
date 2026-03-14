@@ -1,16 +1,16 @@
 import { useState, useEffect } from 'react';
 import { vscode } from '../index';
-import type { RepoWithAgents } from '../../types';
+import type { RepoWithZones } from '../../types';
 import type { ExtensionToWebviewMessage } from '../../types/messages';
 import { MSG_TYPE_UPDATE, CMD_READY } from '../../constants/commands';
 
-const getCachedRepos = (): RepoWithAgents[] => {
+const getCachedRepos = (): RepoWithZones[] => {
   const state = vscode.getState();
   return state?.repos ?? [];
 };
 
-export const useAgentPanel = (): RepoWithAgents[] => {
-  const [repos, setRepos] = useState<RepoWithAgents[]>(getCachedRepos);
+export const useAgentPanel = (): RepoWithZones[] => {
+  const [repos, setRepos] = useState<RepoWithZones[]>(getCachedRepos);
 
   useEffect(() => {
     const handler = (event: MessageEvent<ExtensionToWebviewMessage>) => {

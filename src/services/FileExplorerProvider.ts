@@ -72,9 +72,9 @@ export class FileExplorerProvider implements vscode.TreeDataProvider<ExplorerIte
     }
   }
 
-  showRepo(repoId: string, repoPath: string, repoName: string, agentName?: string): void {
-    const header = agentName
-      ? ScopeHeaderItem.agent(repoName, agentName)
+  showRepo(repoId: string, repoPath: string, repoName: string, branchName?: string, isWorktree?: boolean): void {
+    const header = branchName
+      ? ScopeHeaderItem.branch(repoName, branchName, isWorktree ?? false)
       : ScopeHeaderItem.repo(repoName);
     if (this.mode === 'scoped' && this.scopeKey === repoId) {
       if (this.headerItem.label !== header.label || this.headerItem.description !== header.description) {
@@ -178,11 +178,12 @@ class ScopeHeaderItem extends vscode.TreeItem {
     return new ScopeHeaderItem(repoName, 'repo');
   }
 
-  static agent(repoName: string, agentName: string): ScopeHeaderItem {
-    return new ScopeHeaderItem(repoName, 'terminal', `${LABEL_AGENT_PREFIX}${agentName}`);
+  static branch(repoName: string, branchName: string, isWorktree: boolean): ScopeHeaderItem {
+    const icon = isWorktree ? 'repo-forked' : 'git-branch';
+    return new ScopeHeaderItem(repoName, icon, `${LABEL_AGENT_PREFIX}${branchName}`);
   }
 
-  private constructor(label: string, icon: 'home' | 'repo' | 'terminal', desc?: string) {
+  private constructor(label: string, icon: 'home' | 'repo' | 'git-branch' | 'repo-forked', desc?: string) {
     super(label, vscode.TreeItemCollapsibleState.None);
     this.iconPath = new vscode.ThemeIcon(icon);
     this.contextValue = CONTEXT_SCOPE_HEADER;

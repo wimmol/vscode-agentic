@@ -8,6 +8,20 @@
   border-top: 1px solid var(--vscode-sideBarSectionHeader-border);
 }
 
-.repo-agents {
+.repo-zones {
   padding-bottom: 4px;
+}
+
+.zone-section {
+  margin-top: 2px;
+}
+
+.zone-agents {
+  padding-bottom: 2px;
+}
+
+.zone-empty-line {
+  height: 1px;
+  margin: 2px 16px 4px;
+  background-color: var(--vscode-panel-border);
 }

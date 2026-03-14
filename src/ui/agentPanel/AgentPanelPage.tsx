@@ -2,7 +2,17 @@ import { useCallback } from 'react';
 import { AgentPanelView } from './AgentPanelView';
 import { useAgentPanel } from './useAgentPanel';
 import { vscode } from '../index';
-import { addAgentMessage, addRepoMessage, agentClickMessage, removeAgentMessage, removeRepoMessage, repoRootClickMessage, rootClickMessage, toggleRepoExpandedMessage } from '../../types/messages';
+import {
+  addAgentMessage,
+  addRepoMessage,
+  agentClickMessage,
+  removeAgentMessage,
+  removeRepoMessage,
+  repoRootClickMessage,
+  rootClickMessage,
+  toggleRepoExpandedMessage,
+  toggleZoneExpandedMessage,
+} from '../../types/messages';
 
 export const AgentPanelPage = () => {
   const repos = useAgentPanel();
@@ -31,6 +41,10 @@ export const AgentPanelPage = () => {
     vscode.postMessage(toggleRepoExpandedMessage(repoId));
   }, []);
 
+  const onToggleZoneClick = useCallback((repoId: string, branch: string) => {
+    vscode.postMessage(toggleZoneExpandedMessage(repoId, branch));
+  }, []);
+
   const onRemoveAgentClick = useCallback((agentId: string) => {
     vscode.postMessage(removeAgentMessage(agentId));
   }, []);
@@ -48,6 +62,7 @@ export const AgentPanelPage = () => {
       onAddAgentClick={onAddAgentClick}
       onRemoveRepoClick={onRemoveRepoClick}
       onToggleRepoClick={onToggleRepoClick}
+      onToggleZoneClick={onToggleZoneClick}
       onAgentClick={onAgentClick}
       onRemoveAgentClick={onRemoveAgentClick}
     />
