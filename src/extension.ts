@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { createStateStorage } from './db';
+import { registerExplorerCommands } from './features/registerExplorerCommands';
 import { syncWorkspaceRepos } from './features/syncWorkspaceRepos';
 import { AgentPanelProvider } from './services/AgentPanelProvider';
 import { FileExplorerProvider } from './services/FileExplorerProvider';
@@ -19,6 +20,8 @@ export const activate = (context: vscode.ExtensionContext) => {
 
   const treeView = vscode.window.createTreeView(VIEW_EXPLORER, {
     treeDataProvider: explorer,
+    canSelectMany: true,
+    dragAndDropController: explorer,
   });
   explorer.attachTreeView(treeView);
   context.subscriptions.push(treeView);
@@ -31,6 +34,7 @@ export const activate = (context: vscode.ExtensionContext) => {
 
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(AgentPanelProvider.viewType, provider),
+    registerExplorerCommands(explorer, treeView),
   );
 
   // Deferred: sync workspace git folders and restore agent terminals.

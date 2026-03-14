@@ -65,7 +65,164 @@
           "name": "Agentic Explorer"
         }
       ]
-    }
+    },
+    "commands": [
+      {
+        "command": "vscode-agentic.explorer.newFile",
+        "title": "New File...",
+        "icon": "$(new-file)",
+        "category": "Agentic"
+      },
+      {
+        "command": "vscode-agentic.explorer.newFolder",
+        "title": "New Folder...",
+        "icon": "$(new-folder)",
+        "category": "Agentic"
+      },
+      {
+        "command": "vscode-agentic.explorer.rename",
+        "title": "Rename...",
+        "category": "Agentic"
+      },
+      {
+        "command": "vscode-agentic.explorer.delete",
+        "title": "Delete",
+        "icon": "$(trash)",
+        "category": "Agentic"
+      },
+      {
+        "command": "vscode-agentic.explorer.copy",
+        "title": "Copy",
+        "category": "Agentic"
+      },
+      {
+        "command": "vscode-agentic.explorer.cut",
+        "title": "Cut",
+        "category": "Agentic"
+      },
+      {
+        "command": "vscode-agentic.explorer.paste",
+        "title": "Paste",
+        "category": "Agentic"
+      },
+      {
+        "command": "vscode-agentic.explorer.copyPath",
+        "title": "Copy Path",
+        "category": "Agentic"
+      },
+      {
+        "command": "vscode-agentic.explorer.copyRelativePath",
+        "title": "Copy Relative Path",
+        "category": "Agentic"
+      },
+      {
+        "command": "vscode-agentic.explorer.revealInOS",
+        "title": "Reveal in Finder",
+        "category": "Agentic"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "vscode-agentic.explorer.newFile",
+          "when": "view == 'vscode-agentic.explorer'",
+          "group": "navigation"
+        },
+        {
+          "command": "vscode-agentic.explorer.newFolder",
+          "when": "view == 'vscode-agentic.explorer'",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "vscode-agentic.explorer.newFile",
+          "when": "view == 'vscode-agentic.explorer' && viewItem =~ /^explorer/",
+          "group": "1_new@1"
+        },
+        {
+          "command": "vscode-agentic.explorer.newFolder",
+          "when": "view == 'vscode-agentic.explorer' && viewItem =~ /^explorer/",
+          "group": "1_new@2"
+        },
+        {
+          "command": "vscode-agentic.explorer.cut",
+          "when": "view == 'vscode-agentic.explorer' && viewItem =~ /^explorer/",
+          "group": "5_cutcopypaste@1"
+        },
+        {
+          "command": "vscode-agentic.explorer.copy",
+          "when": "view == 'vscode-agentic.explorer' && viewItem =~ /^explorer/",
+          "group": "5_cutcopypaste@2"
+        },
+        {
+          "command": "vscode-agentic.explorer.paste",
+          "when": "view == 'vscode-agentic.explorer' && viewItem =~ /^explorer/",
+          "group": "5_cutcopypaste@3"
+        },
+        {
+          "command": "vscode-agentic.explorer.copyPath",
+          "when": "view == 'vscode-agentic.explorer' && viewItem =~ /^explorer/",
+          "group": "6_copypath@1"
+        },
+        {
+          "command": "vscode-agentic.explorer.copyRelativePath",
+          "when": "view == 'vscode-agentic.explorer' && viewItem =~ /^explorer/",
+          "group": "6_copypath@2"
+        },
+        {
+          "command": "vscode-agentic.explorer.revealInOS",
+          "when": "view == 'vscode-agentic.explorer' && viewItem =~ /^explorer/",
+          "group": "6_copypath@3"
+        },
+        {
+          "command": "vscode-agentic.explorer.rename",
+          "when": "view == 'vscode-agentic.explorer' && viewItem =~ /^explorer/",
+          "group": "7_modification@1"
+        },
+        {
+          "command": "vscode-agentic.explorer.delete",
+          "when": "view == 'vscode-agentic.explorer' && viewItem =~ /^explorer/",
+          "group": "7_modification@2"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "vscode-agentic.explorer.copy",
+        "key": "ctrl+c",
+        "mac": "cmd+c",
+        "when": "focusedView == 'vscode-agentic.explorer' && listFocus && !inputFocus"
+      },
+      {
+        "command": "vscode-agentic.explorer.cut",
+        "key": "ctrl+x",
+        "mac": "cmd+x",
+        "when": "focusedView == 'vscode-agentic.explorer' && listFocus && !inputFocus"
+      },
+      {
+        "command": "vscode-agentic.explorer.paste",
+        "key": "ctrl+v",
+        "mac": "cmd+v",
+        "when": "focusedView == 'vscode-agentic.explorer' && listFocus && !inputFocus"
+      },
+      {
+        "command": "vscode-agentic.explorer.delete",
+        "key": "delete",
+        "mac": "cmd+backspace",
+        "when": "focusedView == 'vscode-agentic.explorer' && listFocus && !inputFocus"
+      },
+      {
+        "command": "vscode-agentic.explorer.rename",
+        "key": "f2",
+        "when": "focusedView == 'vscode-agentic.explorer' && listFocus && !inputFocus"
+      },
+      {
+        "command": "vscode-agentic.explorer.rename",
+        "key": "enter",
+        "when": "focusedView == 'vscode-agentic.explorer' && listFocus && !inputFocus"
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run compile:prod",
