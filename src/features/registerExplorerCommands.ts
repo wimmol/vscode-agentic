@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
+import type { StateStorage } from '../db';
 import type { FileExplorerProvider } from '../services/FileExplorerProvider';
+import type { TerminalService } from '../services/TerminalService';
 import {
   newFile,
   newFolder,
@@ -12,9 +14,10 @@ import {
   copyRelativePath,
   revealInOS,
   isFileItemLike,
+  type FileItemLike,
 } from './explorerFileOps';
-
-type ExplorerItem = { filePath: string; isDir: boolean; resourceUri: vscode.Uri };
+import { sendToTerminal } from './sendToTerminal';
+import { addAgentWithTask } from './addAgentWithTask';
 
 const wrap = (fn: () => Promise<void>) =>
   fn().catch((err: unknown) => {
@@ -23,12 +26,14 @@ const wrap = (fn: () => Promise<void>) =>
   });
 
 /**
- * Registers all explorer file-operation commands (new, rename, delete, copy/cut/paste, etc.)
+ * Registers all explorer commands (file ops + agent actions)
  * and returns a single Disposable that tears them all down.
  */
 export const registerExplorerCommands = (
   explorer: FileExplorerProvider,
   treeView: vscode.TreeView<unknown>,
+  storage: StateStorage,
+  terminalService: TerminalService,
 ): vscode.Disposable => {
   const resolveItems = (item?: unknown, selected?: readonly unknown[]) => {
     if (selected && selected.length > 0) return selected.filter(isFileItemLike);
@@ -36,10 +41,19 @@ export const registerExplorerCommands = (
     return treeView.selection.filter(isFileItemLike);
   };
 
-  const resolveSingle = (item?: unknown): ExplorerItem | undefined =>
+  const resolveSingle = (item?: unknown): FileItemLike | undefined =>
     item && isFileItemLike(item) ? item : treeView.selection.find(isFileItemLike);
 
+  /** Prompt for optional custom instructions. Returns undefined if user cancels. */
+  const promptCustomInstructions = (title: string) =>
+    vscode.window.showInputBox({
+      title,
+      placeHolder: 'Optional extra instructions (leave empty for defaults)',
+      ignoreFocusOut: true,
+    });
+
   return vscode.Disposable.from(
+    // ── File operations ──────────────────────────────────────────
     vscode.commands.registerCommand('vscode-agentic.explorer.newFile', (item?: unknown) =>
       wrap(() => newFile(explorer, isFileItemLike(item) ? item : undefined)),
     ),
@@ -75,5 +89,28 @@ export const registerExplorerCommands = (
       const target = resolveSingle(item);
       if (target) revealInOS(target);
     }),
+
+    // ── Agent actions ────────────────────────────────────────────
+    vscode.commands.registerCommand('vscode-agentic.explorer.sendToTerminal', (item?: unknown, selected?: readonly unknown[]) =>
+      wrap(() => sendToTerminal(storage, terminalService, resolveItems(item, selected))),
+    ),
+    vscode.commands.registerCommand('vscode-agentic.explorer.generateDocs', (item?: unknown, selected?: readonly unknown[]) =>
+      wrap(async () => {
+        const items = resolveItems(item, selected);
+        if (items.length === 0) return;
+        const custom = await promptCustomInstructions('Generate Documentation');
+        if (custom === undefined) return;
+        await addAgentWithTask(storage, explorer, terminalService, items, 'doc', custom);
+      }),
+    ),
+    vscode.commands.registerCommand('vscode-agentic.explorer.refactor', (item?: unknown, selected?: readonly unknown[]) =>
+      wrap(async () => {
+        const items = resolveItems(item, selected);
+        if (items.length === 0) return;
+        const custom = await promptCustomInstructions('Refactor');
+        if (custom === undefined) return;
+        await addAgentWithTask(storage, explorer, terminalService, items, 'refactor', custom);
+      }),
+    ),
   );
 };

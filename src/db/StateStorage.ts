@@ -441,6 +441,10 @@ export class StateStorage implements vscode.Disposable {
     console.log('[StateStorage] toggleZoneExpanded:', { repoId, branch, isExpanded: !current });
   };
 
+  getFocusedAgent = async (): Promise<Agent | undefined> => {
+    return this.agents().find((a) => a.isFocused);
+  };
+
   // ── Convenience ─────────────────────────────────────────────────
 
   getAgentContext = async (

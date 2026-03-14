@@ -14,6 +14,7 @@ export const ERR_AGENT_NAME_EMPTY = 'Agent name cannot be empty';
 export const ERR_WORKTREE_NOT_FOUND = 'Worktree not found for this branch.';
 export const ERR_BRANCH_EMPTY = 'Branch name cannot be empty';
 export const ERR_BRANCH_INVALID = 'Invalid branch name (contains forbidden characters)';
+export const ERR_FILES_NO_REPO = 'Selected files do not belong to any tracked repository.';
 export const errRepoIdNotFound = (id: string) => `Repository ${id} not found`;
 export const errAgentIdNotFound = (id: string) => `Agent ${id} not found`;
 

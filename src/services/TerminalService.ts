@@ -29,6 +29,9 @@ export const claudeProjectDir = (cwd: string): string =>
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/** Wrap a string in single quotes for safe shell interpolation. */
+export const shellQuote = (s: string): string => `'${s.replace(/'/g, "'\\''")}'`;
+
 /**
  * Manages agent↔terminal mappings and lifecycle.
  *
@@ -81,6 +84,7 @@ export class TerminalService implements vscode.Disposable {
     repoName: string,
     cwd: string,
     sessionId?: string | null,
+    initialPrompt?: string,
   ): vscode.Terminal => {
     const name = terminalName(agentName, branch, repoName);
 
@@ -89,7 +93,7 @@ export class TerminalService implements vscode.Disposable {
       cwd,
       location: { viewColumn: vscode.ViewColumn.Two },
     });
-    terminal.sendText(this.buildCommand(sessionId));
+    terminal.sendText(this.buildCommand(sessionId, initialPrompt));
     this.terminals.set(agentId, terminal);
 
     if (sessionId) {
@@ -172,14 +176,17 @@ export class TerminalService implements vscode.Disposable {
   /**
    * Build the shell command.
    * When a sessionId is provided, appends `--resume <id>` to resume that exact session.
+   * When an initialPrompt is provided, appends it as a positional argument so
+   * Claude starts the interactive session with that prompt already submitted.
    */
-  private buildCommand = (sessionId?: string | null): string => {
+  private buildCommand = (sessionId?: string | null, initialPrompt?: string): string => {
     const bypass = vscode.workspace
       .getConfiguration(CONFIG_SECTION)
       .get<boolean>(CONFIG_BYPASS_PERMISSIONS, false);
     let cmd = DEFAULT_AGENT_COMMAND;
     if (bypass) cmd += ` ${CLI_FLAG_BYPASS_PERMISSIONS}`;
     if (sessionId && UUID_RE.test(sessionId)) cmd += ` --resume ${sessionId}`;
+    if (initialPrompt) cmd += ` ${shellQuote(initialPrompt)}`;
     return cmd;
   };
 

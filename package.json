@@ -50,6 +50,16 @@
           "type": "boolean",
           "default": false,
           "description": "Run agents with --dangerously-skip-permissions flag (no confirmation prompts)."
+        },
+        "vscode-agentic.generateMdPrompt": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Additional instructions appended to the **Generate Documentation** agent prompt."
+        },
+        "vscode-agentic.refactorPrompt": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Additional instructions appended to the **Refactor** agent prompt."
         }
       }
     },
@@ -119,6 +129,24 @@
         "command": "vscode-agentic.explorer.revealInOS",
         "title": "Reveal in Finder",
         "category": "Agentic"
+      },
+      {
+        "command": "vscode-agentic.explorer.sendToTerminal",
+        "title": "Send to Claude",
+        "icon": "$(terminal)",
+        "category": "Agentic"
+      },
+      {
+        "command": "vscode-agentic.explorer.generateDocs",
+        "title": "Generate Documentation",
+        "icon": "$(book)",
+        "category": "Agentic"
+      },
+      {
+        "command": "vscode-agentic.explorer.refactor",
+        "title": "Refactor",
+        "icon": "$(wand)",
+        "category": "Agentic"
       }
     ],
     "menus": {
@@ -144,6 +172,21 @@
           "command": "vscode-agentic.explorer.newFolder",
           "when": "view == 'vscode-agentic.explorer' && viewItem =~ /^explorer/",
           "group": "1_new@2"
+        },
+        {
+          "command": "vscode-agentic.explorer.sendToTerminal",
+          "when": "view == 'vscode-agentic.explorer' && viewItem =~ /^explorer/",
+          "group": "3_agent@1"
+        },
+        {
+          "command": "vscode-agentic.explorer.generateDocs",
+          "when": "view == 'vscode-agentic.explorer' && viewItem =~ /^explorer/",
+          "group": "3_agent@2"
+        },
+        {
+          "command": "vscode-agentic.explorer.refactor",
+          "when": "view == 'vscode-agentic.explorer' && viewItem =~ /^explorer/",
+          "group": "3_agent@3"
         },
         {
           "command": "vscode-agentic.explorer.cut",

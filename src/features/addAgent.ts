@@ -23,6 +23,12 @@ import {
 import { worktreePath, ensureBranch, createWorktree, removeWorktree } from '../services/GitService';
 import { generateAgentName } from '../utils/nameGenerator';
 
+const nextBranchName = (prefix: string, existingBranches: Set<string>): string => {
+  let n = 1;
+  while (existingBranches.has(`${prefix}-${n}`)) n++;
+  return `${prefix}-${n}`;
+};
+
 const validateBranchName = (value: string): string | undefined => {
   const trimmed = value.trim();
   if (!trimmed) {
@@ -43,6 +49,8 @@ export const addAgent = async (
   explorer: FileExplorerProvider,
   terminalService: TerminalService,
   repoId: string,
+  initialPrompt?: string,
+  branchHint?: string,
 ): Promise<string | undefined> => {
   const repo = await storage.getRepository(repoId);
   if (!repo) {
@@ -103,17 +111,27 @@ export const addAgent = async (
   const isDevelop = picked.branch === repo.developBranch;
 
   if (picked.branch === PICK_NEW_BRANCH_VALUE) {
-    // Prompt for new branch name
+    // Suggest a unique branch name based on context
+    const existingBranches = new Set(worktrees.map((w) => w.branch));
+    const prefix = branchHint || 'tree';
+    const suggested = nextBranchName(prefix, existingBranches);
+
     const input = await vscode.window.showInputBox({
       title: INPUT_ADD_AGENT_TITLE,
       placeHolder: INPUT_ADD_AGENT_PLACEHOLDER,
-      validateInput: validateBranchName,
+      value: suggested,
+      valueSelection: [0, suggested.length],
+      validateInput: (v) => {
+        const trimmed = v.trim();
+        if (!trimmed) return `Press Enter to use "${suggested}"`;
+        return validateBranchName(v);
+      },
       ignoreFocusOut: true,
     });
-    if (!input) {
+    if (input === undefined) {
       return;
     }
-    branch = input.trim();
+    branch = input.trim() || suggested;
 
     // Create git branch + worktree
     const repoPath = repo.localPath;
@@ -154,7 +172,7 @@ export const addAgent = async (
   }
 
   explorer.showRepo(agent.agentId, cwd, repo.name, branch, !isDevelop);
-  terminalService.createTerminal(agent.agentId, agentName, branch, repo.name, cwd);
+  terminalService.createTerminal(agent.agentId, agentName, branch, repo.name, cwd, undefined, initialPrompt);
   await storage.focusAgent(agent.agentId);
   return agent.agentId;
 };

@@ -34,7 +34,7 @@ export const activate = (context: vscode.ExtensionContext) => {
 
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(AgentPanelProvider.viewType, provider),
-    registerExplorerCommands(explorer, treeView),
+    registerExplorerCommands(explorer, treeView, storage, terminalService),
   );
 
   // Deferred: sync workspace git folders and restore agent terminals.

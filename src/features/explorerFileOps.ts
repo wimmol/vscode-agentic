@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 
 /** Duck-typed subset of FileItem used by file operations. */
-interface FileItemLike {
+export interface FileItemLike {
   filePath: string;
   isDir: boolean;
   resourceUri: vscode.Uri;
