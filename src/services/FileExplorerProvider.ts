@@ -2,11 +2,19 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import type { StateStorage } from '../db';
-import { WORKSPACE_SCOPE_KEY, PERSIST_DEBOUNCE_MS } from '../constants/explorer';
+import {
+  WORKSPACE_SCOPE_KEY,
+  PERSIST_DEBOUNCE_MS,
+  CONTEXT_FILE,
+  CONTEXT_FOLDER,
+  URI_LIST_MIME,
+} from '../constants/explorer';
 import { GIT_DIR } from '../constants/paths';
 import { LABEL_WORKSPACE, LABEL_OPEN_FILE, LABEL_AGENT_PREFIX } from '../constants/messages';
 
 type ExplorerItem = ScopeHeaderItem | FileItem;
+
+const CONTEXT_SCOPE_HEADER = 'scopeHeader';
 
 /**
  * Provides a file-tree view of repository directories in the sidebar.
@@ -14,8 +22,14 @@ type ExplorerItem = ScopeHeaderItem | FileItem;
  * Replaces `updateWorkspaceFolders` so that switching Explorer scope
  * never restarts the window, extensions, or terminals.
  * Persists expanded folder state per scope in SQLite (explorer_state table).
+ *
+ * Also implements TreeDragAndDropController to support:
+ * - Dragging files/folders to move them within the tree
+ * - Dragging files to the VS Code editor to open them
  */
-export class FileExplorerProvider implements vscode.TreeDataProvider<ExplorerItem>, vscode.Disposable {
+export class FileExplorerProvider
+  implements vscode.TreeDataProvider<ExplorerItem>, vscode.TreeDragAndDropController<ExplorerItem>, vscode.Disposable
+{
   private roots: string[] = [];
   private mode: 'all' | 'scoped' = 'all';
   private scopeKey = WORKSPACE_SCOPE_KEY;
@@ -26,6 +40,11 @@ export class FileExplorerProvider implements vscode.TreeDataProvider<ExplorerIte
 
   private readonly _onDidChangeTreeData = new vscode.EventEmitter<ExplorerItem | undefined>();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
+
+  // ── Drag & drop ──────────────────────────────────────────────────
+  readonly dragMimeTypes = [URI_LIST_MIME];
+  readonly dropMimeTypes = [URI_LIST_MIME];
+  private draggedItems: FileItem[] = [];
 
   private readonly disposables: vscode.Disposable[] = [];
 
@@ -39,6 +58,8 @@ export class FileExplorerProvider implements vscode.TreeDataProvider<ExplorerIte
     );
     void this.loadAndRefresh();
   }
+
+  // ── Public API ───────────────────────────────────────────────────
 
   attachTreeView(treeView: vscode.TreeView<ExplorerItem>): void {
     this.disposables.push(
@@ -57,6 +78,16 @@ export class FileExplorerProvider implements vscode.TreeDataProvider<ExplorerIte
     );
   }
 
+  /** Force-refresh the entire tree. */
+  refresh(): void {
+    this._onDidChangeTreeData.fire(undefined);
+  }
+
+  /** Current root paths displayed in the tree. */
+  getRoots(): string[] {
+    return this.roots;
+  }
+
   showAllRepos(repoPaths?: string[]): void {
     if (this.mode === 'all' && !repoPaths) {
       return;
@@ -72,9 +103,9 @@ export class FileExplorerProvider implements vscode.TreeDataProvider<ExplorerIte
     }
   }
 
-  showRepo(repoId: string, repoPath: string, repoName: string, agentName?: string): void {
-    const header = agentName
-      ? ScopeHeaderItem.agent(repoName, agentName)
+  showRepo(repoId: string, repoPath: string, repoName: string, branchName?: string, isWorktree?: boolean): void {
+    const header = branchName
+      ? ScopeHeaderItem.branch(repoName, branchName, isWorktree ?? false)
       : ScopeHeaderItem.repo(repoName);
     if (this.mode === 'scoped' && this.scopeKey === repoId) {
       if (this.headerItem.label !== header.label || this.headerItem.description !== header.description) {
@@ -89,6 +120,8 @@ export class FileExplorerProvider implements vscode.TreeDataProvider<ExplorerIte
     this.roots = [repoPath];
     void this.loadExpandedAndRefresh();
   }
+
+  // ── TreeDataProvider ─────────────────────────────────────────────
 
   getTreeItem(element: ExplorerItem): vscode.TreeItem {
     return element;
@@ -110,6 +143,83 @@ export class FileExplorerProvider implements vscode.TreeDataProvider<ExplorerIte
     }
 
     return this.readDirectory(element.filePath);
+  }
+
+  // ── TreeDragAndDropController ────────────────────────────────────
+
+  handleDrag(source: readonly ExplorerItem[], dataTransfer: vscode.DataTransfer): void {
+    const fileItems = source.filter((s): s is FileItem => s instanceof FileItem);
+    if (fileItems.length === 0) return;
+
+    this.draggedItems = fileItems;
+
+    // text/uri-list enables drop-to-editor (VS Code opens the file)
+    const uriList = fileItems.map((f) => f.resourceUri!.toString()).join('\r\n');
+    dataTransfer.set(URI_LIST_MIME, new vscode.DataTransferItem(uriList));
+  }
+
+  async handleDrop(target: ExplorerItem | undefined, dataTransfer: vscode.DataTransfer): Promise<void> {
+    // Always consume draggedItems to avoid stale refs after cancelled drags
+    const internalItems = this.draggedItems;
+    this.draggedItems = [];
+
+    const targetDir = this.resolveDropTarget(target);
+    if (!targetDir) return;
+
+    // Internal drag (from our tree)
+    if (internalItems.length > 0) {
+      await this.moveItems(internalItems, targetDir);
+      return;
+    }
+
+    // External URI drop
+    const uriItem = dataTransfer.get(URI_LIST_MIME);
+    if (uriItem) {
+      const raw = await uriItem.asString();
+      const uris = raw
+        .split(/\r?\n/)
+        .filter(Boolean)
+        .map((u) => vscode.Uri.parse(u));
+      for (const uri of uris) {
+        const dest = vscode.Uri.file(path.join(targetDir, path.basename(uri.fsPath)));
+        if (uri.fsPath === dest.fsPath) continue;
+        try {
+          await vscode.workspace.fs.rename(uri, dest, { overwrite: false });
+        } catch (err) {
+          console.error('[FileExplorerProvider] drop move failed:', err);
+          vscode.window.showErrorMessage(`Failed to move "${path.basename(uri.fsPath)}": ${err}`);
+        }
+      }
+      this.refresh();
+    }
+  }
+
+  // ── Private helpers ──────────────────────────────────────────────
+
+  private resolveDropTarget(target: ExplorerItem | undefined): string | undefined {
+    if (!target || target instanceof ScopeHeaderItem) {
+      return this.roots[0];
+    }
+    return target.isDir ? target.filePath : path.dirname(target.filePath);
+  }
+
+  private async moveItems(items: FileItem[], targetDir: string): Promise<void> {
+    for (const item of items) {
+      const dest = path.join(targetDir, path.basename(item.filePath));
+      if (item.filePath === dest) continue;
+      if (dest.startsWith(item.filePath + path.sep)) continue;
+      try {
+        await vscode.workspace.fs.rename(
+          vscode.Uri.file(item.filePath),
+          vscode.Uri.file(dest),
+          { overwrite: false },
+        );
+      } catch (err) {
+        console.error('[FileExplorerProvider] move failed:', err);
+        vscode.window.showErrorMessage(`Failed to move "${path.basename(item.filePath)}": ${err}`);
+      }
+    }
+    this.refresh();
   }
 
   private async loadAndRefresh(): Promise<void> {
@@ -167,8 +277,6 @@ export class FileExplorerProvider implements vscode.TreeDataProvider<ExplorerIte
   }
 }
 
-const CONTEXT_SCOPE_HEADER = 'scopeHeader';
-
 class ScopeHeaderItem extends vscode.TreeItem {
   static workspace(): ScopeHeaderItem {
     return new ScopeHeaderItem(LABEL_WORKSPACE, 'home');
@@ -178,11 +286,12 @@ class ScopeHeaderItem extends vscode.TreeItem {
     return new ScopeHeaderItem(repoName, 'repo');
   }
 
-  static agent(repoName: string, agentName: string): ScopeHeaderItem {
-    return new ScopeHeaderItem(repoName, 'terminal', `${LABEL_AGENT_PREFIX}${agentName}`);
+  static branch(repoName: string, branchName: string, isWorktree: boolean): ScopeHeaderItem {
+    const icon = isWorktree ? 'repo-forked' : 'git-branch';
+    return new ScopeHeaderItem(repoName, icon, `${LABEL_AGENT_PREFIX}${branchName}`);
   }
 
-  private constructor(label: string, icon: 'home' | 'repo' | 'terminal', desc?: string) {
+  private constructor(label: string, icon: 'home' | 'repo' | 'git-branch' | 'repo-forked', desc?: string) {
     super(label, vscode.TreeItemCollapsibleState.None);
     this.iconPath = new vscode.ThemeIcon(icon);
     this.contextValue = CONTEXT_SCOPE_HEADER;
@@ -192,7 +301,7 @@ class ScopeHeaderItem extends vscode.TreeItem {
   }
 }
 
-class FileItem extends vscode.TreeItem {
+export class FileItem extends vscode.TreeItem {
   constructor(
     public readonly filePath: string,
     public readonly isDir: boolean,
@@ -207,6 +316,7 @@ class FileItem extends vscode.TreeItem {
         : vscode.TreeItemCollapsibleState.None,
     );
     this.resourceUri = vscode.Uri.file(filePath);
+    this.contextValue = isDir ? CONTEXT_FOLDER : CONTEXT_FILE;
 
     if (!isDir) {
       this.command = {

@@ -53,39 +53,52 @@ DB row types (`Repository`, `Worktree`) in `src/db/models.ts`.
 | repositoryId  | TEXT    | PK               | UUID                    |
 | name          | TEXT    | NOT NULL         |                         |
 | localPath     | TEXT    | NOT NULL, UNIQUE | absolute path to repo   |
-| stagingBranch | TEXT    | NOT NULL         | e.g. `staging`          |
+| developBranch | TEXT    | NOT NULL         | e.g. `develop`          |
 | createdAt     | INTEGER | NOT NULL         | unix ms                 |
 
 #### `agents`
 
-| Field      | Type    | Constraints                | Note                          |
-|------------|---------|----------------------------|-------------------------------|
-| agentId    | TEXT    | PK                         | UUID                          |
-| repoId     | TEXT    | NOT NULL, FK → repositories | ON DELETE CASCADE             |
-| name       | TEXT    | NOT NULL                   |                               |
-| cli        | TEXT    | NOT NULL                   | `claude-code` for now         |
-| status     | TEXT    | NOT NULL                   | `created` / `running` / `completed` / `error` |
-| isFocused  | BOOLEAN | NOT NULL, default false    | whether agent is currently selected in UI |
-| sessionId  | TEXT    |                            | CLI session id to resume      |
-| lastPrompt | TEXT    |                            | last prompt sent              |
-| startedAt  | INTEGER |                            | unix ms, when last task started |
-| createdAt  | INTEGER | NOT NULL                   | unix ms                       |
+| Field       | Type    | Constraints                 | Note                                           |
+|-------------|---------|-----------------------------|-------------------------------------------------|
+| agentId     | TEXT    | PK                          | UUID                                           |
+| repoId      | TEXT    | NOT NULL, FK → repositories | ON DELETE CASCADE                              |
+| name        | TEXT    | NOT NULL                    | auto-generated funny name (e.g. "Cosmic Panda") |
+| branch      | TEXT    | NOT NULL                    | git branch this agent works on                 |
+| cli         | TEXT    | NOT NULL                    | `claude-code` for now                          |
+| status      | TEXT    | NOT NULL                    | `created` / `running` / `idle` / `error`       |
+| isFocused   | BOOLEAN | NOT NULL, default false     | whether agent is currently selected in UI      |
+| sessionId   | TEXT    |                             | CLI session id to resume                       |
+| lastPrompt  | TEXT    |                             | last prompt sent                               |
+| startedAt   | INTEGER |                             | unix ms, when last task started                |
+| completedAt | INTEGER |                             | unix ms, when last task completed              |
+| createdAt   | INTEGER | NOT NULL                    | unix ms                                        |
 
 #### `worktrees`
 
-| Field      | Type | Constraints                   | Note                                   |
-|------------|------|-------------------------------|-----------------------------------------|
-| worktreeId | TEXT | PK                            | UUID                                   |
-| agentId    | TEXT | NOT NULL, UNIQUE, FK → agents | ON DELETE CASCADE (1:1 with agent)     |
-| path       | TEXT | NOT NULL                      | e.g. `repo_path/.worktrees/agent_name` |
+| Field      | Type | Constraints                   | Note                                            |
+|------------|------|-------------------------------|-------------------------------------------------|
+| worktreeId | TEXT | PK                            | UUID                                            |
+| repoId     | TEXT | NOT NULL, FK → repositories   | ON DELETE CASCADE                               |
+| branch     | TEXT | NOT NULL                      | git branch name (unique per repo)               |
+| path       | TEXT | NOT NULL                      | e.g. `repo_path/.worktrees/branch_name`         |
 
 ### Relations
 
 ```
-repositories 1───∞ agents 1───1 worktrees
+repositories 1───∞ agents
+repositories 1───∞ worktrees
 ```
 
 - One repository has many agents.
 - One agent belongs to one repository.
-- One agent has one worktree.
-- Deleting a repository cascades to its agents and their worktrees.
+- One repository has many worktrees (one per non-develop branch).
+- Multiple agents can share the same branch (zone).
+- Develop branch agents have no worktree record — they work on the main repo checkout.
+- Deleting a repository cascades to its agents and worktrees.
+
+### Additional State
+
+| Key                    | Type                      | Note                                  |
+|------------------------|---------------------------|---------------------------------------|
+| `agentic.explorerState`| `Record<string, string[]>`| expanded paths per scope key          |
+| `agentic.zoneExpanded` | `Record<string, boolean>` | zone collapse state, key: `repoId::branch` |

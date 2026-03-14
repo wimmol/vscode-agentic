@@ -1,4 +1,4 @@
-import type { RepoWithAgents } from './index';
+import type { RepoWithZones } from './index';
 import {
   MSG_TYPE_UPDATE,
   CMD_TOGGLE_REPO_EXPANDED,
@@ -9,13 +9,15 @@ import {
   CMD_ADD_AGENT,
   CMD_REMOVE_AGENT,
   CMD_AGENT_CLICK,
+  CMD_TOGGLE_ZONE_EXPANDED,
+  CMD_CLOSE_WORKTREE,
 } from '../constants/commands';
 
 // ── Extension → Webview ───────────────────────────────────────────
 
 export interface StateUpdateMessage {
   type: typeof MSG_TYPE_UPDATE;
-  repos: RepoWithAgents[];
+  repos: RepoWithZones[];
 }
 
 export type ExtensionToWebviewMessage = StateUpdateMessage;
@@ -67,4 +69,14 @@ export const removeAgentMessage = (agentId: string): WebviewToExtensionMessage =
 export const agentClickMessage = (agentId: string): WebviewToExtensionMessage => ({
   function: CMD_AGENT_CLICK,
   args: { agentId },
+});
+
+export const toggleZoneExpandedMessage = (repoId: string, branch: string): WebviewToExtensionMessage => ({
+  function: CMD_TOGGLE_ZONE_EXPANDED,
+  args: { repoId, branch },
+});
+
+export const closeWorktreeMessage = (repoId: string, branch: string): WebviewToExtensionMessage => ({
+  function: CMD_CLOSE_WORKTREE,
+  args: { repoId, branch },
 });

@@ -1,19 +1,21 @@
 import { TabHeader } from '../shared/molecules/TabHeader';
 import { RepoSection } from './RepoSection';
 import { EmptyState } from '../shared/atoms/EmptyState';
-import type { RepoWithAgents } from '../../types';
+import type { RepoWithZones } from '../../types';
 import { LABEL_EMPTY_REPOS } from '../../constants/messages';
 
 interface AgentPanelViewProps {
-  repos: RepoWithAgents[];
+  repos: RepoWithZones[];
   onRootClick: () => void;
   onAddRepoClick: () => void;
   onRepoRootClick: (repoId: string) => void;
   onAddAgentClick: (repoId: string) => void;
   onRemoveRepoClick: (repoId: string) => void;
   onToggleRepoClick: (repoId: string) => void;
+  onToggleZoneClick: (repoId: string, branch: string) => void;
   onAgentClick: (agentId: string) => void;
   onRemoveAgentClick: (agentId: string) => void;
+  onCloseWorktreeClick: (repoId: string, branch: string) => void;
 }
 
 export const AgentPanelView = ({
@@ -24,8 +26,10 @@ export const AgentPanelView = ({
   onAddAgentClick,
   onRemoveRepoClick,
   onToggleRepoClick,
+  onToggleZoneClick,
   onAgentClick,
   onRemoveAgentClick,
+  onCloseWorktreeClick,
 }: AgentPanelViewProps) => {
   return (
     <section className="agent-panel">
@@ -42,8 +46,10 @@ export const AgentPanelView = ({
             onAddAgentClick={() => onAddAgentClick(repo.repositoryId)}
             onRemoveRepoClick={() => onRemoveRepoClick(repo.repositoryId)}
             onToggleRepoClick={() => onToggleRepoClick(repo.repositoryId)}
+            onToggleZoneClick={onToggleZoneClick}
             onAgentClick={onAgentClick}
             onRemoveAgentClick={onRemoveAgentClick}
+            onCloseWorktreeClick={onCloseWorktreeClick}
           />
         ))
       )}

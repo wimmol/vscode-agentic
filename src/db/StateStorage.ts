@@ -1,21 +1,21 @@
 import { randomUUID } from 'crypto';
 import * as vscode from 'vscode';
 import type { Repository, Worktree, Agent } from './models';
-import type { RepoWithAgents } from '../types';
+import type { RepoWithZones, BranchZone } from '../types';
 import type { AgentCli } from '../types/agent';
-import { worktreePath } from '../services/GitService';
 import { AGENT_STATUS_CREATED } from '../constants/agent';
-import { DEFAULT_STAGING_BRANCH } from '../constants/repo';
+import { DEFAULT_DEVELOP_BRANCH } from '../constants/repo';
 import {
   STORE_REPOSITORIES,
   STORE_AGENTS,
   STORE_WORKTREES,
   STORE_EXPLORER_STATE,
+  STORE_ZONE_EXPANDED,
 } from '../constants/db';
 import {
   ERR_REPO_NAME_EMPTY,
   ERR_REPO_PATH_EMPTY,
-  ERR_STAGING_BRANCH_EMPTY,
+  ERR_DEVELOP_BRANCH_EMPTY,
   ERR_AGENT_NAME_EMPTY,
   errRepoIdNotFound,
   errAgentIdNotFound,
@@ -55,9 +55,15 @@ export class StateStorage implements vscode.Disposable {
     return this.state.get<Record<string, string[]>>(STORE_EXPLORER_STATE, {});
   }
 
+  private zoneExpanded(): Record<string, boolean> {
+    return this.state.get<Record<string, boolean>>(STORE_ZONE_EXPANDED, {});
+  }
+
+  private zoneKey = (repoId: string, branch: string): string => `${repoId}::${branch}`;
+
   // ── Repositories ───────────────────────────────────────────────
 
-  addRepository = async (name: string, localPath: string, stagingBranch: string): Promise<Repository> => {
+  addRepository = async (name: string, localPath: string, developBranch: string): Promise<Repository> => {
     const trimmedName = name.trim();
     if (!trimmedName) {
       throw new Error(ERR_REPO_NAME_EMPTY);
@@ -72,7 +78,7 @@ export class StateStorage implements vscode.Disposable {
       repositoryId: randomUUID(),
       name: trimmedName,
       localPath: trimmedPath,
-      stagingBranch: stagingBranch.trim() || DEFAULT_STAGING_BRANCH,
+      developBranch: developBranch.trim() || DEFAULT_DEVELOP_BRANCH,
       isExpanded: true,
       createdAt: Date.now(),
     };
@@ -91,29 +97,80 @@ export class StateStorage implements vscode.Disposable {
     return this.repos();
   };
 
-  getAllReposWithAgents = async (): Promise<RepoWithAgents[]> => {
+  getAllReposWithZones = async (): Promise<RepoWithZones[]> => {
     const repos = this.repos();
     const allAgents = this.agents();
+    const allWorktrees = this.worktrees();
+    const expanded = this.zoneExpanded();
 
-    const agentsByRepo = new Map<string, Agent[]>();
+    // Pre-group agents by repoId → branch → Agent[]
+    const agentsByRepoBranch = new Map<string, Map<string, Agent[]>>();
     for (const agent of allAgents) {
-      const list = agentsByRepo.get(agent.repoId);
+      let byBranch = agentsByRepoBranch.get(agent.repoId);
+      if (!byBranch) {
+        byBranch = new Map();
+        agentsByRepoBranch.set(agent.repoId, byBranch);
+      }
+      const list = byBranch.get(agent.branch);
       if (list) {
         list.push(agent);
       } else {
-        agentsByRepo.set(agent.repoId, [agent]);
+        byBranch.set(agent.branch, [agent]);
       }
     }
 
-    return repos.map((repo) => ({
-      ...repo,
-      agents: agentsByRepo.get(repo.repositoryId) ?? [],
-    }));
+    // Pre-group worktrees by repoId
+    const worktreesByRepo = new Map<string, Worktree[]>();
+    for (const wt of allWorktrees) {
+      const list = worktreesByRepo.get(wt.repoId);
+      if (list) {
+        list.push(wt);
+      } else {
+        worktreesByRepo.set(wt.repoId, [wt]);
+      }
+    }
+
+    return repos.map((repo) => {
+      const byBranch = agentsByRepoBranch.get(repo.repositoryId) ?? new Map<string, Agent[]>();
+      const repoWorktrees = worktreesByRepo.get(repo.repositoryId) ?? [];
+
+      // Collect all known branches: develop + agent branches + worktree branches
+      const branches = new Set<string>();
+      branches.add(repo.developBranch);
+      for (const b of byBranch.keys()) branches.add(b);
+      for (const wt of repoWorktrees) branches.add(wt.branch);
+
+      const zones: BranchZone[] = [];
+
+      // Develop zone first
+      zones.push({
+        branch: repo.developBranch,
+        isDevelop: true,
+        isExpanded: expanded[this.zoneKey(repo.repositoryId, repo.developBranch)] ?? true,
+        agents: byBranch.get(repo.developBranch) ?? [],
+      });
+
+      // Other zones, alphabetically sorted
+      const otherBranches = Array.from(branches)
+        .filter((b) => b !== repo.developBranch)
+        .sort((a, b) => a.localeCompare(b));
+
+      for (const branch of otherBranches) {
+        zones.push({
+          branch,
+          isDevelop: false,
+          isExpanded: expanded[this.zoneKey(repo.repositoryId, branch)] ?? true,
+          agents: byBranch.get(branch) ?? [],
+        });
+      }
+
+      return { ...repo, zones };
+    });
   };
 
   updateRepository = async (
     id: string,
-    data: Partial<Pick<Repository, 'name' | 'stagingBranch'>>,
+    data: Partial<Pick<Repository, 'name' | 'developBranch'>>,
   ): Promise<Repository> => {
     const list = this.repos();
     const idx = list.findIndex((r) => r.repositoryId === id);
@@ -132,15 +189,15 @@ export class StateStorage implements vscode.Disposable {
       repo.name = trimmed;
     }
 
-    if (data.stagingBranch !== undefined) {
-      const trimmed = data.stagingBranch.trim();
+    if (data.developBranch !== undefined) {
+      const trimmed = data.developBranch.trim();
       if (!trimmed) {
-        throw new Error(ERR_STAGING_BRANCH_EMPTY);
+        throw new Error(ERR_DEVELOP_BRANCH_EMPTY);
       }
-      repo.stagingBranch = trimmed;
+      repo.developBranch = trimmed;
     }
 
-    if (repo.name === original.name && repo.stagingBranch === original.stagingBranch) {
+    if (repo.name === original.name && repo.developBranch === original.developBranch) {
       return original;
     }
 
@@ -169,26 +226,46 @@ export class StateStorage implements vscode.Disposable {
     const list = this.repos();
     const filtered = list.filter((r) => r.repositoryId !== id);
     if (filtered.length < list.length) {
-      // Cascade: remove agents, worktrees, and explorer state for this repo
       const agentList = this.agents();
-      const removedAgentIds = new Set(agentList.filter((a) => a.repoId === id).map((a) => a.agentId));
-      await this.state.update(STORE_AGENTS, agentList.filter((a) => a.repoId !== id));
-      await this.state.update(STORE_WORKTREES, this.worktrees().filter((w) => !removedAgentIds.has(w.agentId)));
-      await this.state.update(STORE_REPOSITORIES, filtered);
+      const removedAgentIds = new Set(
+        agentList.filter((a) => a.repoId === id).map((a) => a.agentId),
+      );
+
+      // Prepare all cleanup data before writes
+      const writes: Thenable<void>[] = [
+        this.state.update(STORE_AGENTS, agentList.filter((a) => a.repoId !== id)),
+        this.state.update(STORE_WORKTREES, this.worktrees().filter((w) => w.repoId !== id)),
+        this.state.update(STORE_REPOSITORIES, filtered),
+      ];
+
+      // Clean zone expanded state
+      const ze = this.zoneExpanded();
+      const prefix = `${id}::`;
+      const cleanedZe: Record<string, boolean> = {};
+      for (const [k, v] of Object.entries(ze)) {
+        if (!k.startsWith(prefix)) cleanedZe[k] = v;
+      }
+      if (Object.keys(cleanedZe).length < Object.keys(ze).length) {
+        writes.push(this.state.update(STORE_ZONE_EXPANDED, cleanedZe));
+      }
+
+      // Clean explorer state
       const es = this.explorerState();
       const cleanedKeys = Object.keys(es).filter((k) => k !== id && !removedAgentIds.has(k));
       if (cleanedKeys.length < Object.keys(es).length) {
         const cleaned: Record<string, string[]> = {};
         for (const k of cleanedKeys) cleaned[k] = es[k];
-        await this.state.update(STORE_EXPLORER_STATE, cleaned);
+        writes.push(this.state.update(STORE_EXPLORER_STATE, cleaned));
       }
+
+      await Promise.all(writes);
       this._onDidChange.fire();
     }
   };
 
   // ── Agents ─────────────────────────────────────────────────────
 
-  addAgent = async (repoId: string, name: string, cli: AgentCli): Promise<Agent> => {
+  addAgent = async (repoId: string, name: string, branch: string, cli: AgentCli): Promise<Agent> => {
     const trimmedName = name.trim();
     if (!trimmedName) {
       throw new Error(ERR_AGENT_NAME_EMPTY);
@@ -204,6 +281,7 @@ export class StateStorage implements vscode.Disposable {
       agentId: randomUUID(),
       repoId,
       name: trimmedName,
+      branch: branch.trim(),
       cli,
       status: AGENT_STATUS_CREATED,
       isFocused: false,
@@ -214,14 +292,7 @@ export class StateStorage implements vscode.Disposable {
       createdAt: Date.now(),
     };
 
-    const worktree: Worktree = {
-      worktreeId: randomUUID(),
-      agentId: agent.agentId,
-      path: worktreePath(repo.localPath, trimmedName),
-    };
-
     await this.state.update(STORE_AGENTS, [...this.agents(), agent]);
-    await this.state.update(STORE_WORKTREES, [...this.worktrees(), worktree]);
     this._onDidChange.fire();
     console.log('[StateStorage] addAgent: result:', agent);
     return agent;
@@ -233,6 +304,10 @@ export class StateStorage implements vscode.Disposable {
 
   getAgentsByRepo = async (repoId: string): Promise<Agent[]> => {
     return this.agents().filter((a) => a.repoId === repoId);
+  };
+
+  getAgentsByRepoBranch = async (repoId: string, branch: string): Promise<Agent[]> => {
+    return this.agents().filter((a) => a.repoId === repoId && a.branch === branch);
   };
 
   updateAgent = async (
@@ -286,7 +361,6 @@ export class StateStorage implements vscode.Disposable {
     const filtered = list.filter((a) => a.agentId !== id);
     if (filtered.length < list.length) {
       await this.state.update(STORE_AGENTS, filtered);
-      await this.state.update(STORE_WORKTREES, this.worktrees().filter((w) => w.agentId !== id));
       const es = this.explorerState();
       if (id in es) {
         const { [id]: _, ...rest } = es;
@@ -313,32 +387,78 @@ export class StateStorage implements vscode.Disposable {
     console.log('[StateStorage] focusAgent:', { agentId });
   };
 
-  // ── Worktrees (read-only) ─────────────────────────────────────
+  // ── Worktrees ─────────────────────────────────────────────────
 
-  getWorktree = async (agentId: string): Promise<Worktree | undefined> => {
-    return this.worktrees().find((w) => w.agentId === agentId);
+  addWorktree = async (repoId: string, branch: string, path: string): Promise<Worktree> => {
+    const worktree: Worktree = {
+      worktreeId: randomUUID(),
+      repoId,
+      branch,
+      path,
+    };
+
+    await this.state.update(STORE_WORKTREES, [...this.worktrees(), worktree]);
+    this._onDidChange.fire();
+    console.log('[StateStorage] addWorktree: result:', worktree);
+    return worktree;
+  };
+
+  getWorktreeByBranch = async (repoId: string, branch: string): Promise<Worktree | undefined> => {
+    return this.worktrees().find((w) => w.repoId === repoId && w.branch === branch);
+  };
+
+  removeWorktreeByBranch = async (repoId: string, branch: string): Promise<void> => {
+    console.log('[StateStorage] removeWorktreeByBranch:', { repoId, branch });
+    const list = this.worktrees();
+    const filtered = list.filter((w) => !(w.repoId === repoId && w.branch === branch));
+    if (filtered.length < list.length) {
+      await this.state.update(STORE_WORKTREES, filtered);
+
+      // Clean up zone expanded state for the removed branch
+      const key = this.zoneKey(repoId, branch);
+      const ze = this.zoneExpanded();
+      if (key in ze) {
+        const { [key]: _, ...rest } = ze;
+        await this.state.update(STORE_ZONE_EXPANDED, rest);
+      }
+
+      this._onDidChange.fire();
+    }
   };
 
   getAllWorktrees = async (): Promise<Worktree[]> => {
     return this.worktrees();
   };
 
+  // ── Zones ─────────────────────────────────────────────────────
+
+  toggleZoneExpanded = async (repoId: string, branch: string): Promise<void> => {
+    const key = this.zoneKey(repoId, branch);
+    const map = this.zoneExpanded();
+    const current = map[key] ?? true;
+    await this.state.update(STORE_ZONE_EXPANDED, { ...map, [key]: !current });
+    this._onDidChange.fire();
+    console.log('[StateStorage] toggleZoneExpanded:', { repoId, branch, isExpanded: !current });
+  };
+
+  getFocusedAgent = async (): Promise<Agent | undefined> => {
+    return this.agents().find((a) => a.isFocused);
+  };
+
   // ── Convenience ─────────────────────────────────────────────────
 
   getAgentContext = async (
     agentId: string,
-  ): Promise<{ agent: Agent; repo: Repository; worktree: Worktree } | undefined> => {
-    const [agent, worktree] = await Promise.all([
-      this.getAgent(agentId),
-      this.getWorktree(agentId),
-    ]);
-    if (!agent || !worktree) {
+  ): Promise<{ agent: Agent; repo: Repository; worktree: Worktree | undefined } | undefined> => {
+    const agent = await this.getAgent(agentId);
+    if (!agent) {
       return undefined;
     }
     const repo = await this.getRepository(agent.repoId);
     if (!repo) {
       return undefined;
     }
+    const worktree = await this.getWorktreeByBranch(agent.repoId, agent.branch);
     return { agent, repo, worktree };
   };
 

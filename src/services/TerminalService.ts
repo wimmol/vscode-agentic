@@ -11,6 +11,7 @@ import { SESSION_POLL_INTERVAL_MS, SESSION_POLL_MAX_ATTEMPTS } from '../constant
 import {
   dialogTerminalClosed,
   DIALOG_UNCOMMITTED_TERMINAL,
+  BTN_REMOVE,
   BTN_REMOVE_DELETE_WORKTREE,
   BTN_REMOVE_KEEP_WORKTREE,
   BTN_REOPEN_TERMINAL,
@@ -27,6 +28,9 @@ export const claudeProjectDir = (cwd: string): string =>
   join(homedir(), CLAUDE_DIR, CLAUDE_PROJECTS_DIR, cwd.replace(/[/.]/g, '-'));
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Wrap a string in single quotes for safe shell interpolation. */
+export const shellQuote = (s: string): string => `'${s.replace(/'/g, "'\\''")}'`;
 
 /**
  * Manages agent↔terminal mappings and lifecycle.
@@ -76,18 +80,20 @@ export class TerminalService implements vscode.Disposable {
   createTerminal = (
     agentId: string,
     agentName: string,
+    branch: string,
     repoName: string,
     cwd: string,
     sessionId?: string | null,
+    initialPrompt?: string,
   ): vscode.Terminal => {
-    const name = terminalName(agentName, repoName);
+    const name = terminalName(agentName, branch, repoName);
 
     const terminal = vscode.window.createTerminal({
       name,
       cwd,
       location: { viewColumn: vscode.ViewColumn.Two },
     });
-    terminal.sendText(this.buildCommand(sessionId));
+    terminal.sendText(this.buildCommand(sessionId, initialPrompt));
     this.terminals.set(agentId, terminal);
 
     if (sessionId) {
@@ -122,38 +128,38 @@ export class TerminalService implements vscode.Disposable {
   /** Restore terminals for every agent in the database. Called once during activation. */
   restoreAll = async (): Promise<void> => {
     const [repos, allWorktrees] = await Promise.all([
-      this.storage.getAllReposWithAgents(),
+      this.storage.getAllReposWithZones(),
       this.storage.getAllWorktrees(),
     ]);
 
-    const worktreeByAgent = new Map(allWorktrees.map((wt) => [wt.agentId, wt]));
+    const worktreeByKey = new Map(allWorktrees.map((wt) => [`${wt.repoId}::${wt.branch}`, wt]));
     const existingByName = new Map(vscode.window.terminals.map((t) => [t.name, t]));
 
     // Collect agent terminal names so we can close unrelated terminals after restore.
     const agentTerminalNames = new Set<string>();
 
     for (const repo of repos) {
-      for (const agent of repo.agents) {
-        const worktree = worktreeByAgent.get(agent.agentId);
-        if (!worktree) {
-          continue;
-        }
+      for (const zone of repo.zones) {
+        for (const agent of zone.agents) {
+          const worktree = worktreeByKey.get(`${agent.repoId}::${agent.branch}`);
+          const cwd = worktree?.path ?? repo.localPath;
 
-        const name = terminalName(agent.name, repo.name);
-        agentTerminalNames.add(name);
+          const name = terminalName(agent.name, agent.branch, repo.name);
+          agentTerminalNames.add(name);
 
-        // Adopt an existing terminal if one already matches by name.
-        // Don't send any command — the terminal is already running.
-        const existing = existingByName.get(name);
-        if (existing) {
-          this.terminals.set(agent.agentId, existing);
-          if (agent.sessionId) {
-            this.sessionWatcher.startWatching(agent.agentId, agent.sessionId, worktree.path);
+          // Adopt an existing terminal if one already matches by name.
+          // Don't send any command — the terminal is already running.
+          const existing = existingByName.get(name);
+          if (existing) {
+            this.terminals.set(agent.agentId, existing);
+            if (agent.sessionId) {
+              this.sessionWatcher.startWatching(agent.agentId, agent.sessionId, cwd);
+            }
+            continue;
           }
-          continue;
-        }
 
-        this.createTerminal(agent.agentId, agent.name, repo.name, worktree.path, agent.sessionId);
+          this.createTerminal(agent.agentId, agent.name, agent.branch, repo.name, cwd, agent.sessionId);
+        }
       }
     }
 
@@ -170,14 +176,17 @@ export class TerminalService implements vscode.Disposable {
   /**
    * Build the shell command.
    * When a sessionId is provided, appends `--resume <id>` to resume that exact session.
+   * When an initialPrompt is provided, appends it as a positional argument so
+   * Claude starts the interactive session with that prompt already submitted.
    */
-  private buildCommand = (sessionId?: string | null): string => {
+  private buildCommand = (sessionId?: string | null, initialPrompt?: string): string => {
     const bypass = vscode.workspace
       .getConfiguration(CONFIG_SECTION)
       .get<boolean>(CONFIG_BYPASS_PERMISSIONS, false);
     let cmd = DEFAULT_AGENT_COMMAND;
     if (bypass) cmd += ` ${CLI_FLAG_BYPASS_PERMISSIONS}`;
     if (sessionId && UUID_RE.test(sessionId)) cmd += ` --resume ${sessionId}`;
+    if (initialPrompt) cmd += ` ${shellQuote(initialPrompt)}`;
     return cmd;
   };
 
@@ -278,20 +287,46 @@ export class TerminalService implements vscode.Disposable {
       return;
     }
 
-    const [worktree, repo] = await Promise.all([
-      this.storage.getWorktree(agentId),
+    const [repo, worktree] = await Promise.all([
       this.storage.getRepository(agent.repoId),
+      this.storage.getWorktreeByBranch(agent.repoId, agent.branch),
     ]);
-    if (!worktree || !repo) {
+    if (!repo) {
+      return;
+    }
+    const isDevelop = agent.branch === repo.developBranch;
+    const cwd = worktree?.path ?? repo.localPath;
+
+    let detail = dialogTerminalClosed(agent.name);
+
+    if (worktree) {
+      const dirty = await hasUncommittedChanges(worktree.path);
+      if (dirty) {
+        detail += DIALOG_UNCOMMITTED_TERMINAL;
+      }
+    }
+
+    const branchAgents = isDevelop ? [] : await this.storage.getAgentsByRepoBranch(agent.repoId, agent.branch);
+    const isLastOnWorktreeBranch = !isDevelop && branchAgents.length <= 1;
+
+    // Develop branch or shared worktree — simple remove/reopen dialog
+    if (!isLastOnWorktreeBranch) {
+      const choice = await vscode.window.showWarningMessage(
+        detail,
+        { modal: true },
+        BTN_REMOVE,
+        BTN_REOPEN_TERMINAL,
+      );
+      if (choice === BTN_REMOVE) {
+        await this.storage.removeAgent(agentId);
+        return;
+      }
+      const reopened = this.createTerminal(agentId, agent.name, agent.branch, repo.name, cwd, agent.sessionId);
+      reopened.show(false);
       return;
     }
 
-    let detail = dialogTerminalClosed(agent.name);
-    const dirty = await hasUncommittedChanges(worktree.path);
-    if (dirty) {
-      detail += DIALOG_UNCOMMITTED_TERMINAL;
-    }
-
+    // Last agent on worktree branch — offer worktree deletion
     const choice = await vscode.window.showWarningMessage(
       detail,
       { modal: true },
@@ -301,8 +336,11 @@ export class TerminalService implements vscode.Disposable {
     );
 
     if (choice === BTN_REMOVE_DELETE_WORKTREE) {
-      await removeWorktree(repo.localPath, worktree.path);
-      await deleteBranch(repo.localPath, agent.name);
+      if (worktree) {
+        await removeWorktree(repo.localPath, worktree.path);
+        await deleteBranch(repo.localPath, agent.branch);
+        await this.storage.removeWorktreeByBranch(agent.repoId, agent.branch);
+      }
       await this.storage.removeAgent(agentId);
       return;
     }
@@ -313,7 +351,7 @@ export class TerminalService implements vscode.Disposable {
     }
 
     // "Reopen Terminal" or dialog dismissed — resume the exact session.
-    const reopened = this.createTerminal(agentId, agent.name, repo.name, worktree.path, agent.sessionId);
+    const reopened = this.createTerminal(agentId, agent.name, agent.branch, repo.name, cwd, agent.sessionId);
     reopened.show(false);
   };
 

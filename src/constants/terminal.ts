@@ -1,2 +1,2 @@
-export const terminalName = (agentName: string, repoName: string): string =>
-  `${agentName} (${repoName})`;
+export const terminalName = (agentName: string, branch: string, repoName: string): string =>
+  `${agentName} · ${branch} (${repoName})`;

@@ -7,6 +7,8 @@ export const CMD_REPO_ROOT_CLICK = 'repoRootClick';
 export const CMD_ADD_AGENT = 'addAgent';
 export const CMD_REMOVE_AGENT = 'removeAgent';
 export const CMD_AGENT_CLICK = 'agentClick';
+export const CMD_TOGGLE_ZONE_EXPANDED = 'toggleZoneExpanded';
+export const CMD_CLOSE_WORKTREE = 'closeWorktree';
 export const CMD_READY = 'ready';
 
 // Extension → Webview message types

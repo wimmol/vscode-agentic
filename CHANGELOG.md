@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.3.0] - 2026-03-15
+
+### Added
+
+- **Agentic Explorer** — Custom file explorer tree view in the sidebar with branch and worktree scoping
+- File operations: new file, new folder, rename, delete, copy, cut, paste, copy path, copy relative path, reveal in Finder
+- Keyboard shortcuts for explorer operations (copy, cut, paste, delete, rename)
+- **AI-powered explorer actions** — Send to Claude, Generate Documentation, and Refactor via context menu
+- Configurable prompts for Generate Documentation and Refactor actions
+- Full worktree sync
+
 ## [0.2.0] - 2026-03-14
 
 ### Added

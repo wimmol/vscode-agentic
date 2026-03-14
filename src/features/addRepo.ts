@@ -2,7 +2,7 @@ import { existsSync } from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import type { StateStorage } from '../db';
-import { BROWSE_LABEL, DEFAULT_STAGING_BRANCH } from '../constants/repo';
+import { BROWSE_LABEL, DEFAULT_DEVELOP_BRANCH } from '../constants/repo';
 import { GIT_DIR } from '../constants/paths';
 import {
   ERR_NOT_GIT_REPO,
@@ -84,7 +84,7 @@ export const addRepo = async (storage: StateStorage): Promise<void> => {
   }
 
   const name = path.basename(folderPath);
-  await storage.addRepository(name, folderPath, DEFAULT_STAGING_BRANCH);
+  await storage.addRepository(name, folderPath, DEFAULT_DEVELOP_BRANCH);
 
   // Also add to the VS Code workspace if not already there.
   const alreadyInWorkspace = (vscode.workspace.workspaceFolders ?? []).some(
