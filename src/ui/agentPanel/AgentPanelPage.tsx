@@ -6,6 +6,7 @@ import {
   addAgentMessage,
   addRepoMessage,
   agentClickMessage,
+  closeWorktreeMessage,
   removeAgentMessage,
   removeRepoMessage,
   repoRootClickMessage,
@@ -53,6 +54,10 @@ export const AgentPanelPage = () => {
     vscode.postMessage(agentClickMessage(agentId));
   }, []);
 
+  const onCloseWorktreeClick = useCallback((repoId: string, branch: string) => {
+    vscode.postMessage(closeWorktreeMessage(repoId, branch));
+  }, []);
+
   return (
     <AgentPanelView
       repos={repos}
@@ -65,6 +70,7 @@ export const AgentPanelPage = () => {
       onToggleZoneClick={onToggleZoneClick}
       onAgentClick={onAgentClick}
       onRemoveAgentClick={onRemoveAgentClick}
+      onCloseWorktreeClick={onCloseWorktreeClick}
     />
   );
 };

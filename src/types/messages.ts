@@ -10,6 +10,7 @@ import {
   CMD_REMOVE_AGENT,
   CMD_AGENT_CLICK,
   CMD_TOGGLE_ZONE_EXPANDED,
+  CMD_CLOSE_WORKTREE,
 } from '../constants/commands';
 
 // ── Extension → Webview ───────────────────────────────────────────
@@ -72,5 +73,10 @@ export const agentClickMessage = (agentId: string): WebviewToExtensionMessage =>
 
 export const toggleZoneExpandedMessage = (repoId: string, branch: string): WebviewToExtensionMessage => ({
   function: CMD_TOGGLE_ZONE_EXPANDED,
+  args: { repoId, branch },
+});
+
+export const closeWorktreeMessage = (repoId: string, branch: string): WebviewToExtensionMessage => ({
+  function: CMD_CLOSE_WORKTREE,
   args: { repoId, branch },
 });

@@ -73,3 +73,48 @@ export const deleteBranch = async (repoPath: string, branch: string): Promise<vo
     // Best-effort — branch may not exist or may be checked out elsewhere.
   }
 };
+
+export interface GitWorktreeEntry {
+  path: string;
+  branch: string;
+}
+
+/**
+ * List all git worktrees except the main one.
+ * Parses `git worktree list --porcelain` output.
+ */
+export const listWorktrees = async (repoPath: string): Promise<GitWorktreeEntry[]> => {
+  let stdout: string;
+  try {
+    const result = await execFile(
+      'git',
+      ['--no-optional-locks', 'worktree', 'list', '--porcelain'],
+      gitOpts(repoPath),
+    );
+    stdout = result.stdout;
+  } catch {
+    return [];
+  }
+
+  const entries: GitWorktreeEntry[] = [];
+  const blocks = stdout.split('\n\n').filter((b) => b.trim());
+
+  // Skip the first block — it's the main worktree
+  for (let i = 1; i < blocks.length; i++) {
+    const lines = blocks[i].split('\n');
+    let path = '';
+    let branch = '';
+    for (const line of lines) {
+      if (line.startsWith('worktree ')) {
+        path = line.slice('worktree '.length);
+      } else if (line.startsWith('branch refs/heads/')) {
+        branch = line.slice('branch refs/heads/'.length);
+      }
+    }
+    if (path && branch) {
+      entries.push({ path, branch });
+    }
+  }
+
+  return entries;
+};

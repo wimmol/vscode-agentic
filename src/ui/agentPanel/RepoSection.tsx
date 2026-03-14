@@ -14,6 +14,7 @@ interface RepoSectionProps {
   onToggleZoneClick: (repoId: string, branch: string) => void;
   onAgentClick: (agentId: string) => void;
   onRemoveAgentClick: (agentId: string) => void;
+  onCloseWorktreeClick: (repoId: string, branch: string) => void;
 }
 
 export const RepoSection = ({
@@ -25,6 +26,7 @@ export const RepoSection = ({
   onToggleZoneClick,
   onAgentClick,
   onRemoveAgentClick,
+  onCloseWorktreeClick,
 }: RepoSectionProps) => {
   const hasAnyAgents = repo.zones.some((z) => z.agents.length > 0);
 
@@ -50,7 +52,13 @@ export const RepoSection = ({
                   branch={zone.branch}
                   isDevelop={zone.isDevelop}
                   expanded={zone.isExpanded}
+                  hasAgents={zone.agents.length > 0}
                   onToggleClick={() => onToggleZoneClick(repo.repositoryId, zone.branch)}
+                  onCloseClick={
+                    zone.isDevelop
+                      ? undefined
+                      : () => onCloseWorktreeClick(repo.repositoryId, zone.branch)
+                  }
                 />
 
                 {zone.isExpanded && zone.agents.length > 0 && (

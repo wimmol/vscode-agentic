@@ -14,6 +14,7 @@ import {
   CMD_REPO_ROOT_CLICK,
   CMD_AGENT_CLICK,
   CMD_TOGGLE_ZONE_EXPANDED,
+  CMD_CLOSE_WORKTREE,
 } from '../constants/commands';
 import { addAgent } from '../features/addAgent';
 import { addRepo } from '../features/addRepo';
@@ -22,6 +23,7 @@ import { removeRepo } from '../features/removeRepo';
 import { rootClick } from '../features/rootClick';
 import { repoRootClick } from '../features/repoRootClick';
 import { agentClick } from '../features/agentClick';
+import { closeWorktree } from '../features/closeWorktree';
 
 /**
  * Handles all webview → extension communication.
@@ -80,6 +82,9 @@ export class WebviewCommandHandler implements vscode.Disposable {
           break;
         case CMD_TOGGLE_ZONE_EXPANDED:
           await this.storage.toggleZoneExpanded(message.args.repoId, message.args.branch);
+          break;
+        case CMD_CLOSE_WORKTREE:
+          await closeWorktree(this.storage, this.terminalService, message.args.repoId, message.args.branch);
           break;
       }
       console.log('[WebviewCommandHandler] handled "%s" successfully', message.function);

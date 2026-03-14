@@ -15,6 +15,7 @@ interface AgentPanelViewProps {
   onToggleZoneClick: (repoId: string, branch: string) => void;
   onAgentClick: (agentId: string) => void;
   onRemoveAgentClick: (agentId: string) => void;
+  onCloseWorktreeClick: (repoId: string, branch: string) => void;
 }
 
 export const AgentPanelView = ({
@@ -28,6 +29,7 @@ export const AgentPanelView = ({
   onToggleZoneClick,
   onAgentClick,
   onRemoveAgentClick,
+  onCloseWorktreeClick,
 }: AgentPanelViewProps) => {
   return (
     <section className="agent-panel">
@@ -47,6 +49,7 @@ export const AgentPanelView = ({
             onToggleZoneClick={onToggleZoneClick}
             onAgentClick={onAgentClick}
             onRemoveAgentClick={onRemoveAgentClick}
+            onCloseWorktreeClick={onCloseWorktreeClick}
           />
         ))
       )}

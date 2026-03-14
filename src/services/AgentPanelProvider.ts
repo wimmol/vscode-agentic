@@ -4,6 +4,7 @@ import type { StateStorage } from '../db';
 import type { ExtensionToWebviewMessage } from '../types/messages';
 import { VIEW_AGENTS } from '../constants/views';
 import { CMD_READY, MSG_TYPE_UPDATE } from '../constants/commands';
+import { syncWorktrees } from '../features/syncWorktrees';
 
 /**
  * Bridges StateStorage and the Agent Panel webview.
@@ -19,9 +20,12 @@ export class AgentPanelProvider implements vscode.WebviewViewProvider, vscode.Di
   private readonly _onDidResolveView = new vscode.EventEmitter<vscode.WebviewView>();
   readonly onDidResolveView: vscode.Event<vscode.WebviewView> = this._onDidResolveView.event;
 
+  private static readonly SYNC_COOLDOWN_MS = 5_000;
+
   private view: vscode.WebviewView | undefined;
   private readonly disposables: vscode.Disposable[] = [];
   private pushStateTimer: ReturnType<typeof setTimeout> | undefined;
+  private lastSyncTime = 0;
 
   constructor(
     private readonly extensionUri: vscode.Uri,
@@ -44,7 +48,7 @@ export class AgentPanelProvider implements vscode.WebviewViewProvider, vscode.Di
 
     webviewView.onDidChangeVisibility(() => {
       if (webviewView.visible) {
-        void this.pushState();
+        void this.syncAndPush();
       }
     }, null, this.disposables);
 
@@ -61,6 +65,15 @@ export class AgentPanelProvider implements vscode.WebviewViewProvider, vscode.Di
 
     this._onDidResolveView.fire(webviewView);
   }
+
+  private syncAndPush = async (): Promise<void> => {
+    const now = Date.now();
+    if (now - this.lastSyncTime >= AgentPanelProvider.SYNC_COOLDOWN_MS) {
+      this.lastSyncTime = now;
+      await syncWorktrees(this.storage);
+    }
+    await this.pushState();
+  };
 
   private debouncedPushState = (): void => {
     if (this.pushStateTimer) {

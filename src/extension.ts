@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { createStateStorage } from './db';
 import { registerExplorerCommands } from './features/registerExplorerCommands';
 import { syncWorkspaceRepos } from './features/syncWorkspaceRepos';
+import { syncWorktrees } from './features/syncWorktrees';
 import { AgentPanelProvider } from './services/AgentPanelProvider';
 import { FileExplorerProvider } from './services/FileExplorerProvider';
 import { TerminalService } from './services/TerminalService';
@@ -37,9 +38,11 @@ export const activate = (context: vscode.ExtensionContext) => {
     registerExplorerCommands(explorer, treeView, storage, terminalService),
   );
 
-  // Deferred: sync workspace git folders and restore agent terminals.
+  // Deferred: sync workspace git folders, worktrees, and restore agent terminals.
   setTimeout(() => {
-    syncWorkspaceRepos(storage).catch((err) => console.error('[Agentic] workspace sync failed:', err));
+    syncWorkspaceRepos(storage)
+      .then(() => syncWorktrees(storage))
+      .catch((err) => console.error('[Agentic] workspace/worktree sync failed:', err));
     terminalService.restoreAll().catch((err) => console.error('[Agentic] terminal restore failed:', err));
   }, 0);
 };

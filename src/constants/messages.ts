@@ -26,6 +26,10 @@ export const DIALOG_UNCOMMITTED_REMOVE = ' The worktree has uncommitted changes 
 export const dialogTerminalClosed = (name: string) =>
   `Closing the terminal kills the running agent "${name}".`;
 export const DIALOG_UNCOMMITTED_TERMINAL = ' The worktree has uncommitted changes.';
+export const dialogCloseWorktree = (branch: string, agentCount: number) =>
+  agentCount > 0
+    ? `Delete worktree "${branch}"? This will kill ${agentCount} agent${agentCount > 1 ? 's' : ''} and delete the worktree and branch.`
+    : `Delete worktree "${branch}"? This will delete the worktree and branch.`;
 
 // ── Button labels ────────────────────────────────────────────────
 export const BTN_DELETE_WORKTREE = 'Delete Worktree';
@@ -55,6 +59,7 @@ export const LABEL_COLLAPSE = 'Collapse';
 export const LABEL_EXPAND = 'Expand';
 export const LABEL_NAVIGATE_WORKSPACE = 'Navigate to workspace';
 export const LABEL_ADD_REPO = 'Add repo';
+export const LABEL_CLOSE_WORKTREE = 'Close worktree';
 export const LABEL_EMPTY_AGENTS = 'press + to add agent';
 export const LABEL_EMPTY_REPOS = 'press + to add repo';
 
