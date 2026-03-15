@@ -4,7 +4,7 @@ import { homedir } from 'os';
 import * as vscode from 'vscode';
 import type { StateStorage } from '../db';
 import { terminalName } from '../constants/terminal';
-import { CLAUDE_DIR, CLAUDE_PROJECTS_DIR } from '../constants/paths';
+import { CLAUDE_DIR, CLAUDE_PROJECTS_DIR, UUID_RE } from '../constants/paths';
 import { AGENT_STATUS_ERROR, DEFAULT_AGENT_COMMAND, CLI_FLAG_BYPASS_PERMISSIONS } from '../constants/agent';
 import { CONFIG_SECTION, CONFIG_BYPASS_PERMISSIONS } from '../constants/views';
 import { SESSION_POLL_INTERVAL_MS, SESSION_POLL_MAX_ATTEMPTS } from '../constants/timing';
@@ -26,8 +26,6 @@ import { SessionWatcher } from './SessionWatcher';
  */
 export const claudeProjectDir = (cwd: string): string =>
   join(homedir(), CLAUDE_DIR, CLAUDE_PROJECTS_DIR, cwd.replace(/[/.]/g, '-'));
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Wrap a string in single quotes for safe shell interpolation. */
 export const shellQuote = (s: string): string => `'${s.replace(/'/g, "'\\''")}'`;
@@ -213,7 +211,9 @@ export class TerminalService implements vscode.Disposable {
       attempts++;
       try {
         const files = await readdir(dir);
-        const newFile = files.find((f) => f.endsWith('.jsonl') && !existing.has(f));
+        const newFile = files.find(
+          (f) => f.endsWith('.jsonl') && !existing.has(f) && UUID_RE.test(basename(f, '.jsonl')),
+        );
         if (newFile) {
           const sessionId = basename(newFile, '.jsonl');
           console.log('[TerminalService] session detected:', { agentId, sessionId, attempt: attempts });
