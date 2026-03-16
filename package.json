@@ -3,7 +3,7 @@
   "displayName": "Agentic",
   "description": "Work on multiple repositories using AI agents on own worktrees",
   "icon": "images/icon.png",
-  "version": "0.3.1",
+  "version": "0.3.3",
   "publisher": "wimmol",
   "engines": {
     "vscode": "^1.74.0"

@@ -62,7 +62,7 @@ export const newFile = async (explorer: ExplorerRef, item?: FileItemLike): Promi
   await vscode.workspace.fs.createDirectory(parentUri);
   await vscode.workspace.fs.writeFile(uri, new Uint8Array());
   explorer.refresh();
-  await vscode.commands.executeCommand('vscode.open', uri);
+  await vscode.commands.executeCommand('vscode.open', uri, { viewColumn: vscode.ViewColumn.One });
 };
 
 export const newFolder = async (explorer: ExplorerRef, item?: FileItemLike): Promise<void> => {

@@ -322,7 +322,7 @@ export class FileItem extends vscode.TreeItem {
       this.command = {
         command: 'vscode.open',
         title: LABEL_OPEN_FILE,
-        arguments: [this.resourceUri],
+        arguments: [this.resourceUri, { viewColumn: vscode.ViewColumn.One }],
       };
     }
   }

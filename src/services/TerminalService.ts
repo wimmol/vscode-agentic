@@ -211,18 +211,28 @@ export class TerminalService implements vscode.Disposable {
       attempts++;
       try {
         const files = await readdir(dir);
-        const newFile = files.find(
-          (f) => f.endsWith('.jsonl') && !existing.has(f) && UUID_RE.test(basename(f, '.jsonl')),
-        );
-        if (newFile) {
-          const sessionId = basename(newFile, '.jsonl');
-          console.log('[TerminalService] session detected:', { agentId, sessionId, attempt: attempts });
+        let claimedId: string | undefined;
+        for (const f of files) {
+          if (!f.endsWith('.jsonl') || existing.has(f)) continue;
+          const id = basename(f, '.jsonl');
+          if (!UUID_RE.test(id)) continue;
+          // Atomically claim before any await to prevent another agent's poll
+          // from taking the same session during the async gap.
+          if (this.sessionWatcher.claimSession(id)) {
+            claimedId = id;
+            break;
+          }
+        }
+        if (claimedId) {
+          console.log('[TerminalService] session detected:', { agentId, sessionId: claimedId, attempt: attempts });
           this.detectors.delete(agentId);
           try {
-            await this.storage.updateAgent(agentId, { sessionId });
-            this.sessionWatcher.startWatching(agentId, sessionId, cwd);
+            await this.storage.updateAgent(agentId, { sessionId: claimedId });
+            this.sessionWatcher.startWatching(agentId, claimedId, cwd);
           } catch {
-            // Agent may have been removed — detection result is no longer needed.
+            // Agent may have been removed — release the claim so the session
+            // is not permanently blocked from detection.
+            this.sessionWatcher.releaseSession(claimedId);
           }
           return;
         }

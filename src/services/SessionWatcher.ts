@@ -71,6 +71,21 @@ export class SessionWatcher {
   constructor(private readonly storage: StateStorage) {}
 
   /**
+   * Atomically claim a session ID if not already tracked.
+   * Returns true if newly claimed, false if already taken by another agent.
+   */
+  claimSession = (sessionId: string): boolean => {
+    if (this.trackedSessionIds.has(sessionId)) return false;
+    this.trackedSessionIds.add(sessionId);
+    return true;
+  };
+
+  /** Release a previously claimed session ID. */
+  releaseSession = (sessionId: string): void => {
+    this.trackedSessionIds.delete(sessionId);
+  };
+
+  /**
    * Start watching a session file for an agent.
    * Reads any existing content first, then polls for changes.
    * Also monitors the directory for new session files (handles /clear).
