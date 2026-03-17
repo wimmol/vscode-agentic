@@ -4,7 +4,7 @@ import type { StateStorage } from '../db';
 import { claudeProjectDir } from './TerminalService';
 import { AGENT_STATUS_IDLE, AGENT_STATUS_RUNNING } from '../constants/agent';
 import { UUID_RE } from '../constants/paths';
-import { SESSION_WATCH_POLL_MS, SESSION_DIR_POLL_MS } from '../constants/timing';
+import { SESSION_WATCH_POLL_MS, SESSION_DIR_POLL_MS, STALE_RUNNING_TIMEOUT_MS } from '../constants/timing';
 
 /**
  * Extract the user prompt text from a JSONL user message content field.
@@ -41,6 +41,10 @@ interface WatcherEntry {
   knownFiles: Set<string> | null;
   /** Last observed directory mtime to skip readdir when unchanged. */
   lastDirMtime: number;
+  /** Timestamp of last time new JSONL content was read. Used for staleness detection. */
+  lastNewContentAt: number;
+  /** Whether the most recent processLines call set the agent to RUNNING. */
+  isRunning: boolean;
 }
 
 /**
@@ -109,6 +113,8 @@ export class SessionWatcher {
       filePath,
       knownFiles: null,
       lastDirMtime: 0,
+      lastNewContentAt: Date.now(),
+      isRunning: false,
       timer: setInterval(() => {
         this.readNewContent(agentId, entry);
       }, SESSION_WATCH_POLL_MS),
@@ -229,11 +235,25 @@ export class SessionWatcher {
 
     let fd;
     try {
-      const fileInfo = await stat(entry.filePath);
-      if (fileInfo.size <= entry.offset) return;
+      let fileSize: number;
+      try {
+        fileSize = (await stat(entry.filePath)).size;
+      } catch {
+        // File doesn't exist yet — check staleness anyway.
+        this.transitionIfStale(agentId, entry);
+        return;
+      }
+
+      if (fileSize <= entry.offset) {
+        // No new content — check for stale running state.
+        this.transitionIfStale(agentId, entry);
+        return;
+      }
+
+      entry.lastNewContentAt = Date.now();
 
       fd = await open(entry.filePath, 'r');
-      const buf = Buffer.alloc(fileInfo.size - entry.offset);
+      const buf = Buffer.alloc(fileSize - entry.offset);
       await fd.read(buf, 0, buf.length, entry.offset);
 
       const newContent = buf.toString('utf-8');
@@ -253,7 +273,7 @@ export class SessionWatcher {
       // data from the new session.
       if (entry.cancelled) return;
 
-      await this.processLines(agentId, lines);
+      await this.processLines(agentId, lines, entry);
     } catch {
       // File read errors are non-fatal.
     } finally {
@@ -262,8 +282,25 @@ export class SessionWatcher {
     }
   };
 
-  /** Parse JSONL lines and update agent state. */
-  private processLines = async (agentId: string, lines: string[]): Promise<void> => {
+  /**
+   * If the agent has been RUNNING with no new JSONL content for longer than
+   * STALE_RUNNING_TIMEOUT_MS, transition to IDLE. Handles local/slash commands
+   * that don't produce an assistant end_turn in the session file.
+   */
+  private transitionIfStale = (agentId: string, entry: WatcherEntry): void => {
+    if (!entry.isRunning || entry.cancelled) return;
+    if (Date.now() - entry.lastNewContentAt < STALE_RUNNING_TIMEOUT_MS) return;
+
+    entry.isRunning = false;
+    console.log('[SessionWatcher] stale running detected, → idle | agentId:', agentId);
+    this.storage.updateAgent(agentId, {
+      status: AGENT_STATUS_IDLE,
+      completedAt: Date.now(),
+    }).catch(() => { /* Agent may have been removed. */ });
+  };
+
+  /** Parse JSONL lines and update agent state. Also updates entry.isRunning for staleness tracking. */
+  private processLines = async (agentId: string, lines: string[], entry: WatcherEntry): Promise<void> => {
     let lastPrompt: string | null = null;
     let promptTimestamp: number | null = null;
     let endTurnTimestamp: number | null = null;
@@ -293,6 +330,7 @@ export class SessionWatcher {
     // Apply the latest state to the agent.
     if (lastPrompt !== null && promptTimestamp !== null) {
       const status = endTurnTimestamp ? AGENT_STATUS_IDLE : AGENT_STATUS_RUNNING;
+      entry.isRunning = status === AGENT_STATUS_RUNNING;
       console.log('[SessionWatcher] status →', status, '| prompt:', lastPrompt?.slice(0, 40), '| agentId:', agentId);
       try {
         await this.storage.updateAgent(agentId, {
@@ -305,6 +343,7 @@ export class SessionWatcher {
         // Agent may have been removed.
       }
     } else if (endTurnTimestamp !== null) {
+      entry.isRunning = false;
       console.log('[SessionWatcher] status → idle (end_turn only) | agentId:', agentId);
       try {
         await this.storage.updateAgent(agentId, {

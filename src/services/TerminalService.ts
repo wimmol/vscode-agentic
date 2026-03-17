@@ -7,7 +7,12 @@ import { terminalName } from '../constants/terminal';
 import { CLAUDE_DIR, CLAUDE_PROJECTS_DIR, UUID_RE } from '../constants/paths';
 import { AGENT_STATUS_ERROR, DEFAULT_AGENT_COMMAND, CLI_FLAG_BYPASS_PERMISSIONS } from '../constants/agent';
 import { CONFIG_SECTION, CONFIG_BYPASS_PERMISSIONS } from '../constants/views';
-import { SESSION_POLL_INTERVAL_MS, SESSION_POLL_MAX_ATTEMPTS } from '../constants/timing';
+import {
+  SESSION_POLL_INTERVAL_MS,
+  SESSION_POLL_MAX_ATTEMPTS,
+  SLOW_SESSION_POLL_INTERVAL_MS,
+  HEALTH_CHECK_INTERVAL_MS,
+} from '../constants/timing';
 import {
   dialogTerminalClosed,
   DIALOG_UNCOMMITTED_TERMINAL,
@@ -57,6 +62,12 @@ export class TerminalService implements vscode.Disposable {
    */
   private readonly removing = new Set<string>();
 
+  /** Periodic timer that verifies tracked terminals still exist. */
+  private readonly healthTimer: NodeJS.Timeout;
+
+  /** Set to true after restoreAll completes. Health checks are skipped until then. */
+  private restored = false;
+
   constructor(private readonly storage: StateStorage) {
     this.sessionWatcher = new SessionWatcher(storage);
     this.disposables.push(
@@ -68,6 +79,12 @@ export class TerminalService implements vscode.Disposable {
         });
       }),
     );
+
+    this.healthTimer = setInterval(() => {
+      this.checkTerminalHealth().catch((err) => {
+        console.error('[TerminalService] health check error:', err);
+      });
+    }, HEALTH_CHECK_INTERVAL_MS);
   }
 
   /**
@@ -167,6 +184,8 @@ export class TerminalService implements vscode.Disposable {
         terminal.dispose();
       }
     }
+
+    this.restored = true;
   };
 
   // ── Private ───────────────────────────────────────────────────────
@@ -242,8 +261,11 @@ export class TerminalService implements vscode.Disposable {
       if (attempts < SESSION_POLL_MAX_ATTEMPTS) {
         this.detectors.set(agentId, setTimeout(poll, SESSION_POLL_INTERVAL_MS));
       } else {
-        console.warn('[TerminalService] session detection gave up after', attempts, 'attempts:', { agentId, dir });
-        this.detectors.delete(agentId);
+        // Switch to slow polling instead of giving up — session may still appear.
+        if (attempts === SESSION_POLL_MAX_ATTEMPTS) {
+          console.log('[TerminalService] session detection switching to slow poll:', { agentId, dir });
+        }
+        this.detectors.set(agentId, setTimeout(poll, SLOW_SESSION_POLL_INTERVAL_MS));
       }
     };
 
@@ -256,6 +278,31 @@ export class TerminalService implements vscode.Disposable {
     if (timeout) {
       clearTimeout(timeout);
       this.detectors.delete(agentId);
+    }
+  };
+
+  /**
+   * Periodic check that cross-references tracked terminals with VS Code's
+   * live terminal list. Cleans up orphaned references where onDidCloseTerminal
+   * was somehow missed (e.g. extension reload edge cases).
+   */
+  private checkTerminalHealth = async (): Promise<void> => {
+    if (!this.restored) return;
+
+    const liveTerminals = new Set(vscode.window.terminals);
+
+    for (const [agentId, terminal] of this.terminals) {
+      if (!liveTerminals.has(terminal)) {
+        console.warn('[TerminalService] orphaned terminal reference detected:', agentId);
+        this.terminals.delete(agentId);
+        this.stopDetecting(agentId);
+        this.sessionWatcher.stopWatching(agentId);
+        try {
+          await this.storage.updateAgent(agentId, { status: AGENT_STATUS_ERROR });
+        } catch {
+          // Agent may have been removed.
+        }
+      }
     }
   };
 
@@ -366,6 +413,7 @@ export class TerminalService implements vscode.Disposable {
   };
 
   dispose(): void {
+    clearInterval(this.healthTimer);
     for (const d of this.disposables) {
       d.dispose();
     }
