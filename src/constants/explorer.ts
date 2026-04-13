@@ -7,3 +7,5 @@ export const CONTEXT_FOLDER = 'explorerFolder';
 
 // Drag-and-drop MIME types
 export const URI_LIST_MIME = 'text/uri-list';
+
+export const WATCHER_DEBOUNCE_MS = 300;
