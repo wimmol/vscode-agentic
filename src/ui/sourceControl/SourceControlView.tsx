@@ -19,7 +19,7 @@ const statusLabel = (status: string): string => {
     case 'A': return 'A';
     case 'D': return 'D';
     case 'R': return 'R';
-    case '?': case '??': return 'U';
+    case '??': return 'U';
     default: return status;
   }
 };
@@ -29,7 +29,7 @@ const statusClass = (status: string): string => {
     case 'M': case 'MM': return 'sc-status-modified';
     case 'A': return 'sc-status-added';
     case 'D': return 'sc-status-deleted';
-    case '?': case '??': return 'sc-status-untracked';
+    case '??': return 'sc-status-untracked';
     default: return '';
   }
 };

@@ -167,7 +167,7 @@ export const pasteItems = async (explorer: ExplorerRef, item?: FileItemLike): Pr
       if (await exists(targetUri)) {
         const choice = await vscode.window.showQuickPick(
           ['Replace', 'Keep Both', 'Cancel'],
-          { placeHolder: `"${baseName}" already exists in destination` },
+          { placeHolder: `"${baseName}" already exists in destination`, ignoreFocusOut: true },
         );
         if (!choice || choice === 'Cancel') continue;
         if (choice === 'Keep Both') {

@@ -33,6 +33,7 @@ export class SourceControlProvider implements vscode.WebviewViewProvider, vscode
   private view: vscode.WebviewView | undefined;
   private roots: string[] = [];
   private repoName = '';
+  private lastChanges: FileChange[] = [];
   private refreshTimer: ReturnType<typeof setTimeout> | undefined;
   private readonly disposables: vscode.Disposable[] = [];
 
@@ -146,7 +147,8 @@ export class SourceControlProvider implements vscode.WebviewViewProvider, vscode
         }
 
         case SC_CMD_OPEN_DIFF: {
-          const filePath = message.args.absPath as string;
+          const filePath = message.args.absPath;
+          if (typeof filePath !== 'string' || !filePath) return;
           const uri = vscode.Uri.file(filePath);
           await vscode.commands.executeCommand('git.openChange', uri);
           break;
@@ -173,12 +175,12 @@ export class SourceControlProvider implements vscode.WebviewViewProvider, vscode
     }
 
     try {
-      const changes = await gitStatus(cwd);
+      this.lastChanges = await gitStatus(cwd);
       const parts = cwd.split('/');
       this.repoName = parts[parts.length - 1];
       await this.postMessage({
         type: SC_MSG_UPDATE,
-        changes,
+        changes: this.lastChanges,
         repoName: this.repoName,
         isLoading: false,
       });
@@ -196,11 +198,9 @@ export class SourceControlProvider implements vscode.WebviewViewProvider, vscode
 
   private sendLoading = async (isLoading: boolean): Promise<void> => {
     if (!this.view) return;
-    const cwd = this.roots[0];
-    const changes = cwd ? await gitStatus(cwd) : [];
     await this.postMessage({
       type: SC_MSG_UPDATE,
-      changes,
+      changes: this.lastChanges,
       repoName: this.repoName,
       isLoading,
     });

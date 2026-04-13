@@ -164,8 +164,8 @@ export const gitStatus = async (cwd: string): Promise<FileChange[]> => {
     const status = entry.substring(0, 2).trim();
     const filePath = entry.substring(3);
 
-    // Renames have a second NUL-delimited field (the original name) — skip it
-    if (status.startsWith('R')) {
+    // Renames and copies have a second NUL-delimited field (the original name) — skip it
+    if (status.startsWith('R') || status.startsWith('C')) {
       i += 2;
     } else {
       i += 1;
@@ -219,7 +219,7 @@ export const suggestCommitMessage = async (cwd: string): Promise<string> => {
   if (changes.length === 0) return 'no changes';
 
   // Group by status
-  const added = changes.filter((c) => c.status === '?' || c.status === 'A' || c.status === '??');
+  const added = changes.filter((c) => c.status === '??' || c.status === 'A');
   const modified = changes.filter((c) => c.status === 'M' || c.status === 'MM');
   const deleted = changes.filter((c) => c.status === 'D');
 
