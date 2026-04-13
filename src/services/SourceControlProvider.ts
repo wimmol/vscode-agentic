@@ -121,8 +121,8 @@ export class SourceControlProvider implements vscode.WebviewViewProvider, vscode
             vscode.window.showErrorMessage(`Pull failed: ${result.stderr.trim()}`);
           } else {
             vscode.window.showInformationMessage('Pulled successfully.');
+            await this.refreshStatus();
           }
-          await this.refreshStatus();
           await this.sendLoading(false);
           break;
         }

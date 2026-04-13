@@ -1,7 +1,7 @@
 import { randomBytes } from 'crypto';
 import * as vscode from 'vscode';
 
-export const getNonce = (): string => randomBytes(16).toString('hex');
+const getNonce = (): string => randomBytes(16).toString('hex');
 
 export const buildWebviewHtml = (
   webview: vscode.Webview,

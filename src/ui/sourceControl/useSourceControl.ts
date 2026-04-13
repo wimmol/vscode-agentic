@@ -73,8 +73,8 @@ export const useSourceControl = () => {
     vscode.postMessage({ function: SC_CMD_SUGGEST, args: {} });
   }, []);
 
-  const openDiff = useCallback((filePath: string) => {
-    vscode.postMessage({ function: SC_CMD_OPEN_DIFF, args: { path: filePath } });
+  const openDiff = useCallback((relPath: string) => {
+    vscode.postMessage({ function: SC_CMD_OPEN_DIFF, args: { path: relPath } });
   }, []);
 
   return {
