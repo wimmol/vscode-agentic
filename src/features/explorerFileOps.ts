@@ -38,6 +38,19 @@ const exists = async (uri: vscode.Uri): Promise<boolean> => {
   }
 };
 
+const findUniqueName = async (dir: string, baseName: string): Promise<vscode.Uri> => {
+  const ext = path.extname(baseName);
+  const nameNoExt = path.basename(baseName, ext);
+  let counter = 1;
+  let uri: vscode.Uri;
+  do {
+    const suffix = counter === 1 ? ' copy' : ` copy ${counter}`;
+    uri = vscode.Uri.file(path.join(dir, `${nameNoExt}${suffix}${ext}`));
+    counter++;
+  } while (await exists(uri));
+  return uri;
+};
+
 // ── Create ───────────────────────────────────────────────────────
 
 export const newFile = async (explorer: ExplorerRef, item?: FileItemLike): Promise<void> => {
@@ -171,30 +184,15 @@ export const pasteItems = async (explorer: ExplorerRef, item?: FileItemLike): Pr
         );
         if (!choice || choice === 'Cancel') continue;
         if (choice === 'Keep Both') {
-          const ext = path.extname(baseName);
-          const nameNoExt = path.basename(baseName, ext);
-          let counter = 1;
-          do {
-            const suffix = counter === 1 ? ' copy' : ` copy ${counter}`;
-            targetUri = vscode.Uri.file(path.join(dir, `${nameNoExt}${suffix}${ext}`));
-            counter++;
-          } while (await exists(targetUri));
+          targetUri = await findUniqueName(dir, baseName);
         } else {
           overwrite = true;
         }
       }
       await vscode.workspace.fs.rename(sourceUri, targetUri, { overwrite });
     } else {
-      // Generate unique name if target exists
       if (await exists(targetUri)) {
-        const ext = path.extname(baseName);
-        const nameNoExt = path.basename(baseName, ext);
-        let counter = 1;
-        do {
-          const suffix = counter === 1 ? ' copy' : ` copy ${counter}`;
-          targetUri = vscode.Uri.file(path.join(dir, `${nameNoExt}${suffix}${ext}`));
-          counter++;
-        } while (await exists(targetUri));
+        targetUri = await findUniqueName(dir, baseName);
       }
       await vscode.workspace.fs.copy(sourceUri, targetUri, { overwrite: false });
     }

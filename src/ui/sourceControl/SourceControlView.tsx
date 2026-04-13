@@ -108,7 +108,7 @@ export const SourceControlView = ({
             <li key={change.path} className="sc-file-item">
               <button
                 className="sc-file-button"
-                onClick={() => onOpenDiff(change.absPath)}
+                onClick={() => onOpenDiff(change.path)}
                 title={`Open diff: ${change.path}`}
               >
                 <span className={`sc-file-status ${statusClass(change.status)}`}>

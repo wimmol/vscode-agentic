@@ -243,9 +243,13 @@ export class FileExplorerProvider
     const gen = ++this.generation;
     const repos = await this.storage.getAllRepositories();
     if (gen !== this.generation) return;
-    this.roots = repos.map((r) => r.localPath);
-    this.setupWatchers();
-    this._onDidChangeScope.fire(this.roots);
+    const newRoots = repos.map((r) => r.localPath);
+    const changed = newRoots.length !== this.roots.length || newRoots.some((r, i) => r !== this.roots[i]);
+    this.roots = newRoots;
+    if (changed) {
+      this.setupWatchers();
+      this._onDidChangeScope.fire(this.roots);
+    }
     await this.loadExpandedAndRefresh(gen);
   }
 
@@ -287,18 +291,24 @@ export class FileExplorerProvider
     return new FileItem(filePath, isDir, expanded);
   }
 
+  private isGitInternal(uri: vscode.Uri): boolean {
+    return uri.fsPath.includes(`${path.sep}${GIT_DIR}${path.sep}`);
+  }
+
   private setupWatchers(): void {
     this.disposeWatchers();
     for (const root of this.roots) {
       const pattern = new vscode.RelativePattern(vscode.Uri.file(root), '**/*');
       const watcher = vscode.workspace.createFileSystemWatcher(pattern);
 
-      watcher.onDidCreate(() => this.debouncedWatcherRefresh());
+      watcher.onDidCreate((uri) => {
+        if (!this.isGitInternal(uri)) this.debouncedWatcherRefresh();
+      });
       watcher.onDidDelete((uri) => {
+        if (this.isGitInternal(uri)) return;
         this.cleanupDeletedPath(uri.fsPath);
         this.debouncedWatcherRefresh();
       });
-      // onDidChange intentionally ignored — content changes don't affect tree structure
 
       this.watchers.push(watcher);
     }

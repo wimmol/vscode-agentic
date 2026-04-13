@@ -171,18 +171,15 @@ export const gitStatus = async (cwd: string): Promise<FileChange[]> => {
       i += 1;
     }
 
-    changes.push({
-      status,
-      path: filePath,
-      absPath: path.join(cwd, filePath),
-    });
+    changes.push({ status, path: filePath });
   }
 
   return changes;
 };
 
 export const gitCommit = async (cwd: string, message: string): Promise<GitResult> => {
-  await run(['add', '-A'], cwd, GIT_COMMIT_TIMEOUT_MS);
+  const addResult = await run(['add', '-A'], cwd, GIT_COMMIT_TIMEOUT_MS);
+  if (addResult.exitCode !== 0) return addResult;
   return run(['commit', '-m', message], cwd, GIT_COMMIT_TIMEOUT_MS);
 };
 
@@ -193,7 +190,6 @@ export const gitPull = async (cwd: string): Promise<GitResult> =>
   run(['pull'], cwd, GIT_PULL_TIMEOUT_MS);
 
 export const gitDiffStat = async (cwd: string): Promise<string> => {
-  // Try staged first, fallback to unstaged
   const staged = await run(
     ['--no-optional-locks', 'diff', '--cached', '--stat'],
     cwd,
@@ -209,16 +205,10 @@ export const gitDiffStat = async (cwd: string): Promise<string> => {
   return unstaged.stdout;
 };
 
-/**
- * Generate a short commit message from diff stats.
- * Parses filenames from `git diff --stat` output and produces
- * a phrase like "update FileExplorerProvider, add watcher".
- */
-export const suggestCommitMessage = async (cwd: string): Promise<string> => {
-  const changes = await gitStatus(cwd);
+/** Generate a short commit message from a list of file changes. */
+export const suggestCommitMessage = (changes: FileChange[]): string => {
   if (changes.length === 0) return 'no changes';
 
-  // Group by status
   const added = changes.filter((c) => c.status === '??' || c.status === 'A');
   const modified = changes.filter((c) => c.status === 'M' || c.status === 'MM');
   const deleted = changes.filter((c) => c.status === 'D');

@@ -1,9 +1,8 @@
-// src/services/SourceControlProvider.ts
-
-import { randomBytes } from 'crypto';
+import * as path from 'path';
 import * as vscode from 'vscode';
 import type { FileExplorerProvider } from './FileExplorerProvider';
 import { VIEW_SOURCE_CONTROL } from '../constants/views';
+import { buildWebviewHtml } from '../utils/webview';
 import {
   SC_CMD_COMMIT,
   SC_CMD_PUSH,
@@ -32,7 +31,6 @@ export class SourceControlProvider implements vscode.WebviewViewProvider, vscode
 
   private view: vscode.WebviewView | undefined;
   private roots: string[] = [];
-  private repoName = '';
   private lastChanges: FileChange[] = [];
   private refreshTimer: ReturnType<typeof setTimeout> | undefined;
   private readonly disposables: vscode.Disposable[] = [];
@@ -41,17 +39,9 @@ export class SourceControlProvider implements vscode.WebviewViewProvider, vscode
     private readonly extensionUri: vscode.Uri,
     explorer: FileExplorerProvider,
   ) {
-    // Subscribe to explorer scope changes
     this.disposables.push(
       explorer.onDidChangeScope((roots) => {
         this.roots = roots;
-        void this.refreshStatus();
-      }),
-    );
-
-    // Also refresh when file watcher fires (explorer tree data changes)
-    this.disposables.push(
-      explorer.onDidChangeTreeData(() => {
         this.debouncedRefresh();
       }),
     );
@@ -138,7 +128,7 @@ export class SourceControlProvider implements vscode.WebviewViewProvider, vscode
         }
 
         case SC_CMD_SUGGEST: {
-          const suggested = await suggestCommitMessage(cwd);
+          const suggested = suggestCommitMessage(this.lastChanges);
           await this.postMessage({
             type: SC_MSG_SUGGEST_RESULT,
             message: suggested,
@@ -147,9 +137,9 @@ export class SourceControlProvider implements vscode.WebviewViewProvider, vscode
         }
 
         case SC_CMD_OPEN_DIFF: {
-          const filePath = message.args.absPath;
-          if (typeof filePath !== 'string' || !filePath) return;
-          const uri = vscode.Uri.file(filePath);
+          const relPath = message.args.path;
+          if (typeof relPath !== 'string' || !relPath) return;
+          const uri = vscode.Uri.file(path.join(cwd, relPath));
           await vscode.commands.executeCommand('git.openChange', uri);
           break;
         }
@@ -176,12 +166,10 @@ export class SourceControlProvider implements vscode.WebviewViewProvider, vscode
 
     try {
       this.lastChanges = await gitStatus(cwd);
-      const parts = cwd.split('/');
-      this.repoName = parts[parts.length - 1];
       await this.postMessage({
         type: SC_MSG_UPDATE,
         changes: this.lastChanges,
-        repoName: this.repoName,
+        repoName: path.basename(cwd),
         isLoading: false,
       });
     } catch (err) {
@@ -198,10 +186,11 @@ export class SourceControlProvider implements vscode.WebviewViewProvider, vscode
 
   private sendLoading = async (isLoading: boolean): Promise<void> => {
     if (!this.view) return;
+    const cwd = this.roots[0];
     await this.postMessage({
       type: SC_MSG_UPDATE,
       changes: this.lastChanges,
-      repoName: this.repoName,
+      repoName: cwd ? path.basename(cwd) : '',
       isLoading,
     });
   };
@@ -210,30 +199,8 @@ export class SourceControlProvider implements vscode.WebviewViewProvider, vscode
     await this.view?.webview.postMessage(message);
   };
 
-  private getHtml = (webview: vscode.Webview): string => {
-    const scriptUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this.extensionUri, 'out', 'ui', 'sourceControl.js'),
-    );
-    const styleUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this.extensionUri, 'out', 'ui', 'sourceControl.css'),
-    );
-    const nonce = randomBytes(16).toString('hex');
-
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy"
-    content="default-src 'none'; script-src 'nonce-${nonce}'; style-src ${webview.cspSource}; font-src ${webview.cspSource};" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="stylesheet" href="${styleUri}" />
-</head>
-<body>
-  <div id="root"></div>
-  <script nonce="${nonce}" type="module" src="${scriptUri}"></script>
-</body>
-</html>`;
-  };
+  private getHtml = (webview: vscode.Webview): string =>
+    buildWebviewHtml(webview, this.extensionUri, 'sourceControl.js', 'sourceControl.css');
 
   dispose(): void {
     clearTimeout(this.refreshTimer);

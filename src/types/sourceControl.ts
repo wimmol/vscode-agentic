@@ -8,7 +8,6 @@ import type {
 export interface FileChange {
   status: string;   // M, A, D, ?, R, etc.
   path: string;     // relative to repo root
-  absPath: string;  // absolute path for opening diff
 }
 
 // ── Extension → Webview ─────────────────────────────────────────
