@@ -5,6 +5,7 @@ import type { StateStorage } from '../db';
 import {
   WORKSPACE_SCOPE_KEY,
   PERSIST_DEBOUNCE_MS,
+  WATCHER_DEBOUNCE_MS,
   CONTEXT_FILE,
   CONTEXT_FOLDER,
   URI_LIST_MIME,
@@ -47,6 +48,12 @@ export class FileExplorerProvider
   private draggedItems: FileItem[] = [];
 
   private readonly disposables: vscode.Disposable[] = [];
+  private watchers: vscode.Disposable[] = [];
+  private watcherRefreshTimer: ReturnType<typeof setTimeout> | undefined;
+
+  private readonly _onDidChangeScope = new vscode.EventEmitter<string[]>();
+  /** Fires when explorer roots change (for source control to subscribe). */
+  readonly onDidChangeScope = this._onDidChangeScope.event;
 
   constructor(private readonly storage: StateStorage) {
     this.disposables.push(
@@ -97,6 +104,8 @@ export class FileExplorerProvider
     this.headerItem = ScopeHeaderItem.workspace();
     if (repoPaths) {
       this.roots = repoPaths;
+      this.setupWatchers();
+      this._onDidChangeScope.fire(this.roots);
       void this.loadExpandedAndRefresh();
     } else {
       void this.loadAndRefresh();
@@ -118,6 +127,8 @@ export class FileExplorerProvider
     this.mode = 'scoped';
     this.scopeKey = repoId;
     this.roots = [repoPath];
+    this.setupWatchers();
+    this._onDidChangeScope.fire(this.roots);
     void this.loadExpandedAndRefresh();
   }
 
@@ -227,6 +238,8 @@ export class FileExplorerProvider
     const repos = await this.storage.getAllRepositories();
     if (gen !== this.generation) return;
     this.roots = repos.map((r) => r.localPath);
+    this.setupWatchers();
+    this._onDidChangeScope.fire(this.roots);
     await this.loadExpandedAndRefresh(gen);
   }
 
@@ -268,9 +281,54 @@ export class FileExplorerProvider
     return new FileItem(filePath, isDir, expanded);
   }
 
+  private setupWatchers(): void {
+    this.disposeWatchers();
+    for (const root of this.roots) {
+      const pattern = new vscode.RelativePattern(vscode.Uri.file(root), '**/*');
+      const watcher = vscode.workspace.createFileSystemWatcher(pattern);
+
+      watcher.onDidCreate(() => this.debouncedWatcherRefresh());
+      watcher.onDidDelete((uri) => {
+        this.cleanupDeletedPath(uri.fsPath);
+        this.debouncedWatcherRefresh();
+      });
+      // onDidChange intentionally ignored — content changes don't affect tree structure
+
+      this.watchers.push(watcher);
+    }
+  }
+
+  private disposeWatchers(): void {
+    for (const w of this.watchers) {
+      w.dispose();
+    }
+    this.watchers = [];
+  }
+
+  private debouncedWatcherRefresh(): void {
+    clearTimeout(this.watcherRefreshTimer);
+    this.watcherRefreshTimer = setTimeout(() => {
+      this._onDidChangeTreeData.fire(undefined);
+    }, WATCHER_DEBOUNCE_MS);
+  }
+
+  private cleanupDeletedPath(deletedPath: string): void {
+    this.expandedPaths.delete(deletedPath);
+    const prefix = deletedPath + path.sep;
+    for (const p of this.expandedPaths) {
+      if (p.startsWith(prefix)) {
+        this.expandedPaths.delete(p);
+      }
+    }
+    this.debouncePersist();
+  }
+
   dispose(): void {
     clearTimeout(this.persistTimer);
+    clearTimeout(this.watcherRefreshTimer);
+    this.disposeWatchers();
     this._onDidChangeTreeData.dispose();
+    this._onDidChangeScope.dispose();
     for (const d of this.disposables) {
       d.dispose();
     }
