@@ -8,7 +8,7 @@
   "engines": {
     "vscode": "^1.74.0"
   },
-  "license": "FSL-1.1-MIT",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/wimmol/vscode-agentic"
@@ -147,6 +147,12 @@
         "title": "Refactor",
         "icon": "$(wand)",
         "category": "Agentic"
+      },
+      {
+        "command": "vscode-agentic.explorer.refresh",
+        "title": "Refresh",
+        "icon": "$(refresh)",
+        "category": "Agentic"
       }
     ],
     "menus": {
@@ -158,6 +164,11 @@
         },
         {
           "command": "vscode-agentic.explorer.newFolder",
+          "when": "view == 'vscode-agentic.explorer'",
+          "group": "navigation"
+        },
+        {
+          "command": "vscode-agentic.explorer.refresh",
           "when": "view == 'vscode-agentic.explorer'",
           "group": "navigation"
         }

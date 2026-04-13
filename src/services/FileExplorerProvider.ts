@@ -13,7 +13,7 @@ import {
 import { GIT_DIR } from '../constants/paths';
 import { LABEL_WORKSPACE, LABEL_OPEN_FILE, LABEL_AGENT_PREFIX } from '../constants/messages';
 
-type ExplorerItem = ScopeHeaderItem | FileItem;
+type ExplorerItem = ScopeHeaderItem | FileItem | ErrorPlaceholderItem;
 
 const CONTEXT_SCOPE_HEADER = 'scopeHeader';
 
@@ -149,7 +149,7 @@ export class FileExplorerProvider
       return items;
     }
 
-    if (element instanceof ScopeHeaderItem || !element.isDir) {
+    if (element instanceof ScopeHeaderItem || element instanceof ErrorPlaceholderItem || !element.isDir) {
       return [];
     }
 
@@ -191,15 +191,21 @@ export class FileExplorerProvider
         .split(/\r?\n/)
         .filter(Boolean)
         .map((u) => vscode.Uri.parse(u));
+      const errors: string[] = [];
       for (const uri of uris) {
         const dest = vscode.Uri.file(path.join(targetDir, path.basename(uri.fsPath)));
         if (uri.fsPath === dest.fsPath) continue;
         try {
           await vscode.workspace.fs.rename(uri, dest, { overwrite: false });
         } catch (err) {
-          console.error('[FileExplorerProvider] drop move failed:', err);
-          vscode.window.showErrorMessage(`Failed to move "${path.basename(uri.fsPath)}": ${err}`);
+          errors.push(`${path.basename(uri.fsPath)}: ${err}`);
         }
+      }
+      if (errors.length > 0) {
+        const moved = uris.length - errors.length;
+        vscode.window.showErrorMessage(
+          `Moved ${moved} of ${uris.length} items. Failed: ${errors.join('; ')}`,
+        );
       }
       this.refresh();
     }
@@ -208,7 +214,7 @@ export class FileExplorerProvider
   // ── Private helpers ──────────────────────────────────────────────
 
   private resolveDropTarget(target: ExplorerItem | undefined): string | undefined {
-    if (!target || target instanceof ScopeHeaderItem) {
+    if (!target || target instanceof ScopeHeaderItem || target instanceof ErrorPlaceholderItem) {
       return this.roots[0];
     }
     return target.isDir ? target.filePath : path.dirname(target.filePath);
@@ -258,7 +264,7 @@ export class FileExplorerProvider
     }, PERSIST_DEBOUNCE_MS);
   }
 
-  private async readDirectory(dirPath: string): Promise<FileItem[]> {
+  private async readDirectory(dirPath: string): Promise<(FileItem | ErrorPlaceholderItem)[]> {
     try {
       const entries = await fs.readdir(dirPath, { withFileTypes: true });
       return entries
@@ -272,7 +278,7 @@ export class FileExplorerProvider
         .map((e) => this.createItem(path.join(dirPath, e.name), e.isDirectory()));
     } catch (err) {
       console.error('[FileExplorerProvider] readDirectory failed:', dirPath, err);
-      return [];
+      return [new ErrorPlaceholderItem('Unable to read directory')];
     }
   }
 
@@ -356,6 +362,14 @@ class ScopeHeaderItem extends vscode.TreeItem {
     if (desc) {
       this.description = desc;
     }
+  }
+}
+
+class ErrorPlaceholderItem extends vscode.TreeItem {
+  constructor(message: string) {
+    super(message, vscode.TreeItemCollapsibleState.None);
+    this.contextValue = 'explorerError';
+    this.iconPath = new vscode.ThemeIcon('warning');
   }
 }
 

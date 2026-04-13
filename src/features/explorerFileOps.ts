@@ -163,7 +163,27 @@ export const pasteItems = async (explorer: ExplorerRef, item?: FileItemLike): Pr
     if (cut) {
       if (sourceUri.fsPath === targetUri.fsPath) continue;
       if (targetUri.fsPath.startsWith(sourceUri.fsPath + path.sep)) continue;
-      await vscode.workspace.fs.rename(sourceUri, targetUri, { overwrite: false });
+      let overwrite = false;
+      if (await exists(targetUri)) {
+        const choice = await vscode.window.showQuickPick(
+          ['Replace', 'Keep Both', 'Cancel'],
+          { placeHolder: `"${baseName}" already exists in destination` },
+        );
+        if (!choice || choice === 'Cancel') continue;
+        if (choice === 'Keep Both') {
+          const ext = path.extname(baseName);
+          const nameNoExt = path.basename(baseName, ext);
+          let counter = 1;
+          do {
+            const suffix = counter === 1 ? ' copy' : ` copy ${counter}`;
+            targetUri = vscode.Uri.file(path.join(dir, `${nameNoExt}${suffix}${ext}`));
+            counter++;
+          } while (await exists(targetUri));
+        } else {
+          overwrite = true;
+        }
+      }
+      await vscode.workspace.fs.rename(sourceUri, targetUri, { overwrite });
     } else {
       // Generate unique name if target exists
       if (await exists(targetUri)) {
