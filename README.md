@@ -6,11 +6,11 @@ Work on multiple repositories using AI agents, each in its own git worktree.
 
 - **Multi-repo agent management** — Create and manage AI agents across multiple repositories from a single sidebar panel.
 - **Git worktree isolation** — Each agent runs in its own worktree, keeping work isolated and parallel.
-- **Agentic Explorer** — Browse files scoped to branches and worktrees with full file operations (create, rename, delete, copy, cut, paste).
+- **Agentic Explorer** — Browse files scoped to branches and worktrees with full file operations (create, rename, delete, copy, cut, paste). Live file watching keeps the tree in sync with disk changes automatically.
+- **Source Control** — Commit, push, and pull directly from the sidebar, scoped to the current repo or worktree. View changed files and open diffs with one click. Auto-suggest commit messages from your changes.
 - **AI-powered actions** — Right-click files in the explorer to Send to Claude, Generate Documentation, or Refactor.
 - **Worktree sync** — Keep worktrees in sync across your repositories.
 - **Configurable agent command** — Set the CLI command used to launch agents (default: `claude`).
-- **Sidebar UI** — View and control all agents from the Agentic sidebar tab.
 
 ## Getting Started
 
