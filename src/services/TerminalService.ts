@@ -5,7 +5,12 @@ import * as vscode from 'vscode';
 import type { StateStorage } from '../db';
 import { terminalName } from '../constants/terminal';
 import { CLAUDE_DIR, CLAUDE_PROJECTS_DIR, UUID_RE } from '../constants/paths';
-import { AGENT_STATUS_ERROR, DEFAULT_AGENT_COMMAND, CLI_FLAG_BYPASS_PERMISSIONS } from '../constants/agent';
+import {
+  AGENT_STATUS_ERROR,
+  AGENT_STATUS_RUNNING,
+  DEFAULT_AGENT_COMMAND,
+  CLI_FLAG_BYPASS_PERMISSIONS,
+} from '../constants/agent';
 import { CONFIG_SECTION, CONFIG_BYPASS_PERMISSIONS } from '../constants/views';
 import {
   SESSION_POLL_INTERVAL_MS,
@@ -100,6 +105,7 @@ export class TerminalService implements vscode.Disposable {
     cwd: string,
     sessionId?: string | null,
     initialPrompt?: string,
+    isRunning?: boolean,
   ): vscode.Terminal => {
     const name = terminalName(agentName, branch, repoName);
 
@@ -113,7 +119,7 @@ export class TerminalService implements vscode.Disposable {
 
     if (sessionId) {
       console.log('[TerminalService] startWatching existing session:', { agentId, sessionId, cwd });
-      this.sessionWatcher.startWatching(agentId, sessionId, cwd);
+      this.sessionWatcher.startWatching(agentId, sessionId, cwd, isRunning);
     } else {
       console.log('[TerminalService] detecting new session:', { agentId, cwd, dir: claudeProjectDir(cwd) });
       this.detectSessionId(agentId, cwd);
@@ -162,18 +168,23 @@ export class TerminalService implements vscode.Disposable {
           const name = terminalName(agent.name, agent.branch, repo.name);
           agentTerminalNames.add(name);
 
+          const wasRunning = agent.status === AGENT_STATUS_RUNNING;
+
           // Adopt an existing terminal if one already matches by name.
           // Don't send any command — the terminal is already running.
           const existing = existingByName.get(name);
           if (existing) {
             this.terminals.set(agent.agentId, existing);
             if (agent.sessionId) {
-              this.sessionWatcher.startWatching(agent.agentId, agent.sessionId, cwd);
+              this.sessionWatcher.startWatching(agent.agentId, agent.sessionId, cwd, wasRunning);
             }
             continue;
           }
 
-          this.createTerminal(agent.agentId, agent.name, agent.branch, repo.name, cwd, agent.sessionId);
+          this.createTerminal(
+            agent.agentId, agent.name, agent.branch, repo.name, cwd,
+            agent.sessionId, undefined, wasRunning,
+          );
         }
       }
     }

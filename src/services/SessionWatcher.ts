@@ -4,7 +4,12 @@ import type { StateStorage } from '../db';
 import { claudeProjectDir } from './TerminalService';
 import { AGENT_STATUS_IDLE, AGENT_STATUS_RUNNING } from '../constants/agent';
 import { UUID_RE } from '../constants/paths';
-import { SESSION_WATCH_POLL_MS, SESSION_DIR_POLL_MS, STALE_RUNNING_TIMEOUT_MS } from '../constants/timing';
+import {
+  SESSION_WATCH_POLL_MS,
+  SESSION_DIR_POLL_MS,
+  STALE_RUNNING_TIMEOUT_MS,
+  SESSION_ACTIVE_THRESHOLD_MS,
+} from '../constants/timing';
 
 /**
  * Extract the user prompt text from a JSONL user message content field.
@@ -45,6 +50,8 @@ interface WatcherEntry {
   lastNewContentAt: number;
   /** Whether the most recent processLines call set the agent to RUNNING. */
   isRunning: boolean;
+  /** Unclaimed session ID from a previous poll, awaiting re-evaluation. */
+  pendingCandidate: string | null;
 }
 
 /**
@@ -93,8 +100,12 @@ export class SessionWatcher {
    * Start watching a session file for an agent.
    * Reads any existing content first, then polls for changes.
    * Also monitors the directory for new session files (handles /clear).
+   *
+   * @param initialRunning — Set to true when the stored agent status is RUNNING.
+   *   This seeds `entry.isRunning` so stale detection can transition the agent
+   *   to IDLE even if the session file is empty/missing (e.g., after extension reload).
    */
-  startWatching = (agentId: string, sessionId: string, cwd: string): void => {
+  startWatching = (agentId: string, sessionId: string, cwd: string, initialRunning = false): void => {
     this.stopWatching(agentId);
 
     const dir = claudeProjectDir(cwd);
@@ -114,7 +125,8 @@ export class SessionWatcher {
       knownFiles: null,
       lastDirMtime: 0,
       lastNewContentAt: Date.now(),
-      isRunning: false,
+      isRunning: initialRunning,
+      pendingCandidate: null,
       timer: setInterval(() => {
         this.readNewContent(agentId, entry);
       }, SESSION_WATCH_POLL_MS),
@@ -166,10 +178,28 @@ export class SessionWatcher {
    * Poll the session directory for new .jsonl files.
    * When a new file appears that isn't tracked by any agent, switch to it.
    * This handles /clear (new session) and manual Claude Code relaunches.
+   *
+   * When multiple agents share the same directory, uses a heuristic to
+   * determine which agent should claim the new file: the agent whose session
+   * was most recently active (but is no longer) is the most likely creator
+   * of the new session (e.g., the one that typed /clear).
    */
   private pollForNewSession = async (agentId: string, entry: WatcherEntry): Promise<void> => {
-    // Wait until the initial snapshot is ready.
     if (!entry.knownFiles || entry.cancelled) return;
+
+    // Re-evaluate a pending candidate from a previous poll cheaply (no readdir).
+    if (entry.pendingCandidate) {
+      if (this.trackedSessionIds.has(entry.pendingCandidate)) {
+        // Another agent claimed it.
+        entry.knownFiles.add(`${entry.pendingCandidate}.jsonl`);
+        entry.pendingCandidate = null;
+      } else if (this.shouldClaimNewSession(agentId, entry.dir)) {
+        const id = entry.pendingCandidate;
+        entry.pendingCandidate = null;
+        await this.adoptNewSession(agentId, id, entry);
+      }
+      return;
+    }
 
     try {
       // Skip readdir when directory hasn't changed (mtime unchanged).
@@ -186,46 +216,89 @@ export class SessionWatcher {
       for (const f of files) {
         if (!f.endsWith('.jsonl') || entry.knownFiles.has(f)) continue;
 
-        // Remember this file so we don't re-evaluate it every poll.
-        entry.knownFiles.add(f);
-
         const id = basename(f, '.jsonl');
-        if (!UUID_RE.test(id) || this.trackedSessionIds.has(id)) continue;
+
+        if (!UUID_RE.test(id) || this.trackedSessionIds.has(id)) {
+          entry.knownFiles.add(f);
+          continue;
+        }
 
         newSessionId = id;
       }
 
       if (!newSessionId || entry.cancelled) return;
 
-      console.log('[SessionWatcher] new session detected:', {
-        agentId,
-        oldSession: entry.sessionId,
-        newSession: newSessionId,
-      });
-
-      // Reset agent to idle with the new session ID.
-      // The old session's status is stale — the new session starts fresh.
-      try {
-        await this.storage.updateAgent(agentId, {
-          sessionId: newSessionId,
-          status: AGENT_STATUS_IDLE,
-          lastPrompt: null,
-          startedAt: null,
-          completedAt: null,
-        });
-      } catch {
-        // Agent may have been removed.
+      // When multiple agents share this directory, only the best candidate
+      // should claim. Losers store the candidate for cheap re-evaluation
+      // on subsequent polls (no readdir needed).
+      if (!this.shouldClaimNewSession(agentId, entry.dir)) {
+        entry.pendingCandidate = newSessionId;
         return;
       }
 
-      // Guard: agent may have been removed/stopped during the await above.
-      if (entry.cancelled) return;
-
-      // Restart watching with the new session (re-snapshots the directory).
-      this.startWatching(agentId, newSessionId, entry.cwd);
+      entry.knownFiles.add(`${newSessionId}.jsonl`);
+      await this.adoptNewSession(agentId, newSessionId, entry);
     } catch {
       // Directory may not exist — not fatal.
     }
+  };
+
+  /** Adopt a new session file: update the agent record and restart the watcher. */
+  private adoptNewSession = async (agentId: string, sessionId: string, entry: WatcherEntry): Promise<void> => {
+    console.log('[SessionWatcher] new session detected:', {
+      agentId,
+      oldSession: entry.sessionId,
+      newSession: sessionId,
+    });
+
+    try {
+      await this.storage.updateAgent(agentId, {
+        sessionId,
+        status: AGENT_STATUS_IDLE,
+        lastPrompt: null,
+        startedAt: null,
+        completedAt: null,
+      });
+    } catch {
+      // Agent may have been removed.
+      return;
+    }
+
+    if (entry.cancelled) return;
+
+    this.startWatching(agentId, sessionId, entry.cwd);
+  };
+
+  /**
+   * When multiple agents share the same Claude project directory, determine
+   * whether this agent should claim a newly discovered session file.
+   *
+   * Heuristic: among agents on the same directory that are NOT currently
+   * receiving content, the one most recently active gets priority — it's
+   * the most likely to have triggered the new session (e.g., via /clear).
+   */
+  private shouldClaimNewSession = (agentId: string, dir: string): boolean => {
+    const now = Date.now();
+    let peerCount = 0;
+    let bestId: string | null = null;
+    let latestContentAt = -1;
+
+    for (const [id, e] of this.watchers) {
+      if (e.dir !== dir || e.cancelled) continue;
+      peerCount++;
+      // Skip agents still actively receiving content.
+      if (now - e.lastNewContentAt < SESSION_ACTIVE_THRESHOLD_MS) continue;
+      if (e.lastNewContentAt > latestContentAt) {
+        latestContentAt = e.lastNewContentAt;
+        bestId = id;
+      }
+    }
+
+    // Single agent on this directory — always claim.
+    if (peerCount <= 1) return true;
+    // All peers still active — defer to the next poll.
+    if (bestId === null) return false;
+    return bestId === agentId;
   };
 
   /** Read new content from the file starting at the tracked offset. */

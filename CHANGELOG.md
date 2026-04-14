@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.0] - 2026-04-15
+
+### Fixed
+
+- **Agent status on wrong tile** — When multiple agents shared a working directory, `/clear` in one agent could cause another agent to steal its session file, displaying the wrong agent's running status on the wrong tile
+- **Timer showing 1000m+** — After extension reload, agents stuck in "running" status with stale `startedAt` timestamps now correctly transition to idle via stale detection
+- **Session detection losing candidates** — Unclaimed session files were eagerly marked as known and permanently lost; now tracked as pending candidates for re-evaluation
+
+### Changed
+
+- License changed from Fair Source (FSL-1.1-MIT) to MIT
+
 ## [0.4.0] - 2026-04-15
 
 ### Added
