@@ -5,6 +5,7 @@ import type { StateStorage } from '../db';
 import {
   WORKSPACE_SCOPE_KEY,
   PERSIST_DEBOUNCE_MS,
+  WATCHER_DEBOUNCE_MS,
   CONTEXT_FILE,
   CONTEXT_FOLDER,
   URI_LIST_MIME,
@@ -12,7 +13,7 @@ import {
 import { GIT_DIR } from '../constants/paths';
 import { LABEL_WORKSPACE, LABEL_OPEN_FILE, LABEL_AGENT_PREFIX } from '../constants/messages';
 
-type ExplorerItem = ScopeHeaderItem | FileItem;
+type ExplorerItem = ScopeHeaderItem | FileItem | ErrorPlaceholderItem;
 
 const CONTEXT_SCOPE_HEADER = 'scopeHeader';
 
@@ -47,6 +48,12 @@ export class FileExplorerProvider
   private draggedItems: FileItem[] = [];
 
   private readonly disposables: vscode.Disposable[] = [];
+  private watchers: vscode.Disposable[] = [];
+  private watcherRefreshTimer: ReturnType<typeof setTimeout> | undefined;
+
+  private readonly _onDidChangeScope = new vscode.EventEmitter<string[]>();
+  /** Fires when explorer roots change (for source control to subscribe). */
+  readonly onDidChangeScope = this._onDidChangeScope.event;
 
   constructor(private readonly storage: StateStorage) {
     this.disposables.push(
@@ -97,6 +104,8 @@ export class FileExplorerProvider
     this.headerItem = ScopeHeaderItem.workspace();
     if (repoPaths) {
       this.roots = repoPaths;
+      this.setupWatchers();
+      this._onDidChangeScope.fire(this.roots);
       void this.loadExpandedAndRefresh();
     } else {
       void this.loadAndRefresh();
@@ -118,6 +127,8 @@ export class FileExplorerProvider
     this.mode = 'scoped';
     this.scopeKey = repoId;
     this.roots = [repoPath];
+    this.setupWatchers();
+    this._onDidChangeScope.fire(this.roots);
     void this.loadExpandedAndRefresh();
   }
 
@@ -138,7 +149,7 @@ export class FileExplorerProvider
       return items;
     }
 
-    if (element instanceof ScopeHeaderItem || !element.isDir) {
+    if (element instanceof ScopeHeaderItem || element instanceof ErrorPlaceholderItem || !element.isDir) {
       return [];
     }
 
@@ -180,15 +191,21 @@ export class FileExplorerProvider
         .split(/\r?\n/)
         .filter(Boolean)
         .map((u) => vscode.Uri.parse(u));
+      const errors: string[] = [];
       for (const uri of uris) {
         const dest = vscode.Uri.file(path.join(targetDir, path.basename(uri.fsPath)));
         if (uri.fsPath === dest.fsPath) continue;
         try {
           await vscode.workspace.fs.rename(uri, dest, { overwrite: false });
         } catch (err) {
-          console.error('[FileExplorerProvider] drop move failed:', err);
-          vscode.window.showErrorMessage(`Failed to move "${path.basename(uri.fsPath)}": ${err}`);
+          errors.push(`${path.basename(uri.fsPath)}: ${err}`);
         }
+      }
+      if (errors.length > 0) {
+        const moved = uris.length - errors.length;
+        vscode.window.showErrorMessage(
+          `Moved ${moved} of ${uris.length} items. Failed: ${errors.join('; ')}`,
+        );
       }
       this.refresh();
     }
@@ -197,7 +214,7 @@ export class FileExplorerProvider
   // ── Private helpers ──────────────────────────────────────────────
 
   private resolveDropTarget(target: ExplorerItem | undefined): string | undefined {
-    if (!target || target instanceof ScopeHeaderItem) {
+    if (!target || target instanceof ScopeHeaderItem || target instanceof ErrorPlaceholderItem) {
       return this.roots[0];
     }
     return target.isDir ? target.filePath : path.dirname(target.filePath);
@@ -226,7 +243,13 @@ export class FileExplorerProvider
     const gen = ++this.generation;
     const repos = await this.storage.getAllRepositories();
     if (gen !== this.generation) return;
-    this.roots = repos.map((r) => r.localPath);
+    const newRoots = repos.map((r) => r.localPath);
+    const changed = newRoots.length !== this.roots.length || newRoots.some((r, i) => r !== this.roots[i]);
+    this.roots = newRoots;
+    if (changed) {
+      this.setupWatchers();
+      this._onDidChangeScope.fire(this.roots);
+    }
     await this.loadExpandedAndRefresh(gen);
   }
 
@@ -245,7 +268,7 @@ export class FileExplorerProvider
     }, PERSIST_DEBOUNCE_MS);
   }
 
-  private async readDirectory(dirPath: string): Promise<FileItem[]> {
+  private async readDirectory(dirPath: string): Promise<(FileItem | ErrorPlaceholderItem)[]> {
     try {
       const entries = await fs.readdir(dirPath, { withFileTypes: true });
       return entries
@@ -259,7 +282,7 @@ export class FileExplorerProvider
         .map((e) => this.createItem(path.join(dirPath, e.name), e.isDirectory()));
     } catch (err) {
       console.error('[FileExplorerProvider] readDirectory failed:', dirPath, err);
-      return [];
+      return [new ErrorPlaceholderItem('Unable to read directory')];
     }
   }
 
@@ -268,9 +291,60 @@ export class FileExplorerProvider
     return new FileItem(filePath, isDir, expanded);
   }
 
+  private isGitInternal(uri: vscode.Uri): boolean {
+    return uri.fsPath.includes(`${path.sep}${GIT_DIR}${path.sep}`);
+  }
+
+  private setupWatchers(): void {
+    this.disposeWatchers();
+    for (const root of this.roots) {
+      const pattern = new vscode.RelativePattern(vscode.Uri.file(root), '**/*');
+      const watcher = vscode.workspace.createFileSystemWatcher(pattern);
+
+      watcher.onDidCreate((uri) => {
+        if (!this.isGitInternal(uri)) this.debouncedWatcherRefresh();
+      });
+      watcher.onDidDelete((uri) => {
+        if (this.isGitInternal(uri)) return;
+        this.cleanupDeletedPath(uri.fsPath);
+        this.debouncedWatcherRefresh();
+      });
+
+      this.watchers.push(watcher);
+    }
+  }
+
+  private disposeWatchers(): void {
+    for (const w of this.watchers) {
+      w.dispose();
+    }
+    this.watchers = [];
+  }
+
+  private debouncedWatcherRefresh(): void {
+    clearTimeout(this.watcherRefreshTimer);
+    this.watcherRefreshTimer = setTimeout(() => {
+      this._onDidChangeTreeData.fire(undefined);
+    }, WATCHER_DEBOUNCE_MS);
+  }
+
+  private cleanupDeletedPath(deletedPath: string): void {
+    this.expandedPaths.delete(deletedPath);
+    const prefix = deletedPath + path.sep;
+    for (const p of this.expandedPaths) {
+      if (p.startsWith(prefix)) {
+        this.expandedPaths.delete(p);
+      }
+    }
+    this.debouncePersist();
+  }
+
   dispose(): void {
     clearTimeout(this.persistTimer);
+    clearTimeout(this.watcherRefreshTimer);
+    this.disposeWatchers();
     this._onDidChangeTreeData.dispose();
+    this._onDidChangeScope.dispose();
     for (const d of this.disposables) {
       d.dispose();
     }
@@ -301,6 +375,14 @@ class ScopeHeaderItem extends vscode.TreeItem {
   }
 }
 
+class ErrorPlaceholderItem extends vscode.TreeItem {
+  constructor(message: string) {
+    super(message, vscode.TreeItemCollapsibleState.None);
+    this.contextValue = 'explorerError';
+    this.iconPath = new vscode.ThemeIcon('warning');
+  }
+}
+
 export class FileItem extends vscode.TreeItem {
   constructor(
     public readonly filePath: string,
@@ -322,7 +404,7 @@ export class FileItem extends vscode.TreeItem {
       this.command = {
         command: 'vscode.open',
         title: LABEL_OPEN_FILE,
-        arguments: [this.resourceUri],
+        arguments: [this.resourceUri, { viewColumn: vscode.ViewColumn.One }],
       };
     }
   }

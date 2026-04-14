@@ -5,7 +5,7 @@ export type { AgentStatus, AgentCli } from './agent';
 
 export interface BranchZone {
   branch: string;
-  isDevelop: boolean;
+  isCurrent: boolean;
   isExpanded: boolean;
   agents: Agent[];
 }

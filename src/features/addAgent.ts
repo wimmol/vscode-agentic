@@ -13,7 +13,7 @@ import {
   INPUT_ADD_AGENT_PLACEHOLDER,
   PICK_ADD_AGENT_TITLE,
   PICK_ADD_AGENT_PLACEHOLDER,
-  PICK_DEVELOP_DESCRIPTION,
+  PICK_CURRENT_DESCRIPTION,
   PICK_WORKTREE_DESCRIPTION,
   PICK_NEW_BRANCH_LABEL,
   PICK_NEW_BRANCH_DESCRIPTION,
@@ -61,11 +61,11 @@ export const addAgent = async (
   // Build quick pick items
   const items: BranchPickItem[] = [];
 
-  // Develop branch — always first
+  // Current branch — always first
   items.push({
-    label: repo.developBranch,
-    description: PICK_DEVELOP_DESCRIPTION,
-    branch: repo.developBranch,
+    label: repo.currentBranch,
+    description: PICK_CURRENT_DESCRIPTION,
+    branch: repo.currentBranch,
   });
 
   // Existing worktree branches
@@ -108,7 +108,7 @@ export const addAgent = async (
 
   let branch: string;
   let cwd: string;
-  const isDevelop = picked.branch === repo.developBranch;
+  const isCurrent = picked.branch === repo.currentBranch;
 
   if (picked.branch === PICK_NEW_BRANCH_VALUE) {
     // Suggest a unique branch name based on context
@@ -140,8 +140,8 @@ export const addAgent = async (
     await createWorktree(repoPath, wtPath, branch);
     await storage.addWorktree(repoId, branch, wtPath);
     cwd = wtPath;
-  } else if (isDevelop) {
-    branch = repo.developBranch;
+  } else if (isCurrent) {
+    branch = repo.currentBranch;
     cwd = repo.localPath;
   } else {
     // Existing worktree branch
@@ -171,7 +171,7 @@ export const addAgent = async (
     throw err;
   }
 
-  explorer.showRepo(agent.agentId, cwd, repo.name, branch, !isDevelop);
+  explorer.showRepo(agent.agentId, cwd, repo.name, branch, !isCurrent);
   terminalService.createTerminal(agent.agentId, agentName, branch, repo.name, cwd, undefined, initialPrompt);
   await storage.focusAgent(agent.agentId);
   return agent.agentId;

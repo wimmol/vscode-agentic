@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.5.0] - 2026-04-15
+
+### Fixed
+
+- **Agent status on wrong tile** — When multiple agents shared a working directory, `/clear` in one agent could cause another agent to steal its session file, displaying the wrong agent's running status on the wrong tile
+- **Timer showing 1000m+** — After extension reload, agents stuck in "running" status with stale `startedAt` timestamps now correctly transition to idle via stale detection
+- **Session detection losing candidates** — Unclaimed session files were eagerly marked as known and permanently lost; now tracked as pending candidates for re-evaluation
+
+### Changed
+
+- License changed from Fair Source (FSL-1.1-MIT) to MIT
+
+## [0.4.0] - 2026-04-15
+
+### Added
+
+- **Live file watching** — Explorer automatically reflects file changes from agents, git operations, and external tools without manual refresh
+- **Source Control panel** — New sidebar section below the explorer with commit, push, pull, and commit message suggestion
+- **Changed files list** — View modified/added/deleted files with status indicators; click to open VS Code's built-in diff view
+- **Refresh button** — Manual refresh in the explorer title bar as a fallback
+
+### Fixed
+
+- Explorer now shows "Unable to read directory" placeholder instead of silently returning empty for unreadable directories
+- Drop operations report a summary of failures instead of individual error messages per file
+- Cut-paste shows Replace/Keep Both/Cancel picker when target already exists (previously threw silently)
+- Stale expanded folder paths are cleaned up when directories are deleted externally
+
 ## [0.3.0] - 2026-03-15
 
 ### Added

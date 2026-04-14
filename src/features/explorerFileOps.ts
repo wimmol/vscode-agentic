@@ -38,6 +38,19 @@ const exists = async (uri: vscode.Uri): Promise<boolean> => {
   }
 };
 
+const findUniqueName = async (dir: string, baseName: string): Promise<vscode.Uri> => {
+  const ext = path.extname(baseName);
+  const nameNoExt = path.basename(baseName, ext);
+  let counter = 1;
+  let uri: vscode.Uri;
+  do {
+    const suffix = counter === 1 ? ' copy' : ` copy ${counter}`;
+    uri = vscode.Uri.file(path.join(dir, `${nameNoExt}${suffix}${ext}`));
+    counter++;
+  } while (await exists(uri));
+  return uri;
+};
+
 // ── Create ───────────────────────────────────────────────────────
 
 export const newFile = async (explorer: ExplorerRef, item?: FileItemLike): Promise<void> => {
@@ -62,7 +75,7 @@ export const newFile = async (explorer: ExplorerRef, item?: FileItemLike): Promi
   await vscode.workspace.fs.createDirectory(parentUri);
   await vscode.workspace.fs.writeFile(uri, new Uint8Array());
   explorer.refresh();
-  await vscode.commands.executeCommand('vscode.open', uri);
+  await vscode.commands.executeCommand('vscode.open', uri, { viewColumn: vscode.ViewColumn.One });
 };
 
 export const newFolder = async (explorer: ExplorerRef, item?: FileItemLike): Promise<void> => {
@@ -163,18 +176,23 @@ export const pasteItems = async (explorer: ExplorerRef, item?: FileItemLike): Pr
     if (cut) {
       if (sourceUri.fsPath === targetUri.fsPath) continue;
       if (targetUri.fsPath.startsWith(sourceUri.fsPath + path.sep)) continue;
-      await vscode.workspace.fs.rename(sourceUri, targetUri, { overwrite: false });
-    } else {
-      // Generate unique name if target exists
+      let overwrite = false;
       if (await exists(targetUri)) {
-        const ext = path.extname(baseName);
-        const nameNoExt = path.basename(baseName, ext);
-        let counter = 1;
-        do {
-          const suffix = counter === 1 ? ' copy' : ` copy ${counter}`;
-          targetUri = vscode.Uri.file(path.join(dir, `${nameNoExt}${suffix}${ext}`));
-          counter++;
-        } while (await exists(targetUri));
+        const choice = await vscode.window.showQuickPick(
+          ['Replace', 'Keep Both', 'Cancel'],
+          { placeHolder: `"${baseName}" already exists in destination`, ignoreFocusOut: true },
+        );
+        if (!choice || choice === 'Cancel') continue;
+        if (choice === 'Keep Both') {
+          targetUri = await findUniqueName(dir, baseName);
+        } else {
+          overwrite = true;
+        }
+      }
+      await vscode.workspace.fs.rename(sourceUri, targetUri, { overwrite });
+    } else {
+      if (await exists(targetUri)) {
+        targetUri = await findUniqueName(dir, baseName);
       }
       await vscode.workspace.fs.copy(sourceUri, targetUri, { overwrite: false });
     }

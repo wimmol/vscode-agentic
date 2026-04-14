@@ -1,9 +1,15 @@
-import { open, stat } from 'fs/promises';
-import { join } from 'path';
+import { open, readdir, stat } from 'fs/promises';
+import { basename, join } from 'path';
 import type { StateStorage } from '../db';
 import { claudeProjectDir } from './TerminalService';
 import { AGENT_STATUS_IDLE, AGENT_STATUS_RUNNING } from '../constants/agent';
-import { SESSION_WATCH_POLL_MS } from '../constants/timing';
+import { UUID_RE } from '../constants/paths';
+import {
+  SESSION_WATCH_POLL_MS,
+  SESSION_DIR_POLL_MS,
+  STALE_RUNNING_TIMEOUT_MS,
+  SESSION_ACTIVE_THRESHOLD_MS,
+} from '../constants/timing';
 
 /**
  * Extract the user prompt text from a JSONL user message content field.
@@ -29,6 +35,23 @@ interface WatcherEntry {
   offset: number;
   timer: NodeJS.Timeout;
   reading: boolean;
+  /** Set when stopWatching is called to prevent in-flight reads from writing stale data. */
+  cancelled: boolean;
+  sessionId: string;
+  cwd: string;
+  dir: string;
+  filePath: string;
+  dirTimer: NodeJS.Timeout;
+  /** Files present when watching started. Null until snapshot completes. */
+  knownFiles: Set<string> | null;
+  /** Last observed directory mtime to skip readdir when unchanged. */
+  lastDirMtime: number;
+  /** Timestamp of last time new JSONL content was read. Used for staleness detection. */
+  lastNewContentAt: number;
+  /** Whether the most recent processLines call set the agent to RUNNING. */
+  isRunning: boolean;
+  /** Unclaimed session ID from a previous poll, awaiting re-evaluation. */
+  pendingCandidate: string | null;
 }
 
 /**
@@ -37,6 +60,11 @@ interface WatcherEntry {
  * Monitors session files for new entries. When a user message is detected,
  * updates the agent's lastPrompt and startedAt. When an assistant end_turn
  * is detected, sets completedAt.
+ *
+ * Also monitors the session directory for new session files. This handles
+ * /clear (which creates a new session) and manual Claude Code relaunches
+ * in the same terminal — the watcher automatically switches to the new
+ * session file and updates the agent's sessionId.
  *
  * Uses interval-based polling instead of fs.watch because fs.watch (kqueue)
  * on macOS unreliably detects file appends, causing agent status to stay
@@ -48,36 +76,87 @@ interface WatcherEntry {
 export class SessionWatcher {
   private readonly watchers = new Map<string, WatcherEntry>();
 
+  /** Session IDs currently being watched, for cross-agent deduplication. */
+  private readonly trackedSessionIds = new Set<string>();
+
   constructor(private readonly storage: StateStorage) {}
+
+  /**
+   * Atomically claim a session ID if not already tracked.
+   * Returns true if newly claimed, false if already taken by another agent.
+   */
+  claimSession = (sessionId: string): boolean => {
+    if (this.trackedSessionIds.has(sessionId)) return false;
+    this.trackedSessionIds.add(sessionId);
+    return true;
+  };
+
+  /** Release a previously claimed session ID. */
+  releaseSession = (sessionId: string): void => {
+    this.trackedSessionIds.delete(sessionId);
+  };
 
   /**
    * Start watching a session file for an agent.
    * Reads any existing content first, then polls for changes.
+   * Also monitors the directory for new session files (handles /clear).
+   *
+   * @param initialRunning — Set to true when the stored agent status is RUNNING.
+   *   This seeds `entry.isRunning` so stale detection can transition the agent
+   *   to IDLE even if the session file is empty/missing (e.g., after extension reload).
    */
-  startWatching = (agentId: string, sessionId: string, cwd: string): void => {
+  startWatching = (agentId: string, sessionId: string, cwd: string, initialRunning = false): void => {
     this.stopWatching(agentId);
 
     const dir = claudeProjectDir(cwd);
     const filePath = join(dir, `${sessionId}.jsonl`);
     console.log('[SessionWatcher] startWatching:', { agentId, filePath });
+
+    this.trackedSessionIds.add(sessionId);
+
     const entry: WatcherEntry = {
       offset: 0,
       reading: false,
+      cancelled: false,
+      sessionId,
+      cwd,
+      dir,
+      filePath,
+      knownFiles: null,
+      lastDirMtime: 0,
+      lastNewContentAt: Date.now(),
+      isRunning: initialRunning,
+      pendingCandidate: null,
       timer: setInterval(() => {
-        this.readNewContent(agentId, filePath, entry);
+        this.readNewContent(agentId, entry);
       }, SESSION_WATCH_POLL_MS),
+      dirTimer: setInterval(() => {
+        this.pollForNewSession(agentId, entry);
+      }, SESSION_DIR_POLL_MS),
     };
     this.watchers.set(agentId, entry);
 
+    // Snapshot existing .jsonl files so we can detect new ones later.
+    readdir(dir)
+      .then((files) => {
+        entry.knownFiles = new Set(files.filter((f) => f.endsWith('.jsonl')));
+      })
+      .catch(() => {
+        entry.knownFiles = new Set();
+      });
+
     // Read existing content immediately to populate initial state.
-    this.readNewContent(agentId, filePath, entry);
+    this.readNewContent(agentId, entry);
   };
 
   /** Stop watching a session file for an agent. */
   stopWatching = (agentId: string): void => {
     const entry = this.watchers.get(agentId);
     if (entry) {
+      entry.cancelled = true;
       clearInterval(entry.timer);
+      clearInterval(entry.dirTimer);
+      this.trackedSessionIds.delete(entry.sessionId);
       this.watchers.delete(agentId);
     }
   };
@@ -85,29 +164,169 @@ export class SessionWatcher {
   /** Stop all watchers. */
   dispose = (): void => {
     for (const entry of this.watchers.values()) {
+      entry.cancelled = true;
       clearInterval(entry.timer);
+      clearInterval(entry.dirTimer);
     }
     this.watchers.clear();
+    this.trackedSessionIds.clear();
   };
 
   // ── Private ───────────────────────────────────────────────────────
 
+  /**
+   * Poll the session directory for new .jsonl files.
+   * When a new file appears that isn't tracked by any agent, switch to it.
+   * This handles /clear (new session) and manual Claude Code relaunches.
+   *
+   * When multiple agents share the same directory, uses a heuristic to
+   * determine which agent should claim the new file: the agent whose session
+   * was most recently active (but is no longer) is the most likely creator
+   * of the new session (e.g., the one that typed /clear).
+   */
+  private pollForNewSession = async (agentId: string, entry: WatcherEntry): Promise<void> => {
+    if (!entry.knownFiles || entry.cancelled) return;
+
+    // Re-evaluate a pending candidate from a previous poll cheaply (no readdir).
+    if (entry.pendingCandidate) {
+      if (this.trackedSessionIds.has(entry.pendingCandidate)) {
+        // Another agent claimed it.
+        entry.knownFiles.add(`${entry.pendingCandidate}.jsonl`);
+        entry.pendingCandidate = null;
+      } else if (this.shouldClaimNewSession(agentId, entry.dir)) {
+        const id = entry.pendingCandidate;
+        entry.pendingCandidate = null;
+        await this.adoptNewSession(agentId, id, entry);
+      }
+      return;
+    }
+
+    try {
+      // Skip readdir when directory hasn't changed (mtime unchanged).
+      const dirInfo = await stat(entry.dir);
+      if (dirInfo.mtimeMs <= entry.lastDirMtime) return;
+      entry.lastDirMtime = dirInfo.mtimeMs;
+
+      if (entry.cancelled) return;
+
+      const files = await readdir(entry.dir);
+
+      let newSessionId: string | null = null;
+
+      for (const f of files) {
+        if (!f.endsWith('.jsonl') || entry.knownFiles.has(f)) continue;
+
+        const id = basename(f, '.jsonl');
+
+        if (!UUID_RE.test(id) || this.trackedSessionIds.has(id)) {
+          entry.knownFiles.add(f);
+          continue;
+        }
+
+        newSessionId = id;
+      }
+
+      if (!newSessionId || entry.cancelled) return;
+
+      // When multiple agents share this directory, only the best candidate
+      // should claim. Losers store the candidate for cheap re-evaluation
+      // on subsequent polls (no readdir needed).
+      if (!this.shouldClaimNewSession(agentId, entry.dir)) {
+        entry.pendingCandidate = newSessionId;
+        return;
+      }
+
+      entry.knownFiles.add(`${newSessionId}.jsonl`);
+      await this.adoptNewSession(agentId, newSessionId, entry);
+    } catch {
+      // Directory may not exist — not fatal.
+    }
+  };
+
+  /** Adopt a new session file: update the agent record and restart the watcher. */
+  private adoptNewSession = async (agentId: string, sessionId: string, entry: WatcherEntry): Promise<void> => {
+    console.log('[SessionWatcher] new session detected:', {
+      agentId,
+      oldSession: entry.sessionId,
+      newSession: sessionId,
+    });
+
+    try {
+      await this.storage.updateAgent(agentId, {
+        sessionId,
+        status: AGENT_STATUS_IDLE,
+        lastPrompt: null,
+        startedAt: null,
+        completedAt: null,
+      });
+    } catch {
+      // Agent may have been removed.
+      return;
+    }
+
+    if (entry.cancelled) return;
+
+    this.startWatching(agentId, sessionId, entry.cwd);
+  };
+
+  /**
+   * When multiple agents share the same Claude project directory, determine
+   * whether this agent should claim a newly discovered session file.
+   *
+   * Heuristic: among agents on the same directory that are NOT currently
+   * receiving content, the one most recently active gets priority — it's
+   * the most likely to have triggered the new session (e.g., via /clear).
+   */
+  private shouldClaimNewSession = (agentId: string, dir: string): boolean => {
+    const now = Date.now();
+    let peerCount = 0;
+    let bestId: string | null = null;
+    let latestContentAt = -1;
+
+    for (const [id, e] of this.watchers) {
+      if (e.dir !== dir || e.cancelled) continue;
+      peerCount++;
+      // Skip agents still actively receiving content.
+      if (now - e.lastNewContentAt < SESSION_ACTIVE_THRESHOLD_MS) continue;
+      if (e.lastNewContentAt > latestContentAt) {
+        latestContentAt = e.lastNewContentAt;
+        bestId = id;
+      }
+    }
+
+    // Single agent on this directory — always claim.
+    if (peerCount <= 1) return true;
+    // All peers still active — defer to the next poll.
+    if (bestId === null) return false;
+    return bestId === agentId;
+  };
+
   /** Read new content from the file starting at the tracked offset. */
-  private readNewContent = async (
-    agentId: string,
-    filePath: string,
-    entry: WatcherEntry,
-  ): Promise<void> => {
+  private readNewContent = async (agentId: string, entry: WatcherEntry): Promise<void> => {
     if (entry.reading) return;
     entry.reading = true;
 
     let fd;
     try {
-      const fileInfo = await stat(filePath);
-      if (fileInfo.size <= entry.offset) return;
+      let fileSize: number;
+      try {
+        fileSize = (await stat(entry.filePath)).size;
+      } catch {
+        // File doesn't exist yet — check staleness anyway.
+        this.transitionIfStale(agentId, entry);
+        return;
+      }
 
-      fd = await open(filePath, 'r');
-      const buf = Buffer.alloc(fileInfo.size - entry.offset);
+      if (fileSize <= entry.offset) {
+        // No new content — check for stale running state.
+        this.transitionIfStale(agentId, entry);
+        return;
+      }
+
+      entry.lastNewContentAt = Date.now();
+
+      fd = await open(entry.filePath, 'r');
+      const buf = Buffer.alloc(fileSize - entry.offset);
       await fd.read(buf, 0, buf.length, entry.offset);
 
       const newContent = buf.toString('utf-8');
@@ -122,7 +341,12 @@ export class SessionWatcher {
       const lines = newContent.slice(0, lastNewline + 1).split('\n').filter((l) => l.trim());
       console.log('[SessionWatcher] read', lines.length, 'lines for', agentId);
 
-      await this.processLines(agentId, lines);
+      // Guard against stale writes: if this entry was cancelled while we
+      // were awaiting I/O, skip the storage update to avoid overwriting
+      // data from the new session.
+      if (entry.cancelled) return;
+
+      await this.processLines(agentId, lines, entry);
     } catch {
       // File read errors are non-fatal.
     } finally {
@@ -131,8 +355,25 @@ export class SessionWatcher {
     }
   };
 
-  /** Parse JSONL lines and update agent state. */
-  private processLines = async (agentId: string, lines: string[]): Promise<void> => {
+  /**
+   * If the agent has been RUNNING with no new JSONL content for longer than
+   * STALE_RUNNING_TIMEOUT_MS, transition to IDLE. Handles local/slash commands
+   * that don't produce an assistant end_turn in the session file.
+   */
+  private transitionIfStale = (agentId: string, entry: WatcherEntry): void => {
+    if (!entry.isRunning || entry.cancelled) return;
+    if (Date.now() - entry.lastNewContentAt < STALE_RUNNING_TIMEOUT_MS) return;
+
+    entry.isRunning = false;
+    console.log('[SessionWatcher] stale running detected, → idle | agentId:', agentId);
+    this.storage.updateAgent(agentId, {
+      status: AGENT_STATUS_IDLE,
+      completedAt: Date.now(),
+    }).catch(() => { /* Agent may have been removed. */ });
+  };
+
+  /** Parse JSONL lines and update agent state. Also updates entry.isRunning for staleness tracking. */
+  private processLines = async (agentId: string, lines: string[], entry: WatcherEntry): Promise<void> => {
     let lastPrompt: string | null = null;
     let promptTimestamp: number | null = null;
     let endTurnTimestamp: number | null = null;
@@ -162,6 +403,7 @@ export class SessionWatcher {
     // Apply the latest state to the agent.
     if (lastPrompt !== null && promptTimestamp !== null) {
       const status = endTurnTimestamp ? AGENT_STATUS_IDLE : AGENT_STATUS_RUNNING;
+      entry.isRunning = status === AGENT_STATUS_RUNNING;
       console.log('[SessionWatcher] status →', status, '| prompt:', lastPrompt?.slice(0, 40), '| agentId:', agentId);
       try {
         await this.storage.updateAgent(agentId, {
@@ -174,6 +416,7 @@ export class SessionWatcher {
         // Agent may have been removed.
       }
     } else if (endTurnTimestamp !== null) {
+      entry.isRunning = false;
       console.log('[SessionWatcher] status → idle (end_turn only) | agentId:', agentId);
       try {
         await this.storage.updateAgent(agentId, {

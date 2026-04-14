@@ -13,5 +13,6 @@ eslint.config.*
 .prettierrc*
 .gitignore
 CLAUDE.md
+docs/
 markdowns/
 **/*.map

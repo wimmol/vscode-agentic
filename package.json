@@ -3,12 +3,12 @@
   "displayName": "Agentic",
   "description": "Work on multiple repositories using AI agents on own worktrees",
   "icon": "images/icon.png",
-  "version": "0.3.0",
+  "version": "0.5.0",
   "publisher": "wimmol",
   "engines": {
     "vscode": "^1.74.0"
   },
-  "license": "FSL-1.1-MIT",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/wimmol/vscode-agentic"
@@ -73,6 +73,11 @@
         {
           "id": "vscode-agentic.explorer",
           "name": "Agentic Explorer"
+        },
+        {
+          "type": "webview",
+          "id": "vscode-agentic.sourceControl",
+          "name": "Source Control"
         }
       ]
     },
@@ -147,6 +152,12 @@
         "title": "Refactor",
         "icon": "$(wand)",
         "category": "Agentic"
+      },
+      {
+        "command": "vscode-agentic.explorer.refresh",
+        "title": "Refresh",
+        "icon": "$(refresh)",
+        "category": "Agentic"
       }
     ],
     "menus": {
@@ -158,6 +169,11 @@
         },
         {
           "command": "vscode-agentic.explorer.newFolder",
+          "when": "view == 'vscode-agentic.explorer'",
+          "group": "navigation"
+        },
+        {
+          "command": "vscode-agentic.explorer.refresh",
           "when": "view == 'vscode-agentic.explorer'",
           "group": "navigation"
         }
@@ -269,8 +285,8 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run compile:prod",
-    "compile:prod": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --minify && esbuild src/ui/index.tsx --bundle --outfile=out/ui/index.js --format=esm --jsx=automatic --loader:.ttf=file --minify",
-    "compile": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --sourcemap && esbuild src/ui/index.tsx --bundle --outfile=out/ui/index.js --format=esm --jsx=automatic --loader:.ttf=file --sourcemap",
+    "compile:prod": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --minify && esbuild src/ui/index.tsx --bundle --outfile=out/ui/index.js --format=esm --jsx=automatic --loader:.ttf=file --minify && esbuild src/ui/sourceControl/index.tsx --bundle --outfile=out/ui/sourceControl.js --format=esm --jsx=automatic --loader:.ttf=file --minify",
+    "compile": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --sourcemap && esbuild src/ui/index.tsx --bundle --outfile=out/ui/index.js --format=esm --jsx=automatic --loader:.ttf=file --sourcemap && esbuild src/ui/sourceControl/index.tsx --bundle --outfile=out/ui/sourceControl.js --format=esm --jsx=automatic --loader:.ttf=file --sourcemap",
     "package": "npx vsce package",
     "watch": "npm run compile -- --watch",
     "lint": "eslint src/",

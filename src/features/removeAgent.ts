@@ -22,7 +22,7 @@ export const removeAgent = async (
     return;
   }
   const { agent, repo, worktree } = ctx;
-  const isDevelop = agent.branch === repo.developBranch;
+  const isCurrent = agent.branch === repo.currentBranch;
 
   let detail = dialogRemoveAgent(agent.name);
   const dirty = worktree ? await hasUncommittedChanges(worktree.path) : false;
@@ -31,10 +31,10 @@ export const removeAgent = async (
   }
 
   // Check if this is the last agent on a worktree branch
-  const branchAgents = isDevelop ? [] : await storage.getAgentsByRepoBranch(agent.repoId, agent.branch);
-  const isLastOnWorktreeBranch = !isDevelop && branchAgents.length <= 1;
+  const branchAgents = isCurrent ? [] : await storage.getAgentsByRepoBranch(agent.repoId, agent.branch);
+  const isLastOnWorktreeBranch = !isCurrent && branchAgents.length <= 1;
 
-  // Develop branch or shared worktree — simple confirm
+  // Current branch or shared worktree — simple confirm
   if (!isLastOnWorktreeBranch) {
     const choice = await vscode.window.showWarningMessage(detail, { modal: true }, BTN_REMOVE);
     if (!choice) return;

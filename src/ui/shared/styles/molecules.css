@@ -54,7 +54,7 @@
   flex-shrink: 0;
 }
 
-.zone-header--develop .zone-header-icon {
+.zone-header--current .zone-header-icon {
   color: var(--vscode-foreground);
 }
 
@@ -91,7 +91,7 @@
   visibility: visible;
 }
 
-.zone-header--develop .zone-header-name {
+.zone-header--current .zone-header-name {
   color: var(--vscode-foreground);
 }
 

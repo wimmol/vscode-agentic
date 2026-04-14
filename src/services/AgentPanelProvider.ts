@@ -1,10 +1,10 @@
-import { randomBytes } from 'crypto';
 import * as vscode from 'vscode';
 import type { StateStorage } from '../db';
 import type { ExtensionToWebviewMessage } from '../types/messages';
 import { VIEW_AGENTS } from '../constants/views';
 import { CMD_READY, MSG_TYPE_UPDATE } from '../constants/commands';
 import { syncWorktrees } from '../features/syncWorktrees';
+import { buildWebviewHtml } from '../utils/webview';
 
 /**
  * Bridges StateStorage and the Agent Panel webview.
@@ -95,31 +95,8 @@ export class AgentPanelProvider implements vscode.WebviewViewProvider, vscode.Di
     await this.view.webview.postMessage(message);
   };
 
-  private getHtml = (webview: vscode.Webview): string => {
-    const scriptUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this.extensionUri, 'out', 'ui', 'index.js'),
-    );
-    const styleUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this.extensionUri, 'out', 'ui', 'index.css'),
-    );
-
-    const nonce = getNonce();
-
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy"
-    content="default-src 'none'; script-src 'nonce-${nonce}'; style-src ${webview.cspSource}; font-src ${webview.cspSource};" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="stylesheet" href="${styleUri}" />
-</head>
-<body>
-  <div id="root"></div>
-  <script nonce="${nonce}" type="module" src="${scriptUri}"></script>
-</body>
-</html>`;
-  };
+  private getHtml = (webview: vscode.Webview): string =>
+    buildWebviewHtml(webview, this.extensionUri, 'index.js', 'index.css');
 
   dispose(): void {
     if (this.pushStateTimer) {
@@ -131,5 +108,3 @@ export class AgentPanelProvider implements vscode.WebviewViewProvider, vscode.Di
     }
   }
 }
-
-const getNonce = (): string => randomBytes(16).toString('hex');

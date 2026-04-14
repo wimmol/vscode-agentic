@@ -22,7 +22,7 @@ export const agentClick = async (
     return;
   }
 
-  const isWorktree = ctx.agent.branch !== ctx.repo.developBranch;
+  const isWorktree = ctx.agent.branch !== ctx.repo.currentBranch;
   const cwd = ctx.worktree?.path ?? ctx.repo.localPath;
   explorer.showRepo(agentId, cwd, ctx.repo.name, ctx.agent.branch, isWorktree);
 

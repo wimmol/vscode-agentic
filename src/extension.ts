@@ -5,6 +5,7 @@ import { syncWorkspaceRepos } from './features/syncWorkspaceRepos';
 import { syncWorktrees } from './features/syncWorktrees';
 import { AgentPanelProvider } from './services/AgentPanelProvider';
 import { FileExplorerProvider } from './services/FileExplorerProvider';
+import { SourceControlProvider } from './services/SourceControlProvider';
 import { TerminalService } from './services/TerminalService';
 import { WebviewCommandHandler } from './services/WebviewCommandHandler';
 import { VIEW_EXPLORER } from './constants/views';
@@ -27,6 +28,9 @@ export const activate = (context: vscode.ExtensionContext) => {
   explorer.attachTreeView(treeView);
   context.subscriptions.push(treeView);
 
+  const sourceControl = new SourceControlProvider(context.extensionUri, explorer);
+  context.subscriptions.push(sourceControl);
+
   const terminalService = new TerminalService(storage);
   context.subscriptions.push(terminalService);
 
@@ -35,7 +39,9 @@ export const activate = (context: vscode.ExtensionContext) => {
 
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(AgentPanelProvider.viewType, provider),
+    vscode.window.registerWebviewViewProvider(SourceControlProvider.viewType, sourceControl),
     registerExplorerCommands(explorer, treeView, storage, terminalService),
+    vscode.commands.registerCommand('vscode-agentic.explorer.refresh', () => explorer.refresh()),
   );
 
   // Deferred: sync workspace git folders, worktrees, and restore agent terminals.
