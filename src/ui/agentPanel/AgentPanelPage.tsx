@@ -13,6 +13,10 @@ import {
   rootClickMessage,
   toggleRepoExpandedMessage,
   toggleZoneExpandedMessage,
+  sendPromptMessage,
+  forkAgentMessage,
+  renameAgentMessage,
+  removeQueueItemMessage,
 } from '../../types/messages';
 
 export const AgentPanelPage = () => {
@@ -58,6 +62,22 @@ export const AgentPanelPage = () => {
     vscode.postMessage(closeWorktreeMessage(repoId, branch));
   }, []);
 
+  const onSendPrompt = useCallback((agentId: string) => {
+    vscode.postMessage(sendPromptMessage(agentId));
+  }, []);
+
+  const onForkAgent = useCallback((agentId: string) => {
+    vscode.postMessage(forkAgentMessage(agentId));
+  }, []);
+
+  const onRenameAgent = useCallback((agentId: string) => {
+    vscode.postMessage(renameAgentMessage(agentId));
+  }, []);
+
+  const onRemoveQueueItem = useCallback((agentId: string, index: number) => {
+    vscode.postMessage(removeQueueItemMessage(agentId, index));
+  }, []);
+
   return (
     <AgentPanelView
       repos={repos}
@@ -71,6 +91,10 @@ export const AgentPanelPage = () => {
       onAgentClick={onAgentClick}
       onRemoveAgentClick={onRemoveAgentClick}
       onCloseWorktreeClick={onCloseWorktreeClick}
+      onSendPrompt={onSendPrompt}
+      onForkAgent={onForkAgent}
+      onRenameAgent={onRenameAgent}
+      onRemoveQueueItem={onRemoveQueueItem}
     />
   );
 };

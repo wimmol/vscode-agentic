@@ -14,7 +14,6 @@ export const ERR_AGENT_NAME_EMPTY = 'Agent name cannot be empty';
 export const ERR_WORKTREE_NOT_FOUND = 'Worktree not found for this branch.';
 export const ERR_BRANCH_EMPTY = 'Branch name cannot be empty';
 export const ERR_BRANCH_INVALID = 'Invalid branch name (contains forbidden characters)';
-export const ERR_FILES_NO_REPO = 'Selected files do not belong to any tracked repository.';
 export const errRepoIdNotFound = (id: string) => `Repository ${id} not found`;
 export const errAgentIdNotFound = (id: string) => `Agent ${id} not found`;
 
@@ -72,3 +71,38 @@ export const PICK_NEW_BRANCH_LABEL = '$(add) New branch…';
 export const PICK_NEW_BRANCH_DESCRIPTION = 'create worktree';
 export const PICK_SEPARATOR_WORKTREES = 'Worktrees';
 export const PICK_NEW_BRANCH_VALUE = '__new__';
+
+// ── New feature labels ──────────────────────────────────────────
+export const LABEL_SEND_PROMPT = 'Send prompt';
+export const LABEL_FORK_AGENT = 'Fork agent';
+export const LABEL_RENAME_AGENT = 'Rename agent';
+export const LABEL_REMOVE_QUEUE_ITEM = 'Remove queued prompt';
+export const LABEL_QUEUED = 'queued';
+export const LABEL_FORK = 'FORK';
+
+// ── Template labels ─────────────────────────────────────────────
+export const INPUT_TEMPLATE_NAME_PROMPT = 'Template name';
+export const INPUT_TEMPLATE_NAME_PLACEHOLDER = 'e.g. Docs Writer, Test Writer';
+export const INPUT_TEMPLATE_PROMPT_PROMPT = 'Template prompt';
+export const INPUT_TEMPLATE_PROMPT_PLACEHOLDER = 'The prompt that will be sent to the agent';
+export const PICK_TEMPLATE_TITLE = 'Select template';
+export const PICK_TEMPLATE_PLACEHOLDER = 'Choose a template or start blank';
+export const PICK_TEMPLATE_BLANK_LABEL = '$(code) Blank — no template';
+export const PICK_TEMPLATE_BLANK_DESCRIPTION = 'enter your own prompt';
+export const PICK_REMOVE_TEMPLATE_TITLE = 'Remove template';
+export const PICK_REMOVE_TEMPLATE_PLACEHOLDER = 'Select template to remove';
+
+// ── Notification messages ───────────────────────────────────────
+export const notifAgentFinished = (name: string, repoName: string, duration: string) =>
+  `Agent "${name}" finished on ${repoName} (${duration})`;
+
+// ── Warning messages ───────────────────────────────────────────
+export const WARN_TERMINAL_NOT_RUNNING = 'Agent terminal is not running.';
+
+// ── Rename ──────────────────────────────────────────────────────
+export const INPUT_RENAME_PROMPT = 'New agent name';
+export const INPUT_RENAME_PLACEHOLDER = 'Enter a new name for the agent';
+
+// ── Send prompt ─────────────────────────────────────────────────
+export const INPUT_SEND_PROMPT_PROMPT = 'Send prompt to agent';
+export const INPUT_SEND_PROMPT_PLACEHOLDER = 'Enter the prompt to send';

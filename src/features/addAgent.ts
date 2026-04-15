@@ -19,6 +19,10 @@ import {
   PICK_NEW_BRANCH_DESCRIPTION,
   PICK_SEPARATOR_WORKTREES,
   PICK_NEW_BRANCH_VALUE,
+  PICK_TEMPLATE_TITLE,
+  PICK_TEMPLATE_PLACEHOLDER,
+  PICK_TEMPLATE_BLANK_LABEL,
+  PICK_TEMPLATE_BLANK_DESCRIPTION,
 } from '../constants/messages';
 import { worktreePath, ensureBranch, createWorktree, removeWorktree } from '../services/GitService';
 import { generateAgentName } from '../utils/nameGenerator';
@@ -154,6 +158,39 @@ export const addAgent = async (
     cwd = wt.path;
   }
 
+  // Template picker
+  let templateName: string | null = null;
+  if (!initialPrompt) {
+    const templates = storage.getAllTemplates();
+    if (templates.length > 0) {
+      interface TemplatePickItem extends vscode.QuickPickItem {
+        templatePrompt?: string;
+        templateName?: string;
+      }
+
+      const templateItems: TemplatePickItem[] = [
+        { label: PICK_TEMPLATE_BLANK_LABEL, description: PICK_TEMPLATE_BLANK_DESCRIPTION },
+        ...templates.map((t) => ({
+          label: t.name,
+          description: t.prompt.slice(0, 60),
+          templatePrompt: t.prompt,
+          templateName: t.name,
+        })),
+      ];
+
+      const templatePick = await vscode.window.showQuickPick(templateItems, {
+        title: PICK_TEMPLATE_TITLE,
+        placeHolder: PICK_TEMPLATE_PLACEHOLDER,
+      });
+      if (!templatePick) return;
+
+      if (templatePick.templatePrompt) {
+        initialPrompt = templatePick.templatePrompt;
+        templateName = templatePick.templateName ?? null;
+      }
+    }
+  }
+
   // Generate a unique funny name
   const existingAgents = await storage.getAgentsByRepo(repoId);
   const existingNames = existingAgents.map((a) => a.name);
@@ -162,6 +199,9 @@ export const addAgent = async (
   let agent;
   try {
     agent = await storage.addAgent(repoId, agentName, branch, AGENT_CLI_CLAUDE_CODE);
+    if (templateName) {
+      await storage.updateAgent(agent.agentId, { templateName });
+    }
   } catch (err) {
     // Rollback worktree if we just created it
     if (picked.branch === PICK_NEW_BRANCH_VALUE) {

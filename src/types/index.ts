@@ -1,7 +1,7 @@
 import type { Repository, Agent } from '../db/models';
 
-export type { Repository, Worktree, Agent } from '../db/models';
-export type { AgentStatus, AgentCli } from './agent';
+export type { Repository, Worktree, Agent, AgentTemplate } from '../db/models';
+export type { AgentStatus, AgentCli, ContextUsage } from './agent';
 
 export interface BranchZone {
   branch: string;

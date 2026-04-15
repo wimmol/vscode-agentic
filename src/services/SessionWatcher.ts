@@ -1,14 +1,17 @@
+import * as vscode from 'vscode';
 import { open, readdir, stat } from 'fs/promises';
 import { basename, join } from 'path';
 import type { StateStorage } from '../db';
 import { claudeProjectDir } from './TerminalService';
-import { AGENT_STATUS_IDLE, AGENT_STATUS_RUNNING } from '../constants/agent';
+import { AGENT_STATUS_IDLE, AGENT_STATUS_RUNNING, DEFAULT_CONTEXT_WINDOW } from '../constants/agent';
+import { notifAgentFinished } from '../constants/messages';
 import { UUID_RE } from '../constants/paths';
 import {
   SESSION_WATCH_POLL_MS,
   SESSION_DIR_POLL_MS,
   STALE_RUNNING_TIMEOUT_MS,
   SESSION_ACTIVE_THRESHOLD_MS,
+  QUEUE_DRAIN_DELAY_MS,
 } from '../constants/timing';
 
 /**
@@ -79,7 +82,10 @@ export class SessionWatcher {
   /** Session IDs currently being watched, for cross-agent deduplication. */
   private readonly trackedSessionIds = new Set<string>();
 
-  constructor(private readonly storage: StateStorage) {}
+  constructor(
+    private readonly storage: StateStorage,
+    private readonly onQueueDrain?: (agentId: string, prompt: string) => void,
+  ) {}
 
   /**
    * Atomically claim a session ID if not already tracked.
@@ -159,6 +165,34 @@ export class SessionWatcher {
       this.trackedSessionIds.delete(entry.sessionId);
       this.watchers.delete(agentId);
     }
+  };
+
+  /** Send VS Code notification when agent finishes. */
+  private notifyCompletion = async (agentId: string, durationMs: number): Promise<void> => {
+    try {
+      const ctx = await this.storage.getAgentContext(agentId);
+      if (!ctx) return;
+      const seconds = Math.round(durationMs / 1000);
+      const mins = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      const duration = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+      vscode.window.showInformationMessage(notifAgentFinished(ctx.agent.name, ctx.repo.name, duration));
+
+      // Auto-drain queue
+      await this.drainQueue(agentId);
+    } catch {
+      // Non-fatal.
+    }
+  };
+
+  /** Check and execute next queued prompt for an agent. */
+  private drainQueue = async (agentId: string): Promise<void> => {
+    const next = await this.storage.shiftFromQueue(agentId);
+    if (!next) return;
+
+    await new Promise((resolve) => setTimeout(resolve, QUEUE_DRAIN_DELAY_MS));
+
+    this.onQueueDrain?.(agentId, next);
   };
 
   /** Stop all watchers. */
@@ -369,7 +403,8 @@ export class SessionWatcher {
     this.storage.updateAgent(agentId, {
       status: AGENT_STATUS_IDLE,
       completedAt: Date.now(),
-    }).catch(() => { /* Agent may have been removed. */ });
+    }).then(() => this.notifyCompletion(agentId, 0))
+      .catch(() => { /* Agent may have been removed. */ });
   };
 
   /** Parse JSONL lines and update agent state. Also updates entry.isRunning for staleness tracking. */
@@ -377,6 +412,8 @@ export class SessionWatcher {
     let lastPrompt: string | null = null;
     let promptTimestamp: number | null = null;
     let endTurnTimestamp: number | null = null;
+    let lastAssistantText: string | null = null;
+    let lastContextUsage: { used: number; total: number } | null = null;
 
     for (const line of lines) {
       try {
@@ -387,23 +424,43 @@ export class SessionWatcher {
           if (text) {
             lastPrompt = text;
             promptTimestamp = obj.timestamp ? new Date(obj.timestamp).getTime() : Date.now();
-            // New prompt clears previous completion.
             endTurnTimestamp = null;
           }
         }
 
-        if (obj.type === 'assistant' && obj.message?.stop_reason === 'end_turn') {
-          endTurnTimestamp = obj.timestamp ? new Date(obj.timestamp).getTime() : Date.now();
+        if (obj.type === 'assistant') {
+          // Extract assistant summary text
+          if (obj.message?.content) {
+            const text = extractPromptText(obj.message.content);
+            if (text) lastAssistantText = text;
+          }
+          // Extract context usage
+          if (obj.message?.usage && typeof obj.message.usage.input_tokens === 'number') {
+            lastContextUsage = { used: obj.message.usage.input_tokens, total: DEFAULT_CONTEXT_WINDOW };
+          }
+          // Detect end_turn
+          if (obj.message?.stop_reason === 'end_turn') {
+            endTurnTimestamp = obj.timestamp ? new Date(obj.timestamp).getTime() : Date.now();
+          }
         }
       } catch {
         // Skip malformed lines.
       }
     }
 
+    // Truncate assistant summary
+    if (lastAssistantText && lastAssistantText.length > 200) {
+      lastAssistantText = lastAssistantText.slice(0, 200) + '…';
+    }
+
     // Apply the latest state to the agent.
     if (lastPrompt !== null && promptTimestamp !== null) {
       const status = endTurnTimestamp ? AGENT_STATUS_IDLE : AGENT_STATUS_RUNNING;
+      const wasRunning = entry.isRunning;
       entry.isRunning = status === AGENT_STATUS_RUNNING;
+
+      const outputSummary = endTurnTimestamp ? lastAssistantText : undefined;
+
       console.log('[SessionWatcher] status →', status, '| prompt:', lastPrompt?.slice(0, 40), '| agentId:', agentId);
       try {
         await this.storage.updateAgent(agentId, {
@@ -411,18 +468,37 @@ export class SessionWatcher {
           startedAt: promptTimestamp,
           completedAt: endTurnTimestamp,
           status,
+          ...(outputSummary !== undefined && { outputSummary }),
+          ...(lastContextUsage && { contextUsage: lastContextUsage }),
         });
+
+        // Notification on completion
+        if (wasRunning && status === AGENT_STATUS_IDLE) {
+          this.notifyCompletion(agentId, endTurnTimestamp! - promptTimestamp);
+        }
       } catch {
         // Agent may have been removed.
       }
     } else if (endTurnTimestamp !== null) {
       entry.isRunning = false;
+
       console.log('[SessionWatcher] status → idle (end_turn only) | agentId:', agentId);
       try {
         await this.storage.updateAgent(agentId, {
           completedAt: endTurnTimestamp,
           status: AGENT_STATUS_IDLE,
+          ...(lastAssistantText && { outputSummary: lastAssistantText }),
+          ...(lastContextUsage && { contextUsage: lastContextUsage }),
         });
+
+        this.notifyCompletion(agentId, 0);
+      } catch {
+        // Agent may have been removed.
+      }
+    } else if (lastContextUsage) {
+      // Update context usage even when no status change
+      try {
+        await this.storage.updateAgent(agentId, { contextUsage: lastContextUsage });
       } catch {
         // Agent may have been removed.
       }

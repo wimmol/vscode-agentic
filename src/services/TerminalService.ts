@@ -74,7 +74,14 @@ export class TerminalService implements vscode.Disposable {
   private restored = false;
 
   constructor(private readonly storage: StateStorage) {
-    this.sessionWatcher = new SessionWatcher(storage);
+    this.sessionWatcher = new SessionWatcher(storage, (agentId, prompt) => {
+      const terminal = this.terminals.get(agentId);
+      if (terminal) {
+        terminal.sendText(prompt, true);
+        terminal.show(true);
+        this.storage.updateAgent(agentId, { status: AGENT_STATUS_RUNNING }).catch(() => {});
+      }
+    });
     this.disposables.push(
       vscode.window.onDidCloseTerminal((terminal) => {
         this.onTerminalClosed(terminal).catch((err) => {

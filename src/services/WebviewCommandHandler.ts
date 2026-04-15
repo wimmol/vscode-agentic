@@ -15,7 +15,14 @@ import {
   CMD_AGENT_CLICK,
   CMD_TOGGLE_ZONE_EXPANDED,
   CMD_CLOSE_WORKTREE,
+  CMD_SEND_PROMPT,
+  CMD_FORK_AGENT,
+  CMD_RENAME_AGENT,
+  CMD_REMOVE_QUEUE_ITEM,
 } from '../constants/commands';
+import { sendPrompt } from '../features/sendPrompt';
+import { forkAgent } from '../features/forkAgent';
+import { renameAgent } from '../features/renameAgent';
 import { addAgent } from '../features/addAgent';
 import { addRepo } from '../features/addRepo';
 import { removeAgent } from '../features/removeAgent';
@@ -85,6 +92,18 @@ export class WebviewCommandHandler implements vscode.Disposable {
           break;
         case CMD_CLOSE_WORKTREE:
           await closeWorktree(this.storage, this.terminalService, message.args.repoId, message.args.branch);
+          break;
+        case CMD_SEND_PROMPT:
+          await sendPrompt(this.storage, this.terminalService, message.args.agentId);
+          break;
+        case CMD_FORK_AGENT:
+          await forkAgent(this.storage, this.explorer, this.terminalService, message.args.agentId);
+          break;
+        case CMD_RENAME_AGENT:
+          await renameAgent(this.storage, message.args.agentId);
+          break;
+        case CMD_REMOVE_QUEUE_ITEM:
+          await this.storage.removeFromQueue(message.args.agentId, message.args.index);
           break;
       }
       console.log('[WebviewCommandHandler] handled "%s" successfully', message.function);

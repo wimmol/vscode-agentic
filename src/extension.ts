@@ -9,6 +9,7 @@ import { SourceControlProvider } from './services/SourceControlProvider';
 import { TerminalService } from './services/TerminalService';
 import { WebviewCommandHandler } from './services/WebviewCommandHandler';
 import { VIEW_EXPLORER } from './constants/views';
+import { createTemplate, removeTemplate } from './features/manageTemplates';
 
 export const activate = (context: vscode.ExtensionContext) => {
   const storage = createStateStorage(context);
@@ -42,6 +43,8 @@ export const activate = (context: vscode.ExtensionContext) => {
     vscode.window.registerWebviewViewProvider(SourceControlProvider.viewType, sourceControl),
     registerExplorerCommands(explorer, treeView, storage, terminalService),
     vscode.commands.registerCommand('vscode-agentic.explorer.refresh', () => explorer.refresh()),
+    vscode.commands.registerCommand('vscode-agentic.createTemplate', () => createTemplate(storage)),
+    vscode.commands.registerCommand('vscode-agentic.removeTemplate', () => removeTemplate(storage)),
   );
 
   // Deferred: sync workspace git folders, worktrees, and restore agent terminals.

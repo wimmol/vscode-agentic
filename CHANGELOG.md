@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.6.0] - 2026-04-15
+
+### Added
+
+- **Agent templates** — Create reusable prompt templates (name + prompt) via Command Palette. Pick a template when creating an agent, or start blank.
+- **Prompt queue** — Send prompts to running agents; they queue up and auto-execute sequentially when each task completes.
+- **Session forking** — Fork an agent to a new branch with full branch picker. Context from the source agent carries over. Forked agents show a FORK badge.
+- **Output summaries** — Agent tiles show a one-line summary of what the agent accomplished, parsed from the session when it finishes.
+- **Context usage display** — Token usage shown as compact text (e.g. `47k / 1M`) with color thresholds (50% warn, 75% danger) and a thin progress bar on each tile.
+- **Expandable agent tiles** — Click a tile to focus its terminal AND expand inline details: branch, worktree, context, full prompt, queued prompts, and action buttons (Send Prompt, Fork, Rename).
+- **Agent notifications** — VS Code info/warning messages when agents finish or encounter errors.
+- **Agent rename** — Rename agents from the expanded tile detail view via input box.
+- **Strip XML tags** — Prompt previews on agent tiles now strip `<tag>` markup for clean readability.
+- **Template commands** — `Agentic: Create Agent Template` and `Agentic: Remove Agent Template` in Command Palette.
+
+### Changed
+
+- **Agent names** — Replaced adjective-animal generator (e.g. "fuzzy penguin") with short human names (e.g. "Alice", "Max", "Leo").
+- Removed hardcoded "Generate Documentation" and "Refactor" explorer actions in favor of user-defined templates.
+- Removed `generateMdPrompt` and `refactorPrompt` settings (replaced by templates).
+
 ## [0.5.0] - 2026-04-15
 
 ### Fixed

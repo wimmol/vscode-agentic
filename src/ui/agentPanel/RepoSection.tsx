@@ -15,6 +15,10 @@ interface RepoSectionProps {
   onAgentClick: (agentId: string) => void;
   onRemoveAgentClick: (agentId: string) => void;
   onCloseWorktreeClick: (repoId: string, branch: string) => void;
+  onSendPrompt: (agentId: string) => void;
+  onForkAgent: (agentId: string) => void;
+  onRenameAgent: (agentId: string) => void;
+  onRemoveQueueItem: (agentId: string, index: number) => void;
 }
 
 export const RepoSection = ({
@@ -27,6 +31,10 @@ export const RepoSection = ({
   onAgentClick,
   onRemoveAgentClick,
   onCloseWorktreeClick,
+  onSendPrompt,
+  onForkAgent,
+  onRenameAgent,
+  onRemoveQueueItem,
 }: RepoSectionProps) => {
   const hasAnyAgents = repo.zones.some((z) => z.agents.length > 0);
 
@@ -73,8 +81,19 @@ export const RepoSection = ({
                         startedAt={agent.startedAt}
                         completedAt={agent.completedAt}
                         isSelected={agent.isFocused}
+                        templateName={agent.templateName}
+                        outputSummary={agent.outputSummary}
+                        forkedFrom={agent.forkedFrom}
+                        promptQueue={agent.promptQueue}
+                        contextUsage={agent.contextUsage}
+                        branch={agent.branch}
+                        worktreePath={null}
                         onClick={onAgentClick}
                         onRemoveClick={onRemoveAgentClick}
+                        onSendPrompt={onSendPrompt}
+                        onForkAgent={onForkAgent}
+                        onRenameAgent={onRenameAgent}
+                        onRemoveQueueItem={onRemoveQueueItem}
                       />
                     ))}
                   </div>

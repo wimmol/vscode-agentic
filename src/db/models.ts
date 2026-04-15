@@ -1,4 +1,4 @@
-import type { AgentCli, AgentStatus } from '../types/agent';
+import type { AgentCli, AgentStatus, ContextUsage } from '../types/agent';
 
 // ── Attribute interfaces (plain objects for UI / transport) ─────────
 
@@ -24,6 +24,11 @@ export interface Agent {
   startedAt: number | null;
   completedAt: number | null;
   createdAt: number;
+  templateName: string | null;
+  outputSummary: string | null;
+  forkedFrom: string | null;
+  promptQueue: string[];
+  contextUsage: ContextUsage | null;
 }
 
 export interface Worktree {
@@ -36,4 +41,11 @@ export interface Worktree {
 export interface ExplorerState {
   scopeKey: string;
   expandedPaths: string;
+}
+
+export interface AgentTemplate {
+  templateId: string;
+  name: string;
+  prompt: string;
+  createdAt: number;
 }

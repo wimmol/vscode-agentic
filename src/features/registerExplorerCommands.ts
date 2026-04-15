@@ -17,7 +17,6 @@ import {
   type FileItemLike,
 } from './explorerFileOps';
 import { sendToTerminal } from './sendToTerminal';
-import { addAgentWithTask } from './addAgentWithTask';
 
 const wrap = (fn: () => Promise<void>) =>
   fn().catch((err: unknown) => {
@@ -43,14 +42,6 @@ export const registerExplorerCommands = (
 
   const resolveSingle = (item?: unknown): FileItemLike | undefined =>
     item && isFileItemLike(item) ? item : treeView.selection.find(isFileItemLike);
-
-  /** Prompt for optional custom instructions. Returns undefined if user cancels. */
-  const promptCustomInstructions = (title: string) =>
-    vscode.window.showInputBox({
-      title,
-      placeHolder: 'Optional extra instructions (leave empty for defaults)',
-      ignoreFocusOut: true,
-    });
 
   return vscode.Disposable.from(
     // ── File operations ──────────────────────────────────────────
@@ -93,24 +84,6 @@ export const registerExplorerCommands = (
     // ── Agent actions ────────────────────────────────────────────
     vscode.commands.registerCommand('vscode-agentic.explorer.sendToTerminal', (item?: unknown, selected?: readonly unknown[]) =>
       wrap(() => sendToTerminal(storage, terminalService, resolveItems(item, selected))),
-    ),
-    vscode.commands.registerCommand('vscode-agentic.explorer.generateDocs', (item?: unknown, selected?: readonly unknown[]) =>
-      wrap(async () => {
-        const items = resolveItems(item, selected);
-        if (items.length === 0) return;
-        const custom = await promptCustomInstructions('Generate Documentation');
-        if (custom === undefined) return;
-        await addAgentWithTask(storage, explorer, terminalService, items, 'doc', custom);
-      }),
-    ),
-    vscode.commands.registerCommand('vscode-agentic.explorer.refactor', (item?: unknown, selected?: readonly unknown[]) =>
-      wrap(async () => {
-        const items = resolveItems(item, selected);
-        if (items.length === 0) return;
-        const custom = await promptCustomInstructions('Refactor');
-        if (custom === undefined) return;
-        await addAgentWithTask(storage, explorer, terminalService, items, 'refactor', custom);
-      }),
     ),
   );
 };

@@ -1,7 +1,7 @@
 {
   "name": "vscode-agentic",
   "displayName": "Agentic",
-  "description": "Work on multiple repositories using AI agents on own worktrees",
+  "description": "Convenient sidebar to keep all your Claude Code agents in plain sight",
   "icon": "images/icon.png",
   "version": "0.5.0",
   "publisher": "wimmol",
@@ -50,16 +50,6 @@
           "type": "boolean",
           "default": false,
           "description": "Run agents with --dangerously-skip-permissions flag (no confirmation prompts)."
-        },
-        "vscode-agentic.generateMdPrompt": {
-          "type": "string",
-          "default": "",
-          "markdownDescription": "Additional instructions appended to the **Generate Documentation** agent prompt."
-        },
-        "vscode-agentic.refactorPrompt": {
-          "type": "string",
-          "default": "",
-          "markdownDescription": "Additional instructions appended to the **Refactor** agent prompt."
         }
       }
     },
@@ -77,7 +67,7 @@
         {
           "type": "webview",
           "id": "vscode-agentic.sourceControl",
-          "name": "Source Control"
+          "name": "Agentic Source Control"
         }
       ]
     },
@@ -142,15 +132,15 @@
         "category": "Agentic"
       },
       {
-        "command": "vscode-agentic.explorer.generateDocs",
-        "title": "Generate Documentation",
-        "icon": "$(book)",
+        "command": "vscode-agentic.createTemplate",
+        "title": "Create Agent Template",
+        "icon": "$(add)",
         "category": "Agentic"
       },
       {
-        "command": "vscode-agentic.explorer.refactor",
-        "title": "Refactor",
-        "icon": "$(wand)",
+        "command": "vscode-agentic.removeTemplate",
+        "title": "Remove Agent Template",
+        "icon": "$(trash)",
         "category": "Agentic"
       },
       {
@@ -193,16 +183,6 @@
           "command": "vscode-agentic.explorer.sendToTerminal",
           "when": "view == 'vscode-agentic.explorer' && viewItem =~ /^explorer/",
           "group": "3_agent@1"
-        },
-        {
-          "command": "vscode-agentic.explorer.generateDocs",
-          "when": "view == 'vscode-agentic.explorer' && viewItem =~ /^explorer/",
-          "group": "3_agent@2"
-        },
-        {
-          "command": "vscode-agentic.explorer.refactor",
-          "when": "view == 'vscode-agentic.explorer' && viewItem =~ /^explorer/",
-          "group": "3_agent@3"
         },
         {
           "command": "vscode-agentic.explorer.cut",

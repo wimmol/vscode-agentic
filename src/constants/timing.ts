@@ -18,3 +18,5 @@ export const SESSION_ACTIVE_THRESHOLD_MS = 5_000;
 export const SLOW_SESSION_POLL_INTERVAL_MS = 30_000;
 /** How often to verify tracked terminals still exist. */
 export const HEALTH_CHECK_INTERVAL_MS = 30_000;
+/** Delay before draining the next queued prompt, giving Claude TUI time to be ready for input. */
+export const QUEUE_DRAIN_DELAY_MS = 1500;
