@@ -3,7 +3,7 @@
   "displayName": "Agentic",
   "description": "Convenient sidebar to keep all your Claude Code agents in plain sight",
   "icon": "images/icon.png",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "publisher": "wimmol",
   "engines": {
     "vscode": "^1.74.0"
