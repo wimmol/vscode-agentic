@@ -111,7 +111,7 @@ export const AgentTile = ({
         <span className="agent-tile-name">{name}</span>
         {templateName && <span className="template-badge">{templateName}</span>}
         {forkedFrom && <span className="fork-badge">{LABEL_FORK}</span>}
-        {promptQueue.length > 0 && (
+        {promptQueue?.length > 0 && (
           <span className="queue-badge">{promptQueue.length} {LABEL_QUEUED}</span>
         )}
         {ctxText && (
@@ -168,7 +168,7 @@ export const AgentTile = ({
             </div>
           )}
 
-          {promptQueue.length > 0 && (
+          {promptQueue?.length > 0 && (
             <div className="queue-list">
               {promptQueue.map((item, i) => (
                 <div key={`${i}-${item.slice(0, 30)}`} className="queue-item">
