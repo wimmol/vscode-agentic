@@ -46,11 +46,22 @@ export class StateStorage implements vscode.Disposable {
 
   private agents(): Agent[] {
     return this.state.get<Agent[]>(STORE_AGENTS, []).map((a) => ({
-      ...a,
+      agentId: a.agentId,
+      repoId: a.repoId,
+      name: a.name,
+      branch: a.branch,
+      cli: a.cli,
+      status: a.status,
+      isFocused: a.isFocused ?? false,
+      sessionId: a.sessionId ?? null,
+      lastPrompt: a.lastPrompt ?? null,
+      startedAt: a.startedAt ?? null,
+      completedAt: a.completedAt ?? null,
+      createdAt: a.createdAt ?? Date.now(),
       templateName: a.templateName ?? null,
       outputSummary: a.outputSummary ?? null,
       forkedFrom: a.forkedFrom ?? null,
-      promptQueue: a.promptQueue ?? [],
+      promptQueue: Array.isArray(a.promptQueue) ? a.promptQueue : [],
       contextUsage: a.contextUsage ?? null,
     }));
   }
