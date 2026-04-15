@@ -13,3 +13,8 @@ export type AgentStatus =
   | typeof AGENT_STATUS_ERROR;
 
 export type AgentCli = typeof AGENT_CLI_CLAUDE_CODE;
+
+export interface ContextUsage {
+  used: number;
+  total: number;
+}

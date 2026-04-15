@@ -16,6 +16,10 @@ interface AgentPanelViewProps {
   onAgentClick: (agentId: string) => void;
   onRemoveAgentClick: (agentId: string) => void;
   onCloseWorktreeClick: (repoId: string, branch: string) => void;
+  onSendPrompt: (agentId: string) => void;
+  onForkAgent: (agentId: string) => void;
+  onRenameAgent: (agentId: string) => void;
+  onRemoveQueueItem: (agentId: string, index: number) => void;
 }
 
 export const AgentPanelView = ({
@@ -30,6 +34,10 @@ export const AgentPanelView = ({
   onAgentClick,
   onRemoveAgentClick,
   onCloseWorktreeClick,
+  onSendPrompt,
+  onForkAgent,
+  onRenameAgent,
+  onRemoveQueueItem,
 }: AgentPanelViewProps) => {
   return (
     <section className="agent-panel">
@@ -50,6 +58,10 @@ export const AgentPanelView = ({
             onAgentClick={onAgentClick}
             onRemoveAgentClick={onRemoveAgentClick}
             onCloseWorktreeClick={onCloseWorktreeClick}
+            onSendPrompt={onSendPrompt}
+            onForkAgent={onForkAgent}
+            onRenameAgent={onRenameAgent}
+            onRemoveQueueItem={onRemoveQueueItem}
           />
         ))
       )}

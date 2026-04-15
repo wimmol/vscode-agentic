@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import * as vscode from 'vscode';
-import type { Repository, Worktree, Agent } from './models';
+import type { Repository, Worktree, Agent, AgentTemplate } from './models';
 import type { RepoWithZones, BranchZone } from '../types';
 import type { AgentCli } from '../types/agent';
 import { AGENT_STATUS_CREATED } from '../constants/agent';
@@ -11,6 +11,7 @@ import {
   STORE_WORKTREES,
   STORE_EXPLORER_STATE,
   STORE_ZONE_EXPANDED,
+  STORE_TEMPLATES,
 } from '../constants/db';
 import {
   ERR_REPO_NAME_EMPTY,
@@ -44,7 +45,18 @@ export class StateStorage implements vscode.Disposable {
   }
 
   private agents(): Agent[] {
-    return this.state.get<Agent[]>(STORE_AGENTS, []);
+    return this.state.get<Agent[]>(STORE_AGENTS, []).map((a) => ({
+      ...a,
+      templateName: a.templateName ?? null,
+      outputSummary: a.outputSummary ?? null,
+      forkedFrom: a.forkedFrom ?? null,
+      promptQueue: a.promptQueue ?? [],
+      contextUsage: a.contextUsage ?? null,
+    }));
+  }
+
+  private templates(): AgentTemplate[] {
+    return this.state.get<AgentTemplate[]>(STORE_TEMPLATES, []);
   }
 
   private worktrees(): Worktree[] {
@@ -290,6 +302,11 @@ export class StateStorage implements vscode.Disposable {
       startedAt: null,
       completedAt: null,
       createdAt: Date.now(),
+      templateName: null,
+      outputSummary: null,
+      forkedFrom: null,
+      promptQueue: [],
+      contextUsage: null,
     };
 
     await this.state.update(STORE_AGENTS, [...this.agents(), agent]);
@@ -312,7 +329,7 @@ export class StateStorage implements vscode.Disposable {
 
   updateAgent = async (
     id: string,
-    data: Partial<Pick<Agent, 'name' | 'status' | 'sessionId' | 'lastPrompt' | 'startedAt' | 'completedAt'>>,
+    data: Partial<Pick<Agent, 'name' | 'status' | 'sessionId' | 'lastPrompt' | 'startedAt' | 'completedAt' | 'templateName' | 'outputSummary' | 'forkedFrom' | 'promptQueue' | 'contextUsage'>>,
   ): Promise<Agent> => {
     const list = this.agents();
     const idx = list.findIndex((a) => a.agentId === id);
@@ -336,6 +353,11 @@ export class StateStorage implements vscode.Disposable {
     if (data.lastPrompt !== undefined) agent.lastPrompt = data.lastPrompt;
     if (data.startedAt !== undefined) agent.startedAt = data.startedAt;
     if (data.completedAt !== undefined) agent.completedAt = data.completedAt;
+    if (data.templateName !== undefined) agent.templateName = data.templateName;
+    if (data.outputSummary !== undefined) agent.outputSummary = data.outputSummary;
+    if (data.forkedFrom !== undefined) agent.forkedFrom = data.forkedFrom;
+    if (data.promptQueue !== undefined) agent.promptQueue = data.promptQueue;
+    if (data.contextUsage !== undefined) agent.contextUsage = data.contextUsage;
 
     if (
       agent.name === original.name &&
@@ -343,7 +365,14 @@ export class StateStorage implements vscode.Disposable {
       agent.sessionId === original.sessionId &&
       agent.lastPrompt === original.lastPrompt &&
       agent.startedAt === original.startedAt &&
-      agent.completedAt === original.completedAt
+      agent.completedAt === original.completedAt &&
+      agent.templateName === original.templateName &&
+      agent.outputSummary === original.outputSummary &&
+      agent.forkedFrom === original.forkedFrom &&
+      agent.promptQueue.length === original.promptQueue.length &&
+      agent.promptQueue.every((p, i) => p === original.promptQueue[i]) &&
+      agent.contextUsage?.used === original.contextUsage?.used &&
+      agent.contextUsage?.total === original.contextUsage?.total
     ) {
       return original;
     }
@@ -443,6 +472,62 @@ export class StateStorage implements vscode.Disposable {
 
   getFocusedAgent = async (): Promise<Agent | undefined> => {
     return this.agents().find((a) => a.isFocused);
+  };
+
+  // ── Templates ──────────────────────────────────────────────────
+
+  addTemplate = async (name: string, prompt: string): Promise<AgentTemplate> => {
+    const template: AgentTemplate = {
+      templateId: randomUUID(),
+      name: name.trim(),
+      prompt: prompt.trim(),
+      createdAt: Date.now(),
+    };
+    await this.state.update(STORE_TEMPLATES, [...this.templates(), template]);
+    this._onDidChange.fire();
+    return template;
+  };
+
+  getAllTemplates = (): AgentTemplate[] => {
+    return this.templates();
+  };
+
+  removeTemplate = async (templateId: string): Promise<void> => {
+    const list = this.templates();
+    const filtered = list.filter((t) => t.templateId !== templateId);
+    if (filtered.length < list.length) {
+      await this.state.update(STORE_TEMPLATES, filtered);
+      this._onDidChange.fire();
+    }
+  };
+
+  // ── Queue ──────────────────────────────────────────────────────
+
+  pushToQueue = async (agentId: string, prompt: string): Promise<void> => {
+    const agent = await this.getAgent(agentId);
+    if (!agent) throw new Error(errAgentIdNotFound(agentId));
+    const queue = [...agent.promptQueue, prompt];
+    await this.updateAgent(agentId, { promptQueue: queue });
+  };
+
+  shiftFromQueue = async (agentId: string): Promise<string | undefined> => {
+    const agent = await this.getAgent(agentId);
+    if (!agent) return undefined;
+    const queue = [...agent.promptQueue];
+    if (queue.length === 0) return undefined;
+    const next = queue.shift()!;
+    await this.updateAgent(agentId, { promptQueue: queue });
+    return next;
+  };
+
+  removeFromQueue = async (agentId: string, index: number): Promise<void> => {
+    const agent = await this.getAgent(agentId);
+    if (!agent) throw new Error(errAgentIdNotFound(agentId));
+    const queue = [...agent.promptQueue];
+    if (index >= 0 && index < queue.length) {
+      queue.splice(index, 1);
+      await this.updateAgent(agentId, { promptQueue: queue });
+    }
   };
 
   // ── Convenience ─────────────────────────────────────────────────

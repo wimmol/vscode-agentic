@@ -9,6 +9,10 @@ export const CMD_REMOVE_AGENT = 'removeAgent';
 export const CMD_AGENT_CLICK = 'agentClick';
 export const CMD_TOGGLE_ZONE_EXPANDED = 'toggleZoneExpanded';
 export const CMD_CLOSE_WORKTREE = 'closeWorktree';
+export const CMD_SEND_PROMPT = 'sendPrompt';
+export const CMD_FORK_AGENT = 'forkAgent';
+export const CMD_RENAME_AGENT = 'renameAgent';
+export const CMD_REMOVE_QUEUE_ITEM = 'removeQueueItem';
 export const CMD_READY = 'ready';
 
 // Extension → Webview message types
