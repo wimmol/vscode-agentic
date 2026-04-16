@@ -23,7 +23,20 @@ class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryStat
         <div style={{ padding: '12px', color: 'var(--vscode-errorForeground)', fontSize: '12px' }}>
           <p><strong>Agentic encountered an error:</strong></p>
           <p style={{ opacity: 0.7, marginTop: '4px' }}>{this.state.error}</p>
-          <p style={{ opacity: 0.5, marginTop: '8px' }}>Check the Developer Tools console for details.</p>
+          <button
+            style={{
+              marginTop: '8px',
+              padding: '4px 12px',
+              background: 'var(--vscode-button-background)',
+              color: 'var(--vscode-button-foreground)',
+              border: 'none',
+              borderRadius: '2px',
+              cursor: 'pointer',
+            }}
+            onClick={() => this.setState({ error: null })}
+          >
+            Retry
+          </button>
         </div>
       );
     }

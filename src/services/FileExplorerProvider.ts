@@ -112,11 +112,11 @@ export class FileExplorerProvider
     }
   }
 
-  showRepo(repoId: string, repoPath: string, repoName: string, branchName?: string, isWorktree?: boolean): void {
+  showRepo(repoPath: string, repoName: string, branchName?: string, isWorktree?: boolean): void {
     const header = branchName
       ? ScopeHeaderItem.branch(repoName, branchName, isWorktree ?? false)
       : ScopeHeaderItem.repo(repoName);
-    if (this.mode === 'scoped' && this.scopeKey === repoId) {
+    if (this.mode === 'scoped' && this.scopeKey === repoPath) {
       if (this.headerItem.label !== header.label || this.headerItem.description !== header.description) {
         this.headerItem = header;
         this._onDidChangeTreeData.fire(undefined);
@@ -125,7 +125,7 @@ export class FileExplorerProvider
     }
     this.headerItem = header;
     this.mode = 'scoped';
-    this.scopeKey = repoId;
+    this.scopeKey = repoPath;
     this.roots = [repoPath];
     this.setupWatchers();
     this._onDidChangeScope.fire(this.roots);
@@ -301,16 +301,17 @@ export class FileExplorerProvider
       const pattern = new vscode.RelativePattern(vscode.Uri.file(root), '**/*');
       const watcher = vscode.workspace.createFileSystemWatcher(pattern);
 
-      watcher.onDidCreate((uri) => {
-        if (!this.isGitInternal(uri)) this.debouncedWatcherRefresh();
-      });
-      watcher.onDidDelete((uri) => {
-        if (this.isGitInternal(uri)) return;
-        this.cleanupDeletedPath(uri.fsPath);
-        this.debouncedWatcherRefresh();
-      });
-
-      this.watchers.push(watcher);
+      this.watchers.push(
+        watcher,
+        watcher.onDidCreate((uri) => {
+          if (!this.isGitInternal(uri)) this.debouncedWatcherRefresh();
+        }),
+        watcher.onDidDelete((uri) => {
+          if (this.isGitInternal(uri)) return;
+          this.cleanupDeletedPath(uri.fsPath);
+          this.debouncedWatcherRefresh();
+        }),
+      );
     }
   }
 

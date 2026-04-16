@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { IconButton } from '../atoms/IconButton';
 import { StatusIcon } from '../atoms/StatusIcon';
 import { Timer } from './Timer';
@@ -22,6 +22,21 @@ import {
 } from '../../../constants/messages';
 import { stripXmlTags } from '../../../utils/stripXmlTags';
 import { formatCompact, contextLevel } from '../utils/formatContext';
+
+const MAX_PROMPT_LINES = 7;
+const KEEP_LINES = 3;
+
+/** Collapse a multi-line prompt to first 3 + last 3 lines when over 7 lines. */
+const compressPrompt = (text: string): string => {
+  const lines = text.split('\n');
+  if (lines.length <= MAX_PROMPT_LINES) return text;
+  const hidden = lines.length - KEEP_LINES * 2;
+  return [
+    ...lines.slice(0, KEEP_LINES),
+    `... ${hidden} lines hidden ...`,
+    ...lines.slice(-KEEP_LINES),
+  ].join('\n');
+};
 
 /** Maps every AgentStatus to its CSS modifier class. */
 const STATUS_CSS: Record<AgentStatus, string> = {
@@ -76,11 +91,8 @@ export const AgentTile = ({
   onRenameAgent,
   onRemoveQueueItem,
 }: AgentTileProps) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-
   const handleClick = useCallback(() => {
     onClick(agentId);
-    setIsExpanded((prev) => !prev);
   }, [onClick, agentId]);
 
   const handleRemove = useCallback(() => onRemoveClick(agentId), [onRemoveClick, agentId]);
@@ -94,6 +106,7 @@ export const AgentTile = ({
   const showElapsed = startedAt !== null && completedAt !== null;
 
   const cleanPrompt = useMemo(() => lastPrompt ? stripXmlTags(lastPrompt) : null, [lastPrompt]);
+  const compressedPrompt = useMemo(() => cleanPrompt ? compressPrompt(cleanPrompt) : null, [cleanPrompt]);
   const cleanSummary = useMemo(() => outputSummary ? stripXmlTags(outputSummary) : null, [outputSummary]);
 
   const ctxLevel = contextUsage ? contextLevel(contextUsage.used, contextUsage.total) : null;
@@ -141,7 +154,7 @@ export const AgentTile = ({
         </div>
       )}
 
-      {isExpanded && (
+      {isSelected && (
         <div className="agent-detail">
           <div className="detail-row">
             <span className="detail-label">Branch</span>
@@ -164,7 +177,7 @@ export const AgentTile = ({
           {lastPrompt && (
             <div className="detail-row">
               <span className="detail-label">Prompt</span>
-              <span className="detail-value detail-value--wrap">{cleanPrompt}</span>
+              <span className="detail-value detail-value--wrap">{compressedPrompt}</span>
             </div>
           )}
 

@@ -4,6 +4,7 @@ import { basename, join } from 'path';
 import type { StateStorage } from '../db';
 import { claudeProjectDir } from './TerminalService';
 import { AGENT_STATUS_IDLE, AGENT_STATUS_RUNNING, DEFAULT_CONTEXT_WINDOW } from '../constants/agent';
+import type { ContextUsage } from '../types/agent';
 import { notifAgentFinished } from '../constants/messages';
 import { UUID_RE } from '../constants/paths';
 import {
@@ -53,6 +54,8 @@ interface WatcherEntry {
   lastNewContentAt: number;
   /** Whether the most recent processLines call set the agent to RUNNING. */
   isRunning: boolean;
+  /** True when the last assistant message was stop_reason=tool_use — a tool is executing and more content is expected. */
+  awaitingToolResult: boolean;
   /** Unclaimed session ID from a previous poll, awaiting re-evaluation. */
   pendingCandidate: string | null;
 }
@@ -132,6 +135,7 @@ export class SessionWatcher {
       lastDirMtime: 0,
       lastNewContentAt: Date.now(),
       isRunning: initialRunning,
+      awaitingToolResult: false,
       pendingCandidate: null,
       timer: setInterval(() => {
         this.readNewContent(agentId, entry);
@@ -396,6 +400,8 @@ export class SessionWatcher {
    */
   private transitionIfStale = (agentId: string, entry: WatcherEntry): void => {
     if (!entry.isRunning || entry.cancelled) return;
+    // Don't timeout while a tool is executing — more content is expected when it finishes.
+    if (entry.awaitingToolResult) return;
     if (Date.now() - entry.lastNewContentAt < STALE_RUNNING_TIMEOUT_MS) return;
 
     entry.isRunning = false;
@@ -413,7 +419,9 @@ export class SessionWatcher {
     let promptTimestamp: number | null = null;
     let endTurnTimestamp: number | null = null;
     let lastAssistantText: string | null = null;
-    let lastContextUsage: { used: number; total: number } | null = null;
+    let lastContextUsage: ContextUsage | null = null;
+    let hasAssistantActivity = false;
+    let lastStopReason: string | null = null;
 
     for (const line of lines) {
       try {
@@ -429,16 +437,21 @@ export class SessionWatcher {
         }
 
         if (obj.type === 'assistant') {
+          hasAssistantActivity = true;
+          lastStopReason = obj.message?.stop_reason ?? null;
           // Extract assistant summary text
           if (obj.message?.content) {
             const text = extractPromptText(obj.message.content);
             if (text) lastAssistantText = text;
           }
-          // Extract context usage
+          // Extract context usage (sum all input token types — uncached + cache creation + cache read)
           if (obj.message?.usage && typeof obj.message.usage.input_tokens === 'number') {
-            lastContextUsage = { used: obj.message.usage.input_tokens, total: DEFAULT_CONTEXT_WINDOW };
+            const u = obj.message.usage;
+            const totalInput = (u.input_tokens || 0)
+              + (u.cache_creation_input_tokens || 0)
+              + (u.cache_read_input_tokens || 0);
+            lastContextUsage = { used: totalInput, total: DEFAULT_CONTEXT_WINDOW };
           }
-          // Detect end_turn
           if (obj.message?.stop_reason === 'end_turn') {
             endTurnTimestamp = obj.timestamp ? new Date(obj.timestamp).getTime() : Date.now();
           }
@@ -448,7 +461,13 @@ export class SessionWatcher {
       }
     }
 
-    // Truncate assistant summary
+    if (hasAssistantActivity) {
+      entry.awaitingToolResult = lastStopReason === 'tool_use';
+    } else if (lastPrompt !== null) {
+      // New user turn with no assistant response yet — clear stale tool expectation.
+      entry.awaitingToolResult = false;
+    }
+
     if (lastAssistantText && lastAssistantText.length > 200) {
       lastAssistantText = lastAssistantText.slice(0, 200) + '…';
     }
@@ -492,6 +511,18 @@ export class SessionWatcher {
         });
 
         this.notifyCompletion(agentId, 0);
+      } catch {
+        // Agent may have been removed.
+      }
+    } else if (hasAssistantActivity) {
+      // Tool cycle activity (no new user text prompt, no end_turn).
+      entry.isRunning = true;
+
+      try {
+        await this.storage.updateAgent(agentId, {
+          status: AGENT_STATUS_RUNNING,
+          ...(lastContextUsage && { contextUsage: lastContextUsage }),
+        });
       } catch {
         // Agent may have been removed.
       }

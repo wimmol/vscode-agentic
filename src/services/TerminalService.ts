@@ -116,6 +116,8 @@ export class TerminalService implements vscode.Disposable {
   ): vscode.Terminal => {
     const name = terminalName(agentName, branch, repoName);
 
+    this.closeTerminal(agentId);
+
     const terminal = vscode.window.createTerminal({
       name,
       cwd,

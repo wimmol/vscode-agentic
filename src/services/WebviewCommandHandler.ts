@@ -73,7 +73,7 @@ export class WebviewCommandHandler implements vscode.Disposable {
           await removeAgent(this.storage, this.terminalService, message.args.agentId);
           break;
         case CMD_REMOVE_REPO:
-          await removeRepo(this.storage, message.args.repoId);
+          await removeRepo(this.storage, this.terminalService, message.args.repoId);
           break;
         case CMD_TOGGLE_REPO_EXPANDED:
           await this.storage.toggleRepoExpanded(message.args.repoId);

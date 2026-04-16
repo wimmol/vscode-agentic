@@ -145,10 +145,6 @@
 }
 
 .agent-tile--selected {
-  background-color: var(--vscode-list-activeSelectionBackground);
-}
-
-.agent-tile:hover {
   background-color: var(--vscode-list-hoverBackground);
 }
 

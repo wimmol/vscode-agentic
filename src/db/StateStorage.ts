@@ -142,26 +142,26 @@ export class StateStorage implements vscode.Disposable {
       }
     }
 
-    // Pre-group worktrees by repoId
-    const worktreesByRepo = new Map<string, Worktree[]>();
+    // Pre-group worktrees by repoId → branch → path
+    const worktreeByRepoBranch = new Map<string, Map<string, string>>();
     for (const wt of allWorktrees) {
-      const list = worktreesByRepo.get(wt.repoId);
-      if (list) {
-        list.push(wt);
-      } else {
-        worktreesByRepo.set(wt.repoId, [wt]);
+      let byBranch = worktreeByRepoBranch.get(wt.repoId);
+      if (!byBranch) {
+        byBranch = new Map();
+        worktreeByRepoBranch.set(wt.repoId, byBranch);
       }
+      byBranch.set(wt.branch, wt.path);
     }
 
     return repos.map((repo) => {
       const byBranch = agentsByRepoBranch.get(repo.repositoryId) ?? new Map<string, Agent[]>();
-      const repoWorktrees = worktreesByRepo.get(repo.repositoryId) ?? [];
+      const wtByBranch = worktreeByRepoBranch.get(repo.repositoryId) ?? new Map<string, string>();
 
       // Collect all known branches: current + agent branches + worktree branches
       const branches = new Set<string>();
       branches.add(repo.currentBranch);
       for (const b of byBranch.keys()) branches.add(b);
-      for (const wt of repoWorktrees) branches.add(wt.branch);
+      for (const b of wtByBranch.keys()) branches.add(b);
 
       const zones: BranchZone[] = [];
 
@@ -170,6 +170,7 @@ export class StateStorage implements vscode.Disposable {
         branch: repo.currentBranch,
         isCurrent: true,
         isExpanded: expanded[this.zoneKey(repo.repositoryId, repo.currentBranch)] ?? true,
+        worktreePath: null,
         agents: byBranch.get(repo.currentBranch) ?? [],
       });
 
@@ -183,6 +184,7 @@ export class StateStorage implements vscode.Disposable {
           branch,
           isCurrent: false,
           isExpanded: expanded[this.zoneKey(repo.repositoryId, branch)] ?? true,
+          worktreePath: wtByBranch.get(branch) ?? null,
           agents: byBranch.get(branch) ?? [],
         });
       }

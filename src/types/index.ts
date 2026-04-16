@@ -7,6 +7,7 @@ export interface BranchZone {
   branch: string;
   isCurrent: boolean;
   isExpanded: boolean;
+  worktreePath: string | null;
   agents: Agent[];
 }
 
