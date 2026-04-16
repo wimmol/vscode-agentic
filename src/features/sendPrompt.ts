@@ -27,7 +27,11 @@ export const sendPrompt = async (
   });
   if (!prompt) return;
 
-  if (agent.status === AGENT_STATUS_RUNNING) {
+  // Re-read status after input to avoid TOCTOU race
+  const current = await storage.getAgent(agentId);
+  if (!current) return;
+
+  if (current.status === AGENT_STATUS_RUNNING) {
     await storage.pushToQueue(agentId, prompt);
     return;
   }
@@ -40,4 +44,5 @@ export const sendPrompt = async (
 
   terminal.sendText(prompt, true);
   terminal.show(true);
+  await storage.updateAgent(agentId, { status: AGENT_STATUS_RUNNING, startedAt: Date.now(), completedAt: null });
 };

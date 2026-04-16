@@ -20,7 +20,7 @@ const gitOpts = (cwd: string, timeout = GIT_TIMEOUT) => ({
 });
 
 export const worktreePath = (repoPath: string, branch: string): string =>
-  `${repoPath}/${WORKTREES_DIR}/${branch}`;
+  path.join(repoPath, WORKTREES_DIR, branch);
 
 export const ensureBranch = async (repoPath: string, branch: string): Promise<void> => {
   try {
@@ -133,6 +133,7 @@ interface GitResult {
   stdout: string;
   stderr: string;
   exitCode: number;
+  truncated: boolean;
 }
 
 const run = (args: string[], cwd: string, timeoutMs: number): Promise<GitResult> =>
@@ -140,11 +141,18 @@ const run = (args: string[], cwd: string, timeoutMs: number): Promise<GitResult>
     const proc = spawn('git', args, { cwd, timeout: timeoutMs });
     let stdout = '';
     let stderr = '';
+    let truncated = false;
 
-    proc.stdout?.on('data', (chunk: Buffer) => { stdout += chunk.toString(); });
+    proc.stdout?.on('data', (chunk: Buffer) => {
+      if (!truncated && stdout.length < GIT_MAX_BUFFER) {
+        stdout += chunk.toString();
+      } else {
+        truncated = true;
+      }
+    });
     proc.stderr?.on('data', (chunk: Buffer) => { stderr += chunk.toString(); });
     proc.on('error', reject);
-    proc.on('close', (code) => resolve({ stdout, stderr, exitCode: code ?? 1 }));
+    proc.on('close', (code) => resolve({ stdout, stderr, exitCode: code ?? 1, truncated }));
   });
 
 export const gitStatus = async (cwd: string): Promise<FileChange[]> => {
@@ -177,8 +185,11 @@ export const gitStatus = async (cwd: string): Promise<FileChange[]> => {
   return changes;
 };
 
-export const gitCommit = async (cwd: string, message: string): Promise<GitResult> => {
-  const addResult = await run(['add', '-A'], cwd, GIT_COMMIT_TIMEOUT_MS);
+export const gitCommit = async (cwd: string, message: string, paths?: string[]): Promise<GitResult> => {
+  const addArgs = paths && paths.length > 0
+    ? ['add', '--', ...paths]
+    : ['add', '-A'];
+  const addResult = await run(addArgs, cwd, GIT_COMMIT_TIMEOUT_MS);
   if (addResult.exitCode !== 0) return addResult;
   return run(['commit', '-m', message], cwd, GIT_COMMIT_TIMEOUT_MS);
 };

@@ -34,6 +34,7 @@ export class SourceControlProvider implements vscode.WebviewViewProvider, vscode
   private lastChanges: FileChange[] = [];
   private refreshTimer: ReturnType<typeof setTimeout> | undefined;
   private readonly disposables: vscode.Disposable[] = [];
+  private watchers: vscode.Disposable[] = [];
 
   constructor(
     private readonly extensionUri: vscode.Uri,
@@ -42,11 +43,13 @@ export class SourceControlProvider implements vscode.WebviewViewProvider, vscode
     this.disposables.push(
       explorer.onDidChangeScope((roots) => {
         this.roots = roots;
+        this.setupWatchers();
         this.debouncedRefresh();
       }),
     );
 
     this.roots = explorer.getRoots();
+    this.setupWatchers();
   }
 
   resolveWebviewView(webviewView: vscode.WebviewView): void {
@@ -92,7 +95,7 @@ export class SourceControlProvider implements vscode.WebviewViewProvider, vscode
             vscode.window.showWarningMessage('Commit message cannot be empty.');
             return;
           }
-          const result = await gitCommit(cwd, commitMessage);
+          const result = await gitCommit(cwd, commitMessage, this.lastChanges.map((c) => c.path));
           if (result.exitCode !== 0) {
             vscode.window.showErrorMessage(`Commit failed: ${result.stderr.trim()}`);
           } else {
@@ -174,6 +177,13 @@ export class SourceControlProvider implements vscode.WebviewViewProvider, vscode
       });
     } catch (err) {
       console.error('[SourceControlProvider] status failed:', err);
+      this.lastChanges = [];
+      await this.postMessage({
+        type: SC_MSG_UPDATE,
+        changes: [],
+        repoName: path.basename(cwd),
+        isLoading: false,
+      });
     }
   };
 
@@ -199,11 +209,31 @@ export class SourceControlProvider implements vscode.WebviewViewProvider, vscode
     await this.view?.webview.postMessage(message);
   };
 
+  private setupWatchers(): void {
+    this.disposeWatchers();
+    for (const root of this.roots) {
+      const pattern = new vscode.RelativePattern(vscode.Uri.file(root), '**/*');
+      const watcher = vscode.workspace.createFileSystemWatcher(pattern);
+      this.watchers.push(
+        watcher,
+        watcher.onDidCreate(() => this.debouncedRefresh()),
+        watcher.onDidChange(() => this.debouncedRefresh()),
+        watcher.onDidDelete(() => this.debouncedRefresh()),
+      );
+    }
+  }
+
+  private disposeWatchers(): void {
+    for (const w of this.watchers) w.dispose();
+    this.watchers = [];
+  }
+
   private getHtml = (webview: vscode.Webview): string =>
     buildWebviewHtml(webview, this.extensionUri, 'sourceControl.js', 'sourceControl.css');
 
   dispose(): void {
     clearTimeout(this.refreshTimer);
+    this.disposeWatchers();
     for (const d of this.disposables) {
       d.dispose();
     }

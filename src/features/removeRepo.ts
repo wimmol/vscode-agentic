@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import type { StateStorage } from '../db';
+import type { TerminalService } from '../services/TerminalService';
 import {
   ERR_REPO_NOT_FOUND,
   dialogRemoveRepo,
@@ -7,7 +8,11 @@ import {
   BTN_REMOVE_WITH_WORKSPACE,
 } from '../constants/messages';
 
-export const removeRepo = async (storage: StateStorage, repoId: string): Promise<void> => {
+export const removeRepo = async (
+  storage: StateStorage,
+  terminalService: TerminalService,
+  repoId: string,
+): Promise<void> => {
   const repo = await storage.getRepository(repoId);
   if (!repo) {
     vscode.window.showErrorMessage(ERR_REPO_NOT_FOUND);
@@ -28,6 +33,12 @@ export const removeRepo = async (storage: StateStorage, repoId: string): Promise
 
   if (!confirm) {
     return;
+  }
+
+  // Close all agent terminals before removing from storage
+  const agents = await storage.getAgentsByRepo(repoId);
+  for (const agent of agents) {
+    terminalService.closeTerminal(agent.agentId);
   }
 
   await storage.removeRepository(repoId);

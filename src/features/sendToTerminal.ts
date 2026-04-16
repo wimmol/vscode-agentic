@@ -2,6 +2,8 @@ import * as vscode from 'vscode';
 import type { StateStorage } from '../db';
 import type { TerminalService } from '../services/TerminalService';
 import type { FileItemLike } from './explorerFileOps';
+import { shellQuote } from '../services/TerminalService';
+import { WARN_TERMINAL_NOT_RUNNING, WARN_NO_FOCUSED_AGENT } from '../constants/messages';
 
 /**
  * Sends file/folder paths to the currently focused agent's Claude terminal
@@ -16,17 +18,17 @@ export const sendToTerminal = async (
 
   const focused = await storage.getFocusedAgent();
   if (!focused) {
-    vscode.window.showWarningMessage('No focused agent. Click an agent first.');
+    vscode.window.showWarningMessage(WARN_NO_FOCUSED_AGENT);
     return;
   }
 
   const terminal = terminalService.getTerminal(focused.agentId);
   if (!terminal) {
-    vscode.window.showWarningMessage('Agent terminal is not running.');
+    vscode.window.showWarningMessage(WARN_TERMINAL_NOT_RUNNING);
     return;
   }
 
-  const paths = items.map((i) => i.filePath).join(' ');
+  const paths = items.map((i) => shellQuote(i.filePath)).join(' ');
   terminal.sendText(paths, false);
   terminal.show(true);
 };

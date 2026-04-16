@@ -15,7 +15,7 @@ export const repoRootClick = async (
     return;
   }
 
-  explorer.showRepo(repoId, repo.localPath, repo.name);
+  explorer.showRepo(repo.localPath, repo.name);
 
   const config = vscode.workspace.getConfiguration(CONFIG_TERMINAL_SECTION);
   config.update('cwd', repo.localPath, vscode.ConfigurationTarget.Workspace).then(undefined, (err) => {

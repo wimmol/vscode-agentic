@@ -98,6 +98,7 @@ export const notifAgentFinished = (name: string, repoName: string, duration: str
 
 // ── Warning messages ───────────────────────────────────────────
 export const WARN_TERMINAL_NOT_RUNNING = 'Agent terminal is not running.';
+export const WARN_NO_FOCUSED_AGENT = 'No focused agent. Click an agent first.';
 
 // ── Rename ──────────────────────────────────────────────────────
 export const INPUT_RENAME_PROMPT = 'New agent name';

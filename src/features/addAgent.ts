@@ -140,9 +140,15 @@ export const addAgent = async (
     // Create git branch + worktree
     const repoPath = repo.localPath;
     const wtPath = worktreePath(repoPath, branch);
-    await ensureBranch(repoPath, branch);
-    await createWorktree(repoPath, wtPath, branch);
-    await storage.addWorktree(repoId, branch, wtPath);
+    try {
+      await ensureBranch(repoPath, branch);
+      await createWorktree(repoPath, wtPath, branch);
+      await storage.addWorktree(repoId, branch, wtPath);
+    } catch (err) {
+      // Best-effort cleanup on partial failure
+      await removeWorktree(repoPath, wtPath);
+      throw err;
+    }
     cwd = wtPath;
   } else if (isCurrent) {
     branch = repo.currentBranch;
@@ -203,15 +209,14 @@ export const addAgent = async (
       await storage.updateAgent(agent.agentId, { templateName });
     }
   } catch (err) {
-    // Rollback worktree if we just created it
     if (picked.branch === PICK_NEW_BRANCH_VALUE) {
       await removeWorktree(repo.localPath, cwd);
-      await storage.removeWorktreeByBranch(repoId, branch);
+      try { await storage.removeWorktreeByBranch(repoId, branch); } catch { /* best-effort */ }
     }
     throw err;
   }
 
-  explorer.showRepo(agent.agentId, cwd, repo.name, branch, !isCurrent);
+  explorer.showRepo(cwd, repo.name, branch, !isCurrent);
   terminalService.createTerminal(agent.agentId, agentName, branch, repo.name, cwd, undefined, initialPrompt);
   await storage.focusAgent(agent.agentId);
   return agent.agentId;
