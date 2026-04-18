@@ -18,6 +18,48 @@ body {
   padding: 8px;
 }
 
+/* ── Branch header ────────────────────────────────────────────── */
+
+.sc-branch-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 11px;
+  overflow: hidden;
+}
+
+.sc-branch-row .codicon {
+  flex-shrink: 0;
+  font-size: 14px;
+}
+
+.sc-branch-name {
+  color: var(--vscode-foreground);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.sc-worktree-badge {
+  flex-shrink: 0;
+  padding: 0 5px;
+  border-radius: 8px;
+  background: var(--vscode-badge-background);
+  color: var(--vscode-badge-foreground);
+  font-size: 10px;
+  line-height: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sc-repo-name {
+  margin-left: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ── Commit input ─────────────────────────────────────────────── */
 
 .sc-input-row {
@@ -150,9 +192,47 @@ body {
 .sc-status-conflict { color: var(--vscode-gitDecoration-conflictingResourceForeground, var(--vscode-errorForeground)); }
 
 .sc-file-path {
+  flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* ── Folder grouping ─────────────────────────────────────────── */
+
+.sc-folder-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.sc-folder-button .codicon-chevron-right,
+.sc-folder-button .codicon-chevron-down {
+  flex-shrink: 0;
+  font-size: 14px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.sc-folder-icon {
+  flex-shrink: 0;
+  color: var(--vscode-descriptionForeground);
+}
+
+.sc-folder-count {
+  flex-shrink: 0;
+  padding: 0 5px;
+  border-radius: 8px;
+  background: var(--vscode-badge-background);
+  color: var(--vscode-badge-foreground);
+  font-size: 10px;
+  line-height: 14px;
+}
+
+.sc-file-list--nested {
+  padding-left: 14px;
+}
+
+.sc-file-item--indent .sc-file-button {
+  padding-left: 8px;
 }
 
 /* ── Empty state ──────────────────────────────────────────────── */

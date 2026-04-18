@@ -5,3 +5,5 @@ node_modules/
 .vscode-test/
 out/
 .vscode
+.claude/settings.local.json
+.claude/hooks/

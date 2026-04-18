@@ -60,6 +60,22 @@ export const getCurrentBranch = async (repoPath: string): Promise<string | undef
   }
 };
 
+/**
+ * Returns true when `cwd` is a linked worktree rather than the main repo.
+ * Detects by comparing --git-dir (per-worktree) vs --git-common-dir (shared).
+ */
+export const isWorktree = async (cwd: string): Promise<boolean> => {
+  try {
+    const [gitDir, commonDir] = await Promise.all([
+      execFile('git', ['--no-optional-locks', 'rev-parse', '--git-dir'], gitOpts(cwd)),
+      execFile('git', ['--no-optional-locks', 'rev-parse', '--git-common-dir'], gitOpts(cwd)),
+    ]);
+    return path.resolve(cwd, gitDir.stdout.trim()) !== path.resolve(cwd, commonDir.stdout.trim());
+  } catch {
+    return false;
+  }
+};
+
 /** Returns true if the named ref exists locally (branch, tag, etc.). */
 const refExists = async (repoPath: string, ref: string): Promise<boolean> => {
   try {

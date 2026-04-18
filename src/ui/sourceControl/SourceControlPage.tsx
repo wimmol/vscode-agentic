@@ -7,6 +7,8 @@ export const SourceControlPage = () => {
     repoName,
     isLoading,
     commitMessage,
+    branch,
+    isWorktree,
     setCommitMessage,
     commit,
     push,
@@ -21,6 +23,8 @@ export const SourceControlPage = () => {
       repoName={repoName}
       isLoading={isLoading}
       commitMessage={commitMessage}
+      branch={branch}
+      isWorktree={isWorktree}
       onCommitMessageChange={setCommitMessage}
       onCommit={commit}
       onPush={push}

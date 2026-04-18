@@ -21,6 +21,8 @@ export interface ScStateUpdateMessage {
   changes: FileChange[];
   repoName: string;
   isLoading: boolean;
+  branch: string | null;
+  isWorktree: boolean;
 }
 
 export interface ScSuggestResultMessage {

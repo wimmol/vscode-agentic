@@ -18,7 +18,7 @@ import type {
   ScWebviewToExtensionMessage,
   FileChange,
 } from '../types/sourceControl';
-import { gitStatus, gitCommit, gitPush, gitPull, suggestCommitMessage } from './GitService';
+import { gitStatus, gitCommit, gitPush, gitPull, suggestCommitMessage, getCurrentBranch, isWorktree } from './GitService';
 
 /**
  * Source control panel in the Agentic sidebar.
@@ -170,17 +170,26 @@ export class SourceControlProvider implements vscode.WebviewViewProvider, vscode
         changes: [],
         repoName: '',
         isLoading: false,
+        branch: null,
+        isWorktree: false,
       });
       return;
     }
 
     try {
-      this.lastChanges = await gitStatus(cwd);
+      const [changes, branch, worktree] = await Promise.all([
+        gitStatus(cwd),
+        getCurrentBranch(cwd),
+        isWorktree(cwd),
+      ]);
+      this.lastChanges = changes;
       await this.postMessage({
         type: SC_MSG_UPDATE,
         changes: this.lastChanges,
         repoName: path.basename(cwd),
         isLoading: false,
+        branch: branch ?? null,
+        isWorktree: worktree,
       });
     } catch (err) {
       console.error('[SourceControlProvider] status failed:', err);
@@ -190,6 +199,8 @@ export class SourceControlProvider implements vscode.WebviewViewProvider, vscode
         changes: [],
         repoName: path.basename(cwd),
         isLoading: false,
+        branch: null,
+        isWorktree: false,
       });
     }
   };
@@ -204,11 +215,16 @@ export class SourceControlProvider implements vscode.WebviewViewProvider, vscode
   private sendLoading = async (isLoading: boolean): Promise<void> => {
     if (!this.view) return;
     const cwd = this.roots[0];
+    const [branch, worktree] = cwd
+      ? await Promise.all([getCurrentBranch(cwd), isWorktree(cwd)])
+      : [undefined, false];
     await this.postMessage({
       type: SC_MSG_UPDATE,
       changes: this.lastChanges,
       repoName: cwd ? path.basename(cwd) : '',
       isLoading,
+      branch: branch ?? null,
+      isWorktree: worktree,
     });
   };
 
