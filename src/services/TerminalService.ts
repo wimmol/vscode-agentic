@@ -28,6 +28,7 @@ import {
 } from '../constants/messages';
 import { removeWorktree, deleteBranch, hasUncommittedChanges } from './GitService';
 import { SessionWatcher } from './SessionWatcher';
+import { logger } from './Logger';
 
 /**
  * Compute the Claude project directory for a given working directory.
@@ -96,7 +97,7 @@ export class TerminalService implements vscode.Disposable {
       vscode.window.onDidCloseTerminal((terminal) => {
         this.onTerminalClosed(terminal).catch((err) => {
           const msg = err instanceof Error ? err.message : String(err);
-          console.error('[TerminalService] onTerminalClosed error:', msg);
+          logger.error('TerminalService onTerminalClosed', err);
           vscode.window.showErrorMessage(msg);
         });
       }),
@@ -104,7 +105,7 @@ export class TerminalService implements vscode.Disposable {
 
     this.healthTimer = setInterval(() => {
       this.checkTerminalHealth().catch((err) => {
-        console.error('[TerminalService] health check error:', err);
+        logger.error('TerminalService health check', err);
       });
     }, HEALTH_CHECK_INTERVAL_MS);
   }
@@ -133,14 +134,14 @@ export class TerminalService implements vscode.Disposable {
       cwd,
       location: { viewColumn: vscode.ViewColumn.Two },
     });
-    terminal.sendText(this.buildCommand(sessionId, initialPrompt));
+    terminal.sendText(this.buildCommand(sessionId, initialPrompt, cwd));
     this.terminals.set(agentId, terminal);
 
     if (sessionId) {
-      console.log('[TerminalService] startWatching existing session:', { agentId, sessionId, cwd });
+      logger.trace('TerminalService startWatching existing session', { agentId, sessionId, cwd });
       this.sessionWatcher.startWatching(agentId, sessionId, cwd, isRunning);
     } else {
-      console.log('[TerminalService] detecting new session:', { agentId, cwd, dir: claudeProjectDir(cwd) });
+      logger.trace('TerminalService detecting new session', { agentId, cwd, dir: claudeProjectDir(cwd) });
       this.detectSessionId(agentId, cwd);
     }
 
@@ -158,8 +159,14 @@ export class TerminalService implements vscode.Disposable {
     this.sessionWatcher.stopWatching(agentId);
     const terminal = this.terminals.get(agentId);
     if (terminal) {
+      // Add to `removing` BEFORE dispose so the close handler skips its dialog.
+      // try/finally guarantees the marker survives even if dispose throws (#42).
       this.removing.add(agentId);
-      terminal.dispose();
+      try {
+        terminal.dispose();
+      } catch (err) {
+        logger.warn('TerminalService dispose threw', { agentId, err: String(err) });
+      }
       // Don't delete from this.terminals here — let onTerminalClosed do it
       // so the handler can find the entry and clean up the removing Set.
     }
@@ -213,10 +220,16 @@ export class TerminalService implements vscode.Disposable {
    * When a sessionId is provided, appends `--resume <id>` to resume that exact session.
    * When an initialPrompt is provided, appends it as a positional argument so
    * Claude starts the interactive session with that prompt already submitted.
+   * Resolves config against the agent's cwd so per-folder overrides apply (#69).
    */
-  private buildCommand = (sessionId?: string | null, initialPrompt?: string): string => {
+  private buildCommand = (
+    sessionId?: string | null,
+    initialPrompt?: string,
+    cwd?: string,
+  ): string => {
+    const scope = cwd ? vscode.Uri.file(cwd) : undefined;
     const bypass = vscode.workspace
-      .getConfiguration(CONFIG_SECTION)
+      .getConfiguration(CONFIG_SECTION, scope)
       .get<boolean>(CONFIG_BYPASS_PERMISSIONS, false);
     let cmd = DEFAULT_AGENT_COMMAND;
     if (bypass) cmd += ` ${CLI_FLAG_BYPASS_PERMISSIONS}`;
@@ -261,7 +274,7 @@ export class TerminalService implements vscode.Disposable {
           }
         }
         if (claimedId) {
-          console.log('[TerminalService] session detected:', { agentId, sessionId: claimedId, attempt: attempts });
+          logger.info('TerminalService session detected', { agentId, sessionId: claimedId, attempt: attempts });
           this.detectors.delete(agentId);
           try {
             await this.storage.updateAgent(agentId, { sessionId: claimedId });
@@ -281,7 +294,7 @@ export class TerminalService implements vscode.Disposable {
       } else {
         // Switch to slow polling instead of giving up — session may still appear.
         if (attempts === SESSION_POLL_MAX_ATTEMPTS) {
-          console.log('[TerminalService] session detection switching to slow poll:', { agentId, dir });
+          logger.trace('TerminalService session detection switching to slow poll', { agentId, dir });
         }
         this.detectors.set(agentId, setTimeout(poll, SLOW_SESSION_POLL_INTERVAL_MS));
       }
@@ -311,7 +324,7 @@ export class TerminalService implements vscode.Disposable {
 
     for (const [agentId, terminal] of this.terminals) {
       if (!liveTerminals.has(terminal)) {
-        console.warn('[TerminalService] orphaned terminal reference detected:', agentId);
+        logger.warn('TerminalService orphaned terminal reference', { agentId });
         this.terminals.delete(agentId);
         this.stopDetecting(agentId);
         this.sessionWatcher.stopWatching(agentId);

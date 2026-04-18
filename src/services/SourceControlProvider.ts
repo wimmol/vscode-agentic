@@ -19,6 +19,7 @@ import type {
   FileChange,
 } from '../types/sourceControl';
 import { gitStatus, gitCommit, gitPush, gitPull, suggestCommitMessage } from './GitService';
+import { logger } from './Logger';
 
 /**
  * Source control panel in the Agentic sidebar.
@@ -114,26 +115,30 @@ export class SourceControlProvider implements vscode.WebviewViewProvider, vscode
 
         case SC_CMD_PUSH: {
           await this.sendLoading(true);
-          const result = await gitPush(cwd);
-          if (result.exitCode !== 0) {
-            vscode.window.showErrorMessage(`Push failed: ${result.stderr.trim()}`);
-          } else {
-            vscode.window.showInformationMessage('Pushed successfully.');
+          try {
+            await this.runPushWithRetry(cwd);
+          } finally {
+            await this.sendLoading(false);
           }
-          await this.sendLoading(false);
           break;
         }
 
         case SC_CMD_PULL: {
           await this.sendLoading(true);
-          const result = await gitPull(cwd);
-          if (result.exitCode !== 0) {
-            vscode.window.showErrorMessage(`Pull failed: ${result.stderr.trim()}`);
-          } else {
-            vscode.window.showInformationMessage('Pulled successfully.');
-            await this.refreshStatus();
+          try {
+            const result = await vscode.window.withProgress(
+              { location: vscode.ProgressLocation.Notification, title: 'Agentic: pulling…', cancellable: true },
+              (_progress, token) => gitPull(cwd, token),
+            );
+            if (result.exitCode !== 0) {
+              vscode.window.showErrorMessage(`Pull failed: ${result.stderr.trim()}`);
+            } else {
+              vscode.window.showInformationMessage('Pulled successfully.');
+              await this.refreshStatus();
+            }
+          } finally {
+            await this.sendLoading(false);
           }
-          await this.sendLoading(false);
           break;
         }
 
@@ -156,7 +161,7 @@ export class SourceControlProvider implements vscode.WebviewViewProvider, vscode
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error('[SourceControlProvider] error:', msg);
+      logger.error('SourceControlProvider handleMessage', err);
       vscode.window.showErrorMessage(`Source Control: ${msg}`);
     }
   };
@@ -183,7 +188,7 @@ export class SourceControlProvider implements vscode.WebviewViewProvider, vscode
         isLoading: false,
       });
     } catch (err) {
-      console.error('[SourceControlProvider] status failed:', err);
+      logger.error('SourceControlProvider status failed', err);
       this.lastChanges = [];
       await this.postMessage({
         type: SC_MSG_UPDATE,
@@ -191,6 +196,58 @@ export class SourceControlProvider implements vscode.WebviewViewProvider, vscode
         repoName: path.basename(cwd),
         isLoading: false,
       });
+    }
+  };
+
+  /**
+   * Push the working branch. On failure (typically non-fast-forward), prompt
+   * the user to pull-and-retry instead of dropping raw stderr at them.
+   */
+  private runPushWithRetry = async (cwd: string): Promise<void> => {
+    const pushResult = await vscode.window.withProgress(
+      { location: vscode.ProgressLocation.Notification, title: 'Agentic: pushing…', cancellable: true },
+      (_progress, token) => gitPush(cwd, token),
+    );
+
+    if (pushResult.exitCode === 0) {
+      vscode.window.showInformationMessage('Pushed successfully.');
+      return;
+    }
+
+    const stderr = pushResult.stderr.trim();
+    const looksLikeNonFastForward = /non-fast-forward|rejected|fetch first|behind/i.test(stderr);
+
+    if (!looksLikeNonFastForward) {
+      vscode.window.showErrorMessage(`Push failed: ${stderr}`);
+      return;
+    }
+
+    const choice = await vscode.window.showWarningMessage(
+      'Push rejected by remote (likely non-fast-forward). Pull and retry?',
+      { modal: false },
+      'Pull & Retry',
+      'Cancel',
+    );
+    if (choice !== 'Pull & Retry') return;
+
+    const pullResult = await vscode.window.withProgress(
+      { location: vscode.ProgressLocation.Notification, title: 'Agentic: pulling before retry…', cancellable: true },
+      (_progress, token) => gitPull(cwd, token),
+    );
+    if (pullResult.exitCode !== 0) {
+      vscode.window.showErrorMessage(`Pull failed: ${pullResult.stderr.trim()}`);
+      return;
+    }
+
+    const retryResult = await vscode.window.withProgress(
+      { location: vscode.ProgressLocation.Notification, title: 'Agentic: pushing (retry)…', cancellable: true },
+      (_progress, token) => gitPush(cwd, token),
+    );
+    if (retryResult.exitCode !== 0) {
+      vscode.window.showErrorMessage(`Push failed after pull: ${retryResult.stderr.trim()}`);
+    } else {
+      vscode.window.showInformationMessage('Pushed successfully (after pull).');
+      await this.refreshStatus();
     }
   };
 

@@ -1,8 +1,5 @@
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+/* Shared reset is imported from ../../shared/styles/reset.css below. */
+@import '../../shared/styles/reset.css';
 
 body {
   background: transparent;

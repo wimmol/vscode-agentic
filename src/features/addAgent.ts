@@ -138,13 +138,22 @@ export const addAgent = async (
     }
     branch = input.trim() || suggested;
 
-    // Create git branch + worktree
+    // Create git branch + worktree (potentially seconds-long; show progress)
     const repoPath = repo.localPath;
     const wtPath = worktreePath(repoPath, branch);
     try {
-      await ensureBranch(repoPath, branch);
-      await createWorktree(repoPath, wtPath, branch);
-      await storage.addWorktree(repoId, branch, wtPath);
+      await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: `Agentic: creating worktree "${branch}"…`,
+          cancellable: false,
+        },
+        async () => {
+          await ensureBranch(repoPath, branch);
+          await createWorktree(repoPath, wtPath, branch);
+          await storage.addWorktree(repoId, branch, wtPath);
+        },
+      );
     } catch (err) {
       // Best-effort cleanup on partial failure
       await removeWorktree(repoPath, wtPath);

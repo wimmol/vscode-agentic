@@ -1,6 +1,7 @@
 import { execFile as execFileCb, spawn } from 'child_process';
 import { promisify } from 'util';
 import * as path from 'path';
+import * as vscode from 'vscode';
 import { GIT_TIMEOUT, GIT_WORKTREE_TIMEOUT, GIT_MAX_BUFFER } from '../constants/git';
 import { WORKTREES_DIR } from '../constants/paths';
 import {
@@ -10,6 +11,7 @@ import {
   GIT_PULL_TIMEOUT_MS,
 } from '../constants/sourceControl';
 import type { FileChange } from '../types/sourceControl';
+import { logger } from './Logger';
 
 const execFile = promisify(execFileCb);
 
@@ -189,12 +191,22 @@ interface GitResult {
   truncated: boolean;
 }
 
-const run = (args: string[], cwd: string, timeoutMs: number): Promise<GitResult> =>
+const run = (
+  args: string[],
+  cwd: string,
+  timeoutMs: number,
+  token?: vscode.CancellationToken,
+): Promise<GitResult> =>
   new Promise((resolve, reject) => {
     const proc = spawn('git', args, { cwd, timeout: timeoutMs });
     let stdout = '';
     let stderr = '';
     let truncated = false;
+
+    const cancelSub = token?.onCancellationRequested(() => {
+      // SIGTERM lets git flush its writes; spawn's `timeout` would SIGKILL.
+      proc.kill('SIGTERM');
+    });
 
     proc.stdout?.on('data', (chunk: Buffer) => {
       if (!truncated && stdout.length < GIT_MAX_BUFFER) {
@@ -204,8 +216,17 @@ const run = (args: string[], cwd: string, timeoutMs: number): Promise<GitResult>
       }
     });
     proc.stderr?.on('data', (chunk: Buffer) => { stderr += chunk.toString(); });
-    proc.on('error', reject);
-    proc.on('close', (code) => resolve({ stdout, stderr, exitCode: code ?? 1, truncated }));
+    proc.on('error', (err) => {
+      cancelSub?.dispose();
+      reject(err);
+    });
+    proc.on('close', (code) => {
+      cancelSub?.dispose();
+      if (truncated) {
+        logger.warn('git output truncated at GIT_MAX_BUFFER', { args, cwd });
+      }
+      resolve({ stdout, stderr, exitCode: code ?? 1, truncated });
+    });
   });
 
 export const gitStatus = async (cwd: string): Promise<FileChange[]> => {
@@ -251,11 +272,11 @@ export const gitCommit = async (cwd: string, message: string, paths?: string[]):
   return run(['commit', '-m', message], cwd, GIT_COMMIT_TIMEOUT_MS);
 };
 
-export const gitPush = async (cwd: string): Promise<GitResult> =>
-  run(['push'], cwd, GIT_PUSH_TIMEOUT_MS);
+export const gitPush = async (cwd: string, token?: vscode.CancellationToken): Promise<GitResult> =>
+  run(['push'], cwd, GIT_PUSH_TIMEOUT_MS, token);
 
-export const gitPull = async (cwd: string): Promise<GitResult> =>
-  run(['pull'], cwd, GIT_PULL_TIMEOUT_MS);
+export const gitPull = async (cwd: string, token?: vscode.CancellationToken): Promise<GitResult> =>
+  run(['pull'], cwd, GIT_PULL_TIMEOUT_MS, token);
 
 /** Generate a short commit message from a list of file changes. */
 export const suggestCommitMessage = (changes: FileChange[]): string => {

@@ -4,6 +4,7 @@ import type { FileExplorerProvider } from '../services/FileExplorerProvider';
 import type { TerminalService } from '../services/TerminalService';
 import { ERR_AGENT_CONTEXT_NOT_FOUND } from '../constants/messages';
 import { addAgent } from './addAgent';
+import { logger } from '../services/Logger';
 
 export const forkAgent = async (
   storage: StateStorage,
@@ -39,7 +40,13 @@ export const forkAgent = async (
   );
 
   if (newAgentId) {
-    await storage.updateAgent(newAgentId, { forkedFrom: agentId, templateName: agent.templateName });
+    // Don't unwind the fork on metadata-update failure; the new agent + worktree
+    // are usable, just missing the cosmetic forkedFrom/templateName fields.
+    try {
+      await storage.updateAgent(newAgentId, { forkedFrom: agentId, templateName: agent.templateName });
+    } catch (err) {
+      logger.warn('forkAgent metadata update failed (agent kept)', { newAgentId, err: String(err) });
+    }
   }
 
   return newAgentId;

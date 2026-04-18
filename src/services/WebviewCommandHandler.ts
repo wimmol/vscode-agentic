@@ -31,6 +31,7 @@ import { rootClick } from '../features/rootClick';
 import { repoRootClick } from '../features/repoRootClick';
 import { agentClick } from '../features/agentClick';
 import { closeWorktree } from '../features/closeWorktree';
+import { logger } from './Logger';
 
 /**
  * Handles all webview → extension communication.
@@ -78,7 +79,7 @@ export class WebviewCommandHandler implements vscode.Disposable {
   };
 
   private handler = async (message: WebviewToExtensionMessage): Promise<void> => {
-    console.log('[WebviewCommandHandler] received message:', message);
+    logger.trace('WebviewCommandHandler received', { function: message?.function });
     try {
       if (!message || typeof message.function !== 'string') {
         throw new Error('Invalid message: missing function name');
@@ -138,10 +139,10 @@ export class WebviewCommandHandler implements vscode.Disposable {
           );
           break;
       }
-      console.log('[WebviewCommandHandler] handled "%s" successfully', message.function);
+      logger.trace('WebviewCommandHandler handled', { function: message.function });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error('[WebviewCommandHandler] error handling "%s":', message?.function, msg);
+      logger.error('WebviewCommandHandler error', err, { function: message?.function });
       vscode.window.showErrorMessage(msg);
     }
   };

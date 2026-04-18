@@ -1,6 +1,8 @@
 import type { RepoWithZones } from './index';
 import {
   MSG_TYPE_UPDATE,
+  PROTOCOL_VERSION,
+  CMD_READY,
   CMD_TOGGLE_REPO_EXPANDED,
   CMD_ADD_REPO,
   CMD_REMOVE_REPO,
@@ -21,6 +23,8 @@ import {
 
 export interface StateUpdateMessage {
   type: typeof MSG_TYPE_UPDATE;
+  /** Protocol version of the message envelope. Receiver compares to its own constant. */
+  protocol: typeof PROTOCOL_VERSION;
   repos: RepoWithZones[];
 }
 
@@ -28,10 +32,27 @@ export type ExtensionToWebviewMessage = StateUpdateMessage;
 
 // ── Webview → Extension ───────────────────────────────────────────
 
-export interface WebviewToExtensionMessage {
-  function: string;
-  args: any;
+interface MessageBase<F extends string, A> {
+  function: F;
+  args: A;
 }
+
+export type WebviewToExtensionMessage =
+  | MessageBase<typeof CMD_READY, Record<string, never>>
+  | MessageBase<typeof CMD_TOGGLE_REPO_EXPANDED, { repoId: string }>
+  | MessageBase<typeof CMD_ADD_REPO, Record<string, never>>
+  | MessageBase<typeof CMD_REMOVE_REPO, { repoId: string }>
+  | MessageBase<typeof CMD_ROOT_CLICK, Record<string, never>>
+  | MessageBase<typeof CMD_REPO_ROOT_CLICK, { repoId: string }>
+  | MessageBase<typeof CMD_ADD_AGENT, { repoId: string }>
+  | MessageBase<typeof CMD_REMOVE_AGENT, { agentId: string }>
+  | MessageBase<typeof CMD_AGENT_CLICK, { agentId: string }>
+  | MessageBase<typeof CMD_TOGGLE_ZONE_EXPANDED, { repoId: string; branch: string }>
+  | MessageBase<typeof CMD_CLOSE_WORKTREE, { repoId: string; branch: string }>
+  | MessageBase<typeof CMD_SEND_PROMPT, { agentId: string }>
+  | MessageBase<typeof CMD_FORK_AGENT, { agentId: string }>
+  | MessageBase<typeof CMD_RENAME_AGENT, { agentId: string }>
+  | MessageBase<typeof CMD_REMOVE_QUEUE_ITEM, { agentId: string; index: number }>;
 
 // ── Message creators ─────────────────────────────────────────────
 
