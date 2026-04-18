@@ -135,7 +135,8 @@
         "command": "vscode-agentic.createTemplate",
         "title": "Create Agent Template",
         "icon": "$(add)",
-        "category": "Agentic"
+        "category": "Agentic",
+        "enablement": "vscode-agentic.hasRepos"
       },
       {
         "command": "vscode-agentic.removeTemplate",
@@ -174,6 +175,21 @@
         }
       ],
       "view/item/context": [
+        {
+          "command": "vscode-agentic.explorer.newFile",
+          "when": "view == 'vscode-agentic.explorer' && viewItem == 'scopeHeader'",
+          "group": "1_new@1"
+        },
+        {
+          "command": "vscode-agentic.explorer.newFolder",
+          "when": "view == 'vscode-agentic.explorer' && viewItem == 'scopeHeader'",
+          "group": "1_new@2"
+        },
+        {
+          "command": "vscode-agentic.explorer.paste",
+          "when": "view == 'vscode-agentic.explorer' && viewItem == 'scopeHeader'",
+          "group": "5_cutcopypaste@3"
+        },
         {
           "command": "vscode-agentic.explorer.newFile",
           "when": "view == 'vscode-agentic.explorer' && viewItem =~ /^explorer/",

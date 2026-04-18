@@ -23,6 +23,7 @@ import {
   errRepoIdNotFound,
   errAgentIdNotFound,
 } from '../constants/messages';
+import { logger } from '../services/Logger';
 
 /**
  * Manages all read/write operations against VS Code workspaceState.
@@ -147,7 +148,7 @@ export class StateStorage implements vscode.Disposable {
       await this.state.update(STORE_REPOSITORIES, [...this.repos(), repo]);
     });
     this._onDidChange.fire();
-    console.log('[StateStorage] addRepository: result:', repo);
+    logger.trace('StateStorage addRepository', { repo });
     return repo;
   };
 
@@ -269,7 +270,7 @@ export class StateStorage implements vscode.Disposable {
       list[idx] = repo;
       await this.state.update(STORE_REPOSITORIES, list);
       this._onDidChange.fire();
-      console.log('[StateStorage] updateRepository: result:', repo);
+      logger.trace('StateStorage updateRepository', { repo });
       return repo;
     });
   };
@@ -285,12 +286,12 @@ export class StateStorage implements vscode.Disposable {
       list[idx] = { ...list[idx], isExpanded: !list[idx].isExpanded };
       await this.state.update(STORE_REPOSITORIES, list);
       this._onDidChange.fire();
-      console.log('[StateStorage] toggleRepoExpanded:', { id, isExpanded: list[idx].isExpanded });
+      logger.trace('StateStorage toggleRepoExpanded', { id, isExpanded: list[idx].isExpanded });
     });
   };
 
   removeRepository = async (id: string): Promise<void> => {
-    console.log('[StateStorage] removeRepository:', { id });
+    logger.trace('StateStorage removeRepository', { id });
     await this.runExclusive(async () => {
       const list = this.repos();
       const filtered = list.filter((r) => r.repositoryId !== id);
@@ -367,7 +368,7 @@ export class StateStorage implements vscode.Disposable {
 
       await this.state.update(STORE_AGENTS, [...this.agents(), agent]);
       this._onDidChange.fire();
-      console.log('[StateStorage] addAgent: result:', agent);
+      logger.trace('StateStorage addAgent', { agent });
       return agent;
     });
   };
@@ -446,13 +447,13 @@ export class StateStorage implements vscode.Disposable {
       list[idx] = agent;
       await this.state.update(STORE_AGENTS, list);
       this._onDidChange.fire();
-      console.log('[StateStorage] updateAgent: result:', agent);
+      logger.trace('StateStorage updateAgent', { agentId: agent.agentId, status: agent.status });
       return agent;
     });
   };
 
   removeAgent = async (id: string): Promise<void> => {
-    console.log('[StateStorage] removeAgent:', { id });
+    logger.trace('StateStorage removeAgent', { id });
     await this.runExclusive(async () => {
       const list = this.agents();
       const filtered = list.filter((a) => a.agentId !== id);
@@ -481,7 +482,7 @@ export class StateStorage implements vscode.Disposable {
       const updated = list.map((a) => ({ ...a, isFocused: a.agentId === agentId }));
       await this.state.update(STORE_AGENTS, updated);
       this._onDidChange.fire();
-      console.log('[StateStorage] focusAgent:', { agentId });
+      logger.trace('StateStorage focusAgent', { agentId });
     });
   };
 
@@ -499,7 +500,7 @@ export class StateStorage implements vscode.Disposable {
       await this.state.update(STORE_WORKTREES, [...this.worktrees(), worktree]);
     });
     this._onDidChange.fire();
-    console.log('[StateStorage] addWorktree: result:', worktree);
+    logger.trace('StateStorage addWorktree', { worktree });
     return worktree;
   };
 
@@ -508,7 +509,7 @@ export class StateStorage implements vscode.Disposable {
   };
 
   removeWorktreeByBranch = async (repoId: string, branch: string): Promise<void> => {
-    console.log('[StateStorage] removeWorktreeByBranch:', { repoId, branch });
+    logger.trace('StateStorage removeWorktreeByBranch', { repoId, branch });
     await this.runExclusive(async () => {
       const list = this.worktrees();
       const filtered = list.filter((w) => !(w.repoId === repoId && w.branch === branch));
@@ -540,7 +541,7 @@ export class StateStorage implements vscode.Disposable {
       const current = map[key] ?? true;
       await this.state.update(STORE_ZONE_EXPANDED, { ...map, [key]: !current });
       this._onDidChange.fire();
-      console.log('[StateStorage] toggleZoneExpanded:', { repoId, branch, isExpanded: !current });
+      logger.trace('StateStorage toggleZoneExpanded', { repoId, branch, isExpanded: !current });
     });
   };
 
@@ -642,6 +643,12 @@ export class StateStorage implements vscode.Disposable {
     return map[scopeKey] ?? [];
   };
 
+  /**
+   * Persist explorer expanded-folder state. **Intentionally does not fire
+   * `_onDidChange`** — explorer state is local UI state owned by
+   * `FileExplorerProvider`; firing the event would cause the AgentPanel to
+   * re-fetch and re-render on every collapse/expand toggle (#71).
+   */
   setExpandedPaths = async (scopeKey: string, paths: string[]): Promise<void> => {
     await this.runExclusive(async () => {
       await this.uiState.update(STORE_EXPLORER_STATE, { ...this.explorerState(), [scopeKey]: paths });

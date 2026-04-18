@@ -28,6 +28,15 @@ export default tseslint.config(
       'react-hooks/exhaustive-deps': 'warn',
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/explicit-function-return-type': 'off',
+      'no-console': 'warn',
+    },
+  },
+  // Webview entry / ErrorBoundary intentionally use console for dev visibility.
+  // Production builds strip them via esbuild --drop:console.
+  {
+    files: ['src/ui/**/*.{ts,tsx}'],
+    rules: {
+      'no-console': 'off',
     },
   },
   prettier,

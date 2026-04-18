@@ -2,9 +2,10 @@ import * as vscode from 'vscode';
 import type { StateStorage } from '../db';
 import type { ExtensionToWebviewMessage } from '../types/messages';
 import { VIEW_AGENTS } from '../constants/views';
-import { CMD_READY, MSG_TYPE_UPDATE } from '../constants/commands';
+import { CMD_READY, MSG_TYPE_UPDATE, PROTOCOL_VERSION } from '../constants/commands';
 import { syncWorktrees } from '../features/syncWorktrees';
 import { buildWebviewHtml } from '../utils/webview';
+import { logger } from './Logger';
 
 /**
  * Bridges StateStorage and the Agent Panel webview.
@@ -60,7 +61,7 @@ export class AgentPanelProvider implements vscode.WebviewViewProvider, vscode.Di
 
     webviewView.webview.onDidReceiveMessage((message) => {
       if (message.function === CMD_READY) {
-        console.log('[AgentPanelProvider] webview ready, pushing initial state');
+        logger.trace('AgentPanelProvider webview ready, pushing initial state');
         void this.pushState();
       }
     }, null, this.viewDisposables);
@@ -99,7 +100,7 @@ export class AgentPanelProvider implements vscode.WebviewViewProvider, vscode.Di
     }
 
     const repos = await this.storage.getAllReposWithZones();
-    const message: ExtensionToWebviewMessage = { type: MSG_TYPE_UPDATE, repos };
+    const message: ExtensionToWebviewMessage = { type: MSG_TYPE_UPDATE, protocol: PROTOCOL_VERSION, repos };
     await this.view.webview.postMessage(message);
   };
 

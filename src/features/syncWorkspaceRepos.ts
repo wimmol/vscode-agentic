@@ -4,6 +4,7 @@ import type { StateStorage } from '../db';
 import { GIT_DIR } from '../constants/paths';
 import { DEFAULT_CURRENT_BRANCH } from '../constants/repo';
 import { getCurrentBranch } from '../services/GitService';
+import { logger } from '../services/Logger';
 
 /** Async variant of fs.existsSync so we don't block during activation. */
 const pathExists = async (p: string): Promise<boolean> => {
@@ -52,7 +53,7 @@ export const refreshCurrentBranches = async (storage: StateStorage): Promise<voi
     try {
       await storage.updateRepository(repo.repositoryId, { currentBranch: detected });
     } catch (err) {
-      console.warn('[refreshCurrentBranches] update failed:', repo.name, err);
+      logger.warn('refreshCurrentBranches update failed', { repo: repo.name, err: String(err) });
     }
   }
 };

@@ -204,8 +204,9 @@ const AgentTileImpl = ({
 
           {promptQueue?.length > 0 && (
             <div className="queue-list">
+              {/* Key includes item content so middle-removal reconciles correctly (#22). */}
               {promptQueue.map((item, i) => (
-                <div key={`${agentId}:queue:${i}`} className="queue-item">
+                <div key={`${agentId}:q:${i}:${item}`} className="queue-item">
                   <span className="queue-num">{i + 1}.</span>
                   <span className="queue-text">{stripXmlTags(item)}</span>
                   <button

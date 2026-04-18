@@ -17,3 +17,10 @@ export const CMD_READY = 'ready';
 
 // Extension → Webview message types
 export const MSG_TYPE_UPDATE = 'update';
+
+/**
+ * Protocol version for extension ↔ webview message envelopes. Bump this
+ * whenever a breaking change to message shapes ships, so the receiving side
+ * can detect a mismatched cached webview state and recover.
+ */
+export const PROTOCOL_VERSION = 1;
