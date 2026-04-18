@@ -17,7 +17,8 @@
     "src/ui/**/*.ts",
     "src/ui/**/*.tsx",
     "src/types/**/*.ts",
-    "src/constants/**/*.ts"
+    "src/constants/**/*.ts",
+    "src/utils/**/*.ts"
   ],
   "exclude": ["node_modules"]
 }

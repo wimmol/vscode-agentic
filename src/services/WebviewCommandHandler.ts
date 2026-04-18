@@ -58,58 +58,90 @@ export class WebviewCommandHandler implements vscode.Disposable {
     );
   }
 
+  private isPlainObject = (value: unknown): value is Record<string, unknown> =>
+    typeof value === 'object' && value !== null && !Array.isArray(value);
+
+  private requireString = (args: Record<string, unknown>, key: string): string => {
+    const value = args[key];
+    if (typeof value !== 'string' || !value) {
+      throw new Error(`Invalid ${key}: expected non-empty string`);
+    }
+    return value;
+  };
+
+  private requireNumber = (args: Record<string, unknown>, key: string): number => {
+    const value = args[key];
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+      throw new Error(`Invalid ${key}: expected number`);
+    }
+    return value;
+  };
+
   private handler = async (message: WebviewToExtensionMessage): Promise<void> => {
     console.log('[WebviewCommandHandler] received message:', message);
     try {
+      if (!message || typeof message.function !== 'string') {
+        throw new Error('Invalid message: missing function name');
+      }
+      const args: Record<string, unknown> = this.isPlainObject(message.args) ? message.args : {};
+
       switch (message.function) {
         case CMD_ADD_AGENT: {
-          await addAgent(this.storage, this.explorer, this.terminalService, message.args.repoId);
+          await addAgent(this.storage, this.explorer, this.terminalService, this.requireString(args, 'repoId'));
           break;
         }
         case CMD_ADD_REPO:
           await addRepo(this.storage);
           break;
         case CMD_REMOVE_AGENT:
-          await removeAgent(this.storage, this.terminalService, message.args.agentId);
+          await removeAgent(this.storage, this.terminalService, this.requireString(args, 'agentId'));
           break;
         case CMD_REMOVE_REPO:
-          await removeRepo(this.storage, this.terminalService, message.args.repoId);
+          await removeRepo(this.storage, this.terminalService, this.requireString(args, 'repoId'));
           break;
         case CMD_TOGGLE_REPO_EXPANDED:
-          await this.storage.toggleRepoExpanded(message.args.repoId);
+          await this.storage.toggleRepoExpanded(this.requireString(args, 'repoId'));
           break;
         case CMD_ROOT_CLICK:
           await rootClick(this.storage, this.explorer);
           break;
         case CMD_REPO_ROOT_CLICK:
-          await repoRootClick(this.storage, this.explorer, message.args.repoId);
+          await repoRootClick(this.storage, this.explorer, this.requireString(args, 'repoId'));
           break;
         case CMD_AGENT_CLICK:
-          await agentClick(this.storage, this.explorer, this.terminalService, message.args.agentId);
+          await agentClick(this.storage, this.explorer, this.terminalService, this.requireString(args, 'agentId'));
           break;
         case CMD_TOGGLE_ZONE_EXPANDED:
-          await this.storage.toggleZoneExpanded(message.args.repoId, message.args.branch);
+          await this.storage.toggleZoneExpanded(this.requireString(args, 'repoId'), this.requireString(args, 'branch'));
           break;
         case CMD_CLOSE_WORKTREE:
-          await closeWorktree(this.storage, this.terminalService, message.args.repoId, message.args.branch);
+          await closeWorktree(
+            this.storage,
+            this.terminalService,
+            this.requireString(args, 'repoId'),
+            this.requireString(args, 'branch'),
+          );
           break;
         case CMD_SEND_PROMPT:
-          await sendPrompt(this.storage, this.terminalService, message.args.agentId);
+          await sendPrompt(this.storage, this.terminalService, this.requireString(args, 'agentId'));
           break;
         case CMD_FORK_AGENT:
-          await forkAgent(this.storage, this.explorer, this.terminalService, message.args.agentId);
+          await forkAgent(this.storage, this.explorer, this.terminalService, this.requireString(args, 'agentId'));
           break;
         case CMD_RENAME_AGENT:
-          await renameAgent(this.storage, message.args.agentId);
+          await renameAgent(this.storage, this.requireString(args, 'agentId'));
           break;
         case CMD_REMOVE_QUEUE_ITEM:
-          await this.storage.removeFromQueue(message.args.agentId, message.args.index);
+          await this.storage.removeFromQueue(
+            this.requireString(args, 'agentId'),
+            this.requireNumber(args, 'index'),
+          );
           break;
       }
       console.log('[WebviewCommandHandler] handled "%s" successfully', message.function);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error('[WebviewCommandHandler] error handling "%s":', message.function, msg);
+      console.error('[WebviewCommandHandler] error handling "%s":', message?.function, msg);
       vscode.window.showErrorMessage(msg);
     }
   };

@@ -19,46 +19,97 @@ const gitOpts = (cwd: string, timeout = GIT_TIMEOUT) => ({
   maxBuffer: GIT_MAX_BUFFER,
 });
 
-export const worktreePath = (repoPath: string, branch: string): string =>
-  path.join(repoPath, WORKTREES_DIR, branch);
+/**
+ * Per-repo worktree mutex: concurrent `git worktree add/remove` on the
+ * same repo corrupts git's worktree list. Queue writes so only one
+ * mutating worktree op runs per repo path at a time.
+ */
+const worktreeLocks = new Map<string, Promise<unknown>>();
 
-export const ensureBranch = async (repoPath: string, branch: string): Promise<void> => {
+const withWorktreeLock = async <T>(repoPath: string, fn: () => Promise<T>): Promise<T> => {
+  const prev = worktreeLocks.get(repoPath) ?? Promise.resolve();
+  const next = prev.then(fn, fn);
+  worktreeLocks.set(repoPath, next.catch(() => undefined));
   try {
-    await execFile('git', ['branch', branch], gitOpts(repoPath));
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : '';
-    if (!msg.includes('already exists')) {
-      throw err;
+    return await next;
+  } finally {
+    if (worktreeLocks.get(repoPath) === next.catch(() => undefined)) {
+      worktreeLocks.delete(repoPath);
     }
   }
 };
 
-export const createWorktree = async (repoPath: string, worktreePath: string, branch: string): Promise<void> => {
+export const worktreePath = (repoPath: string, branch: string): string =>
+  path.join(repoPath, WORKTREES_DIR, branch);
+
+/**
+ * Returns the name of the currently checked-out branch, or undefined if
+ * detached HEAD / not a git repo / any other failure.
+ */
+export const getCurrentBranch = async (repoPath: string): Promise<string | undefined> => {
   try {
+    const { stdout } = await execFile(
+      'git',
+      ['--no-optional-locks', 'symbolic-ref', '--short', 'HEAD'],
+      gitOpts(repoPath),
+    );
+    const branch = stdout.trim();
+    return branch || undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+/** Returns true if the named ref exists locally (branch, tag, etc.). */
+const refExists = async (repoPath: string, ref: string): Promise<boolean> => {
+  try {
+    await execFile(
+      'git',
+      ['--no-optional-locks', 'rev-parse', '--verify', '--quiet', ref],
+      gitOpts(repoPath),
+    );
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+export const ensureBranch = async (repoPath: string, branch: string): Promise<void> => {
+  if (await refExists(repoPath, `refs/heads/${branch}`)) return;
+  await execFile('git', ['branch', branch], gitOpts(repoPath));
+};
+
+export const createWorktree = async (repoPath: string, worktreePath: string, branch: string): Promise<void> => {
+  await withWorktreeLock(repoPath, async () => {
+    // If a worktree at that path already exists, `git worktree add` fails;
+    // check the path up front instead of parsing the English error message.
+    try {
+      const entries = await listWorktrees(repoPath);
+      if (entries.some((e) => e.path === worktreePath)) return;
+    } catch {
+      // listWorktrees is best-effort; fall through and let `add` error surface.
+    }
     await execFile(
       'git',
       ['worktree', 'add', worktreePath, branch],
       gitOpts(repoPath, GIT_WORKTREE_TIMEOUT),
     );
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : '';
-    if (!msg.includes('already exists')) {
-      throw err;
-    }
-  }
+  });
 };
 
 export const removeWorktree = async (repoPath: string, worktreePath: string): Promise<void> => {
-  try {
-    await execFile('git', ['worktree', 'remove', '--force', worktreePath], gitOpts(repoPath, GIT_WORKTREE_TIMEOUT));
-  } catch {
-    // Best-effort — worktree may already be gone.
-  }
-  try {
-    await execFile('git', ['worktree', 'prune'], gitOpts(repoPath));
-  } catch {
-    // Best-effort cleanup.
-  }
+  await withWorktreeLock(repoPath, async () => {
+    try {
+      await execFile('git', ['worktree', 'remove', '--force', worktreePath], gitOpts(repoPath, GIT_WORKTREE_TIMEOUT));
+    } catch {
+      // Best-effort — worktree may already be gone.
+    }
+    try {
+      await execFile('git', ['worktree', 'prune'], gitOpts(repoPath));
+    } catch {
+      // Best-effort cleanup.
+    }
+  });
 };
 
 export const hasUncommittedChanges = async (wtPath: string): Promise<boolean> => {
@@ -107,9 +158,11 @@ export const listWorktrees = async (repoPath: string): Promise<GitWorktreeEntry[
   const entries: GitWorktreeEntry[] = [];
   const blocks = stdout.split('\n\n').filter((b) => b.trim());
 
-  // Skip the first block — it's the main worktree
-  for (let i = 1; i < blocks.length; i++) {
-    const lines = blocks[i].split('\n');
+  // Parse every block; skip entries whose path matches the requested repoPath
+  // (the main worktree). Ordering of blocks is not guaranteed, so matching by
+  // path is more robust than "skip index 0".
+  for (const block of blocks) {
+    const lines = block.split('\n');
     let wtPath = '';
     let branch = '';
     for (const line of lines) {
@@ -119,9 +172,9 @@ export const listWorktrees = async (repoPath: string): Promise<GitWorktreeEntry[
         branch = line.slice('branch refs/heads/'.length);
       }
     }
-    if (wtPath && branch) {
-      entries.push({ path: wtPath, branch });
-    }
+    if (!wtPath || !branch) continue;
+    if (wtPath === repoPath) continue;
+    entries.push({ path: wtPath, branch });
   }
 
   return entries;
@@ -157,7 +210,7 @@ const run = (args: string[], cwd: string, timeoutMs: number): Promise<GitResult>
 
 export const gitStatus = async (cwd: string): Promise<FileChange[]> => {
   const { stdout } = await run(
-    ['--no-optional-locks', 'status', '--porcelain', '-z'],
+    ['--no-optional-locks', 'status', '--porcelain', '-z', '--untracked-files=all'],
     cwd,
     GIT_STATUS_TIMEOUT_MS,
   );
@@ -169,27 +222,31 @@ export const gitStatus = async (cwd: string): Promise<FileChange[]> => {
   let i = 0;
   while (i < entries.length) {
     const entry = entries[i];
-    const status = entry.substring(0, 2).trim();
+    // Preserve the two-char porcelain XY so UI can distinguish staged vs unstaged.
+    const rawStatus = entry.substring(0, 2);
+    const status = rawStatus.trim() || rawStatus;
     const filePath = entry.substring(3);
 
-    // Renames and copies have a second NUL-delimited field (the original name) — skip it
-    if (status.startsWith('R') || status.startsWith('C')) {
+    // Renames and copies have a second NUL-delimited field (the original name).
+    if (rawStatus.startsWith('R') || rawStatus.startsWith('C')) {
+      const fromPath = entries[i + 1];
+      changes.push({ status, path: filePath, fromPath });
       i += 2;
     } else {
+      changes.push({ status, path: filePath });
       i += 1;
     }
-
-    changes.push({ status, path: filePath });
   }
 
   return changes;
 };
 
 export const gitCommit = async (cwd: string, message: string, paths?: string[]): Promise<GitResult> => {
-  const addArgs = paths && paths.length > 0
-    ? ['add', '--', ...paths]
-    : ['add', '-A'];
-  const addResult = await run(addArgs, cwd, GIT_COMMIT_TIMEOUT_MS);
+  // If no paths supplied, refuse rather than silently staging everything.
+  if (!paths || paths.length === 0) {
+    return { stdout: '', stderr: 'Nothing to commit (no paths supplied).', exitCode: 1, truncated: false };
+  }
+  const addResult = await run(['add', '--', ...paths], cwd, GIT_COMMIT_TIMEOUT_MS);
   if (addResult.exitCode !== 0) return addResult;
   return run(['commit', '-m', message], cwd, GIT_COMMIT_TIMEOUT_MS);
 };
@@ -199,22 +256,6 @@ export const gitPush = async (cwd: string): Promise<GitResult> =>
 
 export const gitPull = async (cwd: string): Promise<GitResult> =>
   run(['pull'], cwd, GIT_PULL_TIMEOUT_MS);
-
-export const gitDiffStat = async (cwd: string): Promise<string> => {
-  const staged = await run(
-    ['--no-optional-locks', 'diff', '--cached', '--stat'],
-    cwd,
-    GIT_STATUS_TIMEOUT_MS,
-  );
-  if (staged.stdout.trim()) return staged.stdout;
-
-  const unstaged = await run(
-    ['--no-optional-locks', 'diff', '--stat'],
-    cwd,
-    GIT_STATUS_TIMEOUT_MS,
-  );
-  return unstaged.stdout;
-};
 
 /** Generate a short commit message from a list of file changes. */
 export const suggestCommitMessage = (changes: FileChange[]): string => {

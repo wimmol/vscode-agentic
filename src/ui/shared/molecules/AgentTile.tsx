@@ -1,4 +1,5 @@
-import { useCallback, useMemo } from 'react';
+import { memo, useCallback, useMemo } from 'react';
+import type { KeyboardEvent } from 'react';
 import { IconButton } from '../atoms/IconButton';
 import { StatusIcon } from '../atoms/StatusIcon';
 import { Timer } from './Timer';
@@ -23,13 +24,23 @@ import {
 import { stripXmlTags } from '../../../utils/stripXmlTags';
 import { formatCompact, contextLevel } from '../utils/formatContext';
 
-const MAX_PROMPT_LINES = 7;
-const KEEP_LINES = 3;
+const KEEP_LINES = 2;
+const MAX_PROMPT_LINES = KEEP_LINES * 2 + 1;
 
-/** Collapse a multi-line prompt to first 3 + last 3 lines when over 7 lines. */
+/** Strips XML-like tags while preserving newlines, then trims empty lines. */
+const stripTagsPreserveLines = (text: string): string =>
+  text
+    .replace(/<\/?[a-zA-Z][^>]*>/g, '')
+    .split('\n')
+    .map((line) => line.replace(/[^\S\n]+/g, ' ').trim())
+    .filter((line) => line.length > 0)
+    .join('\n');
+
+/** Collapse a multi-line prompt to first 2 + last 2 lines when over 5 lines. */
 const compressPrompt = (text: string): string => {
-  const lines = text.split('\n');
-  if (lines.length <= MAX_PROMPT_LINES) return text;
+  const cleaned = stripTagsPreserveLines(text);
+  const lines = cleaned.split('\n');
+  if (lines.length <= MAX_PROMPT_LINES) return cleaned;
   const hidden = lines.length - KEEP_LINES * 2;
   return [
     ...lines.slice(0, KEEP_LINES),
@@ -69,7 +80,7 @@ interface AgentTileProps {
   onRemoveQueueItem: (agentId: string, index: number) => void;
 }
 
-export const AgentTile = ({
+const AgentTileImpl = ({
   agentId,
   name,
   status,
@@ -100,25 +111,35 @@ export const AgentTile = ({
   const handleFork = useCallback(() => onForkAgent(agentId), [onForkAgent, agentId]);
   const handleRename = useCallback(() => onRenameAgent(agentId), [onRenameAgent, agentId]);
 
+  const handleKeyDown = useCallback((event: KeyboardEvent<HTMLElement>) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onClick(agentId);
+    }
+  }, [onClick, agentId]);
+
   const className = `agent-tile ${STATUS_CSS[status]}${isSelected ? ' agent-tile--selected' : ''}`;
 
   const showTimer = startedAt !== null && completedAt === null;
   const showElapsed = startedAt !== null && completedAt !== null;
 
   const cleanPrompt = useMemo(() => lastPrompt ? stripXmlTags(lastPrompt) : null, [lastPrompt]);
-  const compressedPrompt = useMemo(() => cleanPrompt ? compressPrompt(cleanPrompt) : null, [cleanPrompt]);
+  const compressedPrompt = useMemo(() => lastPrompt ? compressPrompt(lastPrompt) : null, [lastPrompt]);
   const cleanSummary = useMemo(() => outputSummary ? stripXmlTags(outputSummary) : null, [outputSummary]);
 
-  const ctxLevel = contextUsage ? contextLevel(contextUsage.used, contextUsage.total) : null;
-  const ctxText = contextUsage
-    ? `${formatCompact(contextUsage.used)} / ${formatCompact(contextUsage.total)}`
+  // Only show context usage when we have a positive denominator — dividing by
+  // zero yields Infinity/NaN%, which the UI would happily render.
+  const hasCtx = !!(contextUsage && contextUsage.total > 0);
+  const ctxLevel = hasCtx ? contextLevel(contextUsage!.used, contextUsage!.total) : null;
+  const ctxText = hasCtx
+    ? `${formatCompact(contextUsage!.used)} / ${formatCompact(contextUsage!.total)}`
     : null;
-  const ctxPct = contextUsage ? (contextUsage.used / contextUsage.total) * 100 : 0;
+  const ctxPct = hasCtx ? (contextUsage!.used / contextUsage!.total) * 100 : 0;
 
   const summaryIsError = status === AGENT_STATUS_ERROR;
 
   return (
-    <article className={className} onClick={handleClick} tabIndex={0}>
+    <article className={className} onClick={handleClick} onKeyDown={handleKeyDown} tabIndex={0} role="button">
       <div className="agent-tile-header">
         <StatusIcon status={status} />
         <span className="agent-tile-name">{name}</span>
@@ -145,7 +166,7 @@ export const AgentTile = ({
         </div>
       )}
 
-      {contextUsage && (
+      {hasCtx && (
         <div className="context-bar">
           <div
             className={`context-bar-fill context-bar-fill--${ctxLevel}`}
@@ -166,11 +187,11 @@ export const AgentTile = ({
               <span className="detail-value">{worktreePath}</span>
             </div>
           )}
-          {contextUsage && (
+          {hasCtx && (
             <div className="detail-row">
               <span className="detail-label">Context</span>
               <span className={`detail-value${ctxLevel !== 'normal' ? ` context-usage--${ctxLevel}` : ''}`}>
-                {contextUsage.used.toLocaleString()} / {contextUsage.total.toLocaleString()} tokens ({Math.round(ctxPct)}%)
+                {contextUsage!.used.toLocaleString()} / {contextUsage!.total.toLocaleString()} tokens ({Math.round(ctxPct)}%)
               </span>
             </div>
           )}
@@ -184,7 +205,7 @@ export const AgentTile = ({
           {promptQueue?.length > 0 && (
             <div className="queue-list">
               {promptQueue.map((item, i) => (
-                <div key={`${i}-${item.slice(0, 30)}`} className="queue-item">
+                <div key={`${agentId}:queue:${i}`} className="queue-item">
                   <span className="queue-num">{i + 1}.</span>
                   <span className="queue-text">{stripXmlTags(item)}</span>
                   <button
@@ -222,3 +243,5 @@ export const AgentTile = ({
     </article>
   );
 };
+
+export const AgentTile = memo(AgentTileImpl);

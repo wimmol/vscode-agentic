@@ -183,28 +183,36 @@ export class FileExplorerProvider
       return;
     }
 
-    // External URI drop
+    // External URI drop — copy (not move) and only accept file: URIs.
     const uriItem = dataTransfer.get(URI_LIST_MIME);
     if (uriItem) {
       const raw = await uriItem.asString();
       const uris = raw
         .split(/\r?\n/)
         .filter(Boolean)
-        .map((u) => vscode.Uri.parse(u));
+        .map((u) => {
+          try {
+            return vscode.Uri.parse(u, true);
+          } catch {
+            return undefined;
+          }
+        })
+        .filter((u): u is vscode.Uri => u !== undefined && u.scheme === 'file');
+      if (uris.length === 0) return;
       const errors: string[] = [];
       for (const uri of uris) {
         const dest = vscode.Uri.file(path.join(targetDir, path.basename(uri.fsPath)));
         if (uri.fsPath === dest.fsPath) continue;
         try {
-          await vscode.workspace.fs.rename(uri, dest, { overwrite: false });
+          await vscode.workspace.fs.copy(uri, dest, { overwrite: false });
         } catch (err) {
           errors.push(`${path.basename(uri.fsPath)}: ${err}`);
         }
       }
       if (errors.length > 0) {
-        const moved = uris.length - errors.length;
+        const copied = uris.length - errors.length;
         vscode.window.showErrorMessage(
-          `Moved ${moved} of ${uris.length} items. Failed: ${errors.join('; ')}`,
+          `Copied ${copied} of ${uris.length} items. Failed: ${errors.join('; ')}`,
         );
       }
       this.refresh();

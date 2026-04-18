@@ -37,8 +37,18 @@ import { SessionWatcher } from './SessionWatcher';
 export const claudeProjectDir = (cwd: string): string =>
   join(homedir(), CLAUDE_DIR, CLAUDE_PROJECTS_DIR, cwd.replace(/[/.]/g, '-'));
 
-/** Wrap a string in single quotes for safe shell interpolation. */
-export const shellQuote = (s: string): string => `'${s.replace(/'/g, "'\\''")}'`;
+/**
+ * Wrap a string for safe shell interpolation. Uses single quotes on
+ * POSIX shells and double quotes with backtick-escaping on cmd.exe /
+ * PowerShell. We don't know which shell VS Code will spawn, so default
+ * to the platform's typical shell behavior.
+ */
+export const shellQuote = (s: string): string => {
+  if (process.platform === 'win32') {
+    return `"${s.replace(/"/g, '""')}"`;
+  }
+  return `'${s.replace(/'/g, "'\\''")}'`;
+};
 
 /**
  * Manages agent↔terminal mappings and lifecycle.
@@ -165,9 +175,6 @@ export class TerminalService implements vscode.Disposable {
     const worktreeByKey = new Map(allWorktrees.map((wt) => [`${wt.repoId}::${wt.branch}`, wt]));
     const existingByName = new Map(vscode.window.terminals.map((t) => [t.name, t]));
 
-    // Collect agent terminal names so we can close unrelated terminals after restore.
-    const agentTerminalNames = new Set<string>();
-
     for (const repo of repos) {
       for (const zone of repo.zones) {
         for (const agent of zone.agents) {
@@ -175,8 +182,6 @@ export class TerminalService implements vscode.Disposable {
           const cwd = worktree?.path ?? repo.localPath;
 
           const name = terminalName(agent.name, agent.branch, repo.name);
-          agentTerminalNames.add(name);
-
           const wasRunning = agent.status === AGENT_STATUS_RUNNING;
 
           // Adopt an existing terminal if one already matches by name.
@@ -195,13 +200,6 @@ export class TerminalService implements vscode.Disposable {
             agent.sessionId, undefined, wasRunning,
           );
         }
-      }
-    }
-
-    // Close all pre-existing terminals that don't belong to any agent.
-    for (const [name, terminal] of existingByName) {
-      if (!agentTerminalNames.has(name)) {
-        terminal.dispose();
       }
     }
 
@@ -386,6 +384,8 @@ export class TerminalService implements vscode.Disposable {
     const branchAgents = isCurrent ? [] : await this.storage.getAgentsByRepoBranch(agent.repoId, agent.branch);
     const isLastOnWorktreeBranch = !isCurrent && branchAgents.length <= 1;
 
+    const wasRunning = agent.status === AGENT_STATUS_RUNNING;
+
     // Current branch or shared worktree — simple remove/reopen dialog
     if (!isLastOnWorktreeBranch) {
       const choice = await vscode.window.showWarningMessage(
@@ -398,7 +398,9 @@ export class TerminalService implements vscode.Disposable {
         await this.storage.removeAgent(agentId);
         return;
       }
-      const reopened = this.createTerminal(agentId, agent.name, agent.branch, repo.name, cwd, agent.sessionId);
+      const reopened = this.createTerminal(
+        agentId, agent.name, agent.branch, repo.name, cwd, agent.sessionId, undefined, wasRunning,
+      );
       reopened.show(false);
       return;
     }
@@ -428,7 +430,9 @@ export class TerminalService implements vscode.Disposable {
     }
 
     // "Reopen Terminal" or dialog dismissed — resume the exact session.
-    const reopened = this.createTerminal(agentId, agent.name, agent.branch, repo.name, cwd, agent.sessionId);
+    const reopened = this.createTerminal(
+      agentId, agent.name, agent.branch, repo.name, cwd, agent.sessionId, undefined, wasRunning,
+    );
     reopened.show(false);
   };
 

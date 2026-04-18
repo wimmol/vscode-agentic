@@ -3,7 +3,7 @@
   "displayName": "Agentic",
   "description": "Convenient sidebar to keep all your Claude Code agents in plain sight",
   "icon": "images/icon.png",
-  "version": "0.6.2",
+  "version": "0.6.4",
   "publisher": "wimmol",
   "engines": {
     "vscode": "^1.74.0"
@@ -122,7 +122,7 @@
       },
       {
         "command": "vscode-agentic.explorer.revealInOS",
-        "title": "Reveal in Finder",
+        "title": "Reveal in File Manager",
         "category": "Agentic"
       },
       {
@@ -161,6 +161,11 @@
           "command": "vscode-agentic.explorer.newFolder",
           "when": "view == 'vscode-agentic.explorer'",
           "group": "navigation"
+        },
+        {
+          "command": "vscode-agentic.explorer.paste",
+          "when": "view == 'vscode-agentic.explorer'",
+          "group": "1_paste"
         },
         {
           "command": "vscode-agentic.explorer.refresh",
@@ -264,9 +269,10 @@
     ]
   },
   "scripts": {
-    "vscode:prepublish": "npm run compile:prod",
-    "compile:prod": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --minify && esbuild src/ui/index.tsx --bundle --outfile=out/ui/index.js --format=esm --jsx=automatic --loader:.ttf=file --minify && esbuild src/ui/sourceControl/index.tsx --bundle --outfile=out/ui/sourceControl.js --format=esm --jsx=automatic --loader:.ttf=file --minify",
-    "compile": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --sourcemap && esbuild src/ui/index.tsx --bundle --outfile=out/ui/index.js --format=esm --jsx=automatic --loader:.ttf=file --sourcemap && esbuild src/ui/sourceControl/index.tsx --bundle --outfile=out/ui/sourceControl.js --format=esm --jsx=automatic --loader:.ttf=file --sourcemap",
+    "vscode:prepublish": "npm run typecheck && npm run compile:prod",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.webview.json",
+    "compile:prod": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --minify --drop:console --tsconfig=tsconfig.json && esbuild src/ui/index.tsx --bundle --outfile=out/ui/index.js --format=esm --jsx=automatic --loader:.ttf=file --minify --drop:console --tsconfig=tsconfig.webview.json && esbuild src/ui/sourceControl/index.tsx --bundle --outfile=out/ui/sourceControl.js --format=esm --jsx=automatic --loader:.ttf=file --minify --drop:console --tsconfig=tsconfig.webview.json",
+    "compile": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --sourcemap --tsconfig=tsconfig.json && esbuild src/ui/index.tsx --bundle --outfile=out/ui/index.js --format=esm --jsx=automatic --loader:.ttf=file --sourcemap --tsconfig=tsconfig.webview.json && esbuild src/ui/sourceControl/index.tsx --bundle --outfile=out/ui/sourceControl.js --format=esm --jsx=automatic --loader:.ttf=file --sourcemap --tsconfig=tsconfig.webview.json",
     "package": "npx vsce package",
     "watch": "npm run compile -- --watch",
     "lint": "eslint src/",

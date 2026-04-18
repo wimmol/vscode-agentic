@@ -2,20 +2,22 @@
 
 ### Overview
 
-All extension state lives in a file-based SQLite database (via Sequelize ORM), scoped to the current workspace.
-VS Code provides a unique storage directory per workspace via `context.storageUri`.
-If no workspace is open, the extension shows a hint to create one — no DB is initialized.
+All extension state is persisted via VS Code's `Memento` API.
 
-### Storage
+- **Cross-workspace data** (repositories, agents, worktrees, templates, zone
+  expand state, schema version) lives in `context.globalState`. This means
+  agents created in one workspace are visible when the extension reopens in
+  another.
+- **Per-workspace UI state** (which explorer folders are expanded for each
+  scope) lives in `context.workspaceState`, since it's inherently tied to
+  the folder set currently open.
 
-- **Runtime store:** File-based SQLite via Sequelize at `<storageUri>/state.db`
-- **Persistence:** Data survives window reloads, extension restarts, and scope changes automatically
-- **On startup:** Sequelize syncs models to the existing DB file (creates if missing)
+See `docs/decisions/0001-state-in-globalstate.md` for the rationale.
 
 ### Data Flow
 
 ```
-[UI] ──postMessage──> [Extension] ──write──> [SQLite (file)]
+[UI] ──postMessage──> [Extension] ──write──> [Memento]
                                                 │
                                           EventEmitter
                                                 │
@@ -23,82 +25,53 @@ If no workspace is open, the extension shows a hint to create one — no DB is i
 ```
 
 1. UI sends a command via `postMessage` (e.g. "create agent").
-2. Extension calls a `StateStorage` method (e.g. `addAgent`).
-3. Method validates input, writes via Sequelize, and emits a change event.
-4. Webview provider listens to `onDidChange`, reads updated state, pushes it to UI.
+2. The extension calls a `StateStorage` method (e.g. `addAgent`).
+3. The method validates input, writes via `Memento.update`, and fires a
+   change event via `vscode.EventEmitter`.
+4. `AgentPanelProvider` listens to `onDidChange`, reads the full state,
+   and pushes it to the webview.
 
 ### StateStorage
 
-Located in `src/db/StateStorage.ts`. Single class that owns the Sequelize instance and EventEmitter.
+Located in `src/db/StateStorage.ts`. Single class that owns two `Memento`
+references (`state` for cross-workspace data, `uiState` for per-workspace
+UI state) and an `EventEmitter` for change notifications.
 
-Created via async factory `createStateStorage(context)` in `src/db/index.ts`.
+Created via `createStateStorage(context)` in `src/db/index.ts`, which is
+async because it runs the legacy-data migration (from `workspaceState` to
+`globalState`) before returning.
 
 Rules:
-- All write methods are async (Sequelize is async).
-- Every write method emits a change event via `vscode.EventEmitter`.
-- Read methods do not emit events.
-- Implements `vscode.Disposable` — must be pushed into `context.subscriptions`.
 
-### Schema
+- All write methods are async and run inside `runExclusive`, which
+  serializes writes so read-then-write sequences cannot interleave.
+- Every write method fires `_onDidChange` (except `setExpandedPaths`,
+  which writes UI-only state).
+- Read methods do not fire events.
+- Implements `vscode.Disposable` — must be pushed into
+  `context.subscriptions`.
 
-Models defined in `src/db/models.ts` using Sequelize `Model.init()`. Associations set up via `initModels()`.
+### Schema versioning
 
-Agent types (`Agent`, `AgentStatus`, `AgentCli`) in `src/types/agent.ts`.
-DB row types (`Repository`, `Worktree`) in `src/db/models.ts`.
+A single `agentic.schemaVersion` key (see `src/constants/db.ts`) tracks
+the on-disk shape. `StateStorage.runMigrations` runs on activation; bump
+`CURRENT_SCHEMA_VERSION` and add a migration branch when a stored shape
+changes in a backwards-incompatible way.
 
-#### `repositories`
+### Keys
 
-| Field         | Type    | Constraints      | Note                    |
-|---------------|---------|------------------|-------------------------|
-| repositoryId  | TEXT    | PK               | UUID                    |
-| name          | TEXT    | NOT NULL         |                         |
-| localPath     | TEXT    | NOT NULL, UNIQUE | absolute path to repo   |
-| currentBranch | TEXT    | NOT NULL         | e.g. `current`          |
-| createdAt     | INTEGER | NOT NULL         | unix ms                 |
+| Key                           | Memento          | Shape                                       |
+|-------------------------------|------------------|---------------------------------------------|
+| `agentic.repositories`        | globalState      | `Repository[]`                              |
+| `agentic.agents`              | globalState      | `Agent[]`                                   |
+| `agentic.worktrees`           | globalState      | `Worktree[]`                                |
+| `agentic.templates`           | globalState      | `AgentTemplate[]`                           |
+| `agentic.zoneExpanded`        | globalState      | `Record<\`${repoId}::${branch}\`, boolean>` |
+| `agentic.schemaVersion`       | globalState      | `number` (current: `CURRENT_SCHEMA_VERSION`)|
+| `agentic.explorerState`       | workspaceState   | `Record<scopeKey, string[]>`                |
 
-#### `agents`
+### Models
 
-| Field       | Type    | Constraints                 | Note                                           |
-|-------------|---------|-----------------------------|-------------------------------------------------|
-| agentId     | TEXT    | PK                          | UUID                                           |
-| repoId      | TEXT    | NOT NULL, FK → repositories | ON DELETE CASCADE                              |
-| name        | TEXT    | NOT NULL                    | auto-generated funny name (e.g. "Cosmic Panda") |
-| branch      | TEXT    | NOT NULL                    | git branch this agent works on                 |
-| cli         | TEXT    | NOT NULL                    | `claude-code` for now                          |
-| status      | TEXT    | NOT NULL                    | `created` / `running` / `idle` / `error`       |
-| isFocused   | BOOLEAN | NOT NULL, default false     | whether agent is currently selected in UI      |
-| sessionId   | TEXT    |                             | CLI session id to resume                       |
-| lastPrompt  | TEXT    |                             | last prompt sent                               |
-| startedAt   | INTEGER |                             | unix ms, when last task started                |
-| completedAt | INTEGER |                             | unix ms, when last task completed              |
-| createdAt   | INTEGER | NOT NULL                    | unix ms                                        |
-
-#### `worktrees`
-
-| Field      | Type | Constraints                   | Note                                            |
-|------------|------|-------------------------------|-------------------------------------------------|
-| worktreeId | TEXT | PK                            | UUID                                            |
-| repoId     | TEXT | NOT NULL, FK → repositories   | ON DELETE CASCADE                               |
-| branch     | TEXT | NOT NULL                      | git branch name (unique per repo)               |
-| path       | TEXT | NOT NULL                      | e.g. `repo_path/.worktrees/branch_name`         |
-
-### Relations
-
-```
-repositories 1───∞ agents
-repositories 1───∞ worktrees
-```
-
-- One repository has many agents.
-- One agent belongs to one repository.
-- One repository has many worktrees (one per non-current branch).
-- Multiple agents can share the same branch (zone).
-- Current branch agents have no worktree record — they work on the main repo checkout.
-- Deleting a repository cascades to its agents and worktrees.
-
-### Additional State
-
-| Key                    | Type                      | Note                                  |
-|------------------------|---------------------------|---------------------------------------|
-| `agentic.explorerState`| `Record<string, string[]>`| expanded paths per scope key          |
-| `agentic.zoneExpanded` | `Record<string, boolean>` | zone collapse state, key: `repoId::branch` |
+Pure TypeScript interfaces in `src/db/models.ts`. No ORM, no SQLite —
+just JSON-serializable value objects. Agent types (`Agent`,
+`AgentStatus`, `AgentCli`) live in `src/types/agent.ts`.

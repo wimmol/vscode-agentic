@@ -34,6 +34,8 @@ export class SourceControlProvider implements vscode.WebviewViewProvider, vscode
   private lastChanges: FileChange[] = [];
   private refreshTimer: ReturnType<typeof setTimeout> | undefined;
   private readonly disposables: vscode.Disposable[] = [];
+  /** Listeners scoped to the current webview instance; replaced on every resolve. */
+  private viewDisposables: vscode.Disposable[] = [];
   private watchers: vscode.Disposable[] = [];
 
   constructor(
@@ -53,6 +55,9 @@ export class SourceControlProvider implements vscode.WebviewViewProvider, vscode
   }
 
   resolveWebviewView(webviewView: vscode.WebviewView): void {
+    for (const d of this.viewDisposables) d.dispose();
+    this.viewDisposables = [];
+
     this.view = webviewView;
 
     webviewView.webview.options = {
@@ -65,18 +70,20 @@ export class SourceControlProvider implements vscode.WebviewViewProvider, vscode
     webviewView.webview.onDidReceiveMessage(
       (message: ScWebviewToExtensionMessage) => this.handleMessage(message),
       null,
-      this.disposables,
+      this.viewDisposables,
     );
 
     webviewView.onDidChangeVisibility(() => {
       if (webviewView.visible) {
         void this.refreshStatus();
       }
-    }, null, this.disposables);
+    }, null, this.viewDisposables);
 
     webviewView.onDidDispose(() => {
       this.view = undefined;
-    }, null, this.disposables);
+      for (const d of this.viewDisposables) d.dispose();
+      this.viewDisposables = [];
+    }, null, this.viewDisposables);
   }
 
   private handleMessage = async (message: ScWebviewToExtensionMessage): Promise<void> => {
@@ -209,16 +216,28 @@ export class SourceControlProvider implements vscode.WebviewViewProvider, vscode
     await this.view?.webview.postMessage(message);
   };
 
+  private isNoisyPath(uri: vscode.Uri): boolean {
+    const fsPath = uri.fsPath;
+    return (
+      fsPath.includes(`${path.sep}.git${path.sep}`)
+      || fsPath.includes(`${path.sep}node_modules${path.sep}`)
+    );
+  }
+
   private setupWatchers(): void {
     this.disposeWatchers();
     for (const root of this.roots) {
       const pattern = new vscode.RelativePattern(vscode.Uri.file(root), '**/*');
       const watcher = vscode.workspace.createFileSystemWatcher(pattern);
+      const onChange = (uri: vscode.Uri) => {
+        if (this.isNoisyPath(uri)) return;
+        this.debouncedRefresh();
+      };
       this.watchers.push(
         watcher,
-        watcher.onDidCreate(() => this.debouncedRefresh()),
-        watcher.onDidChange(() => this.debouncedRefresh()),
-        watcher.onDidDelete(() => this.debouncedRefresh()),
+        watcher.onDidCreate(onChange),
+        watcher.onDidChange(onChange),
+        watcher.onDidDelete(onChange),
       );
     }
   }
@@ -234,6 +253,8 @@ export class SourceControlProvider implements vscode.WebviewViewProvider, vscode
   dispose(): void {
     clearTimeout(this.refreshTimer);
     this.disposeWatchers();
+    for (const d of this.viewDisposables) d.dispose();
+    this.viewDisposables = [];
     for (const d of this.disposables) {
       d.dispose();
     }

@@ -3,6 +3,7 @@ import { open, readdir, stat } from 'fs/promises';
 import { basename, join } from 'path';
 import type { StateStorage } from '../db';
 import { claudeProjectDir } from './TerminalService';
+import { logger } from './Logger';
 import { AGENT_STATUS_IDLE, AGENT_STATUS_RUNNING, DEFAULT_CONTEXT_WINDOW } from '../constants/agent';
 import type { ContextUsage } from '../types/agent';
 import { notifAgentFinished } from '../constants/messages';
@@ -50,6 +51,8 @@ interface WatcherEntry {
   knownFiles: Set<string> | null;
   /** Last observed directory mtime to skip readdir when unchanged. */
   lastDirMtime: number;
+  /** Timestamp when watching started — used to compute stale-timeout duration. */
+  startedAt: number;
   /** Timestamp of last time new JSONL content was read. Used for staleness detection. */
   lastNewContentAt: number;
   /** Whether the most recent processLines call set the agent to RUNNING. */
@@ -119,10 +122,11 @@ export class SessionWatcher {
 
     const dir = claudeProjectDir(cwd);
     const filePath = join(dir, `${sessionId}.jsonl`);
-    console.log('[SessionWatcher] startWatching:', { agentId, filePath });
+    logger.trace('SessionWatcher.startWatching', { agentId, filePath });
 
     this.trackedSessionIds.add(sessionId);
 
+    const now = Date.now();
     const entry: WatcherEntry = {
       offset: 0,
       reading: false,
@@ -133,7 +137,8 @@ export class SessionWatcher {
       filePath,
       knownFiles: null,
       lastDirMtime: 0,
-      lastNewContentAt: Date.now(),
+      startedAt: now,
+      lastNewContentAt: now,
       isRunning: initialRunning,
       awaitingToolResult: false,
       pendingCandidate: null,
@@ -151,7 +156,8 @@ export class SessionWatcher {
       .then((files) => {
         entry.knownFiles = new Set(files.filter((f) => f.endsWith('.jsonl')));
       })
-      .catch(() => {
+      .catch((err) => {
+        logger.warn('SessionWatcher initial readdir failed', String(err));
         entry.knownFiles = new Set();
       });
 
@@ -385,8 +391,8 @@ export class SessionWatcher {
       if (entry.cancelled) return;
 
       await this.processLines(agentId, lines, entry);
-    } catch {
-      // File read errors are non-fatal.
+    } catch (err) {
+      logger.trace('readNewContent failed (non-fatal)', { agentId, err: String(err) });
     } finally {
       await fd?.close();
       entry.reading = false;
@@ -405,12 +411,16 @@ export class SessionWatcher {
     if (Date.now() - entry.lastNewContentAt < STALE_RUNNING_TIMEOUT_MS) return;
 
     entry.isRunning = false;
-    console.log('[SessionWatcher] stale running detected, → idle | agentId:', agentId);
+    const completedAt = Date.now();
+    const approxDuration = Math.max(0, completedAt - entry.startedAt);
+    logger.trace('stale running → idle', { agentId, approxDurationMs: approxDuration });
     this.storage.updateAgent(agentId, {
       status: AGENT_STATUS_IDLE,
-      completedAt: Date.now(),
-    }).then(() => this.notifyCompletion(agentId, 0))
-      .catch(() => { /* Agent may have been removed. */ });
+      completedAt,
+    }).then(() => this.notifyCompletion(agentId, approxDuration))
+      .catch((err) => {
+        logger.trace('updateAgent after stale detection failed (likely removed)', String(err));
+      });
   };
 
   /** Parse JSONL lines and update agent state. Also updates entry.isRunning for staleness tracking. */
@@ -456,8 +466,8 @@ export class SessionWatcher {
             endTurnTimestamp = obj.timestamp ? new Date(obj.timestamp).getTime() : Date.now();
           }
         }
-      } catch {
-        // Skip malformed lines.
+      } catch (err) {
+        logger.trace('malformed JSONL line skipped', { agentId, err: String(err) });
       }
     }
 
@@ -501,7 +511,7 @@ export class SessionWatcher {
     } else if (endTurnTimestamp !== null) {
       entry.isRunning = false;
 
-      console.log('[SessionWatcher] status → idle (end_turn only) | agentId:', agentId);
+      logger.trace('status → idle (end_turn only)', { agentId });
       try {
         await this.storage.updateAgent(agentId, {
           completedAt: endTurnTimestamp,
@@ -510,9 +520,10 @@ export class SessionWatcher {
           ...(lastContextUsage && { contextUsage: lastContextUsage }),
         });
 
-        this.notifyCompletion(agentId, 0);
-      } catch {
-        // Agent may have been removed.
+        const approxDuration = Math.max(0, endTurnTimestamp - entry.startedAt);
+        this.notifyCompletion(agentId, approxDuration);
+      } catch (err) {
+        logger.trace('updateAgent on end_turn failed (likely removed)', String(err));
       }
     } else if (hasAssistantActivity) {
       // Tool cycle activity (no new user text prompt, no end_turn).

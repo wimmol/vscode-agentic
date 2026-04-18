@@ -13,26 +13,33 @@ interface Props {
   onOpenDiff: (absPath: string) => void;
 }
 
-const statusLabel = (status: string): string => {
-  switch (status) {
-    case 'M': case 'MM': return 'M';
-    case 'A': return 'A';
-    case 'D': return 'D';
-    case 'R': return 'R';
-    case '??': return 'U';
-    default: return status;
+/** Classify a porcelain XY pair into a single logical state. */
+const classify = (status: string): { label: string; cls: string } => {
+  if (status === '??') return { label: 'U', cls: 'sc-status-untracked' };
+  // Porcelain pairs: X = staged, Y = unstaged. Fall back to whichever is set.
+  const x = status.charAt(0);
+  const y = status.charAt(1);
+  const primary = x !== ' ' && x !== '' ? x : y;
+  switch (primary) {
+    case 'M':
+      return { label: 'M', cls: 'sc-status-modified' };
+    case 'A':
+      return { label: 'A', cls: 'sc-status-added' };
+    case 'D':
+      return { label: 'D', cls: 'sc-status-deleted' };
+    case 'R':
+      return { label: 'R', cls: 'sc-status-renamed' };
+    case 'C':
+      return { label: 'C', cls: 'sc-status-copied' };
+    case 'U':
+      return { label: '!', cls: 'sc-status-conflict' };
+    default:
+      return { label: status.trim() || primary || '?', cls: 'sc-status-modified' };
   }
 };
 
-const statusClass = (status: string): string => {
-  switch (status) {
-    case 'M': case 'MM': return 'sc-status-modified';
-    case 'A': return 'sc-status-added';
-    case 'D': return 'sc-status-deleted';
-    case '??': return 'sc-status-untracked';
-    default: return '';
-  }
-};
+const statusLabel = (status: string): string => classify(status).label;
+const statusClass = (status: string): string => classify(status).cls;
 
 export const SourceControlView = ({
   changes,

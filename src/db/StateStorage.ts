@@ -12,6 +12,8 @@ import {
   STORE_EXPLORER_STATE,
   STORE_ZONE_EXPANDED,
   STORE_TEMPLATES,
+  STORE_SCHEMA_VERSION,
+  CURRENT_SCHEMA_VERSION,
 } from '../constants/db';
 import {
   ERR_REPO_NAME_EMPTY,
@@ -36,7 +38,42 @@ export class StateStorage implements vscode.Disposable {
   private readonly _onDidChange = new vscode.EventEmitter<void>();
   readonly onDidChange: vscode.Event<void> = this._onDidChange.event;
 
-  constructor(private readonly state: vscode.Memento) {}
+  /**
+   * Serializes all writes against a given key so that read-then-write
+   * sequences cannot be interleaved. Reads are still lock-free.
+   */
+  private writeLock: Promise<unknown> = Promise.resolve();
+
+  constructor(
+    /** Cross-workspace data (repos, agents, worktrees, templates, zones). */
+    private readonly state: vscode.Memento,
+    /** Per-workspace UI state (explorer expanded folders). */
+    private readonly uiState: vscode.Memento = state,
+  ) {}
+
+  private runExclusive = async <T>(fn: () => Promise<T>): Promise<T> => {
+    const previous = this.writeLock;
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    this.writeLock = previous.then(() => gate);
+    try {
+      await previous;
+      return await fn();
+    } finally {
+      release();
+    }
+  };
+
+  /** Apply migrations up to CURRENT_SCHEMA_VERSION. */
+  runMigrations = async (): Promise<void> => {
+    const stored = this.state.get<number>(STORE_SCHEMA_VERSION, 0);
+    if (stored === CURRENT_SCHEMA_VERSION) return;
+    // Reserved for future migrations. Today's schema is backwards-compatible
+    // because every optional field on Agent is defaulted in `agents()`.
+    await this.state.update(STORE_SCHEMA_VERSION, CURRENT_SCHEMA_VERSION);
+  };
 
   // ── Helpers ─────────────────────────────────────────────────────
 
@@ -75,7 +112,7 @@ export class StateStorage implements vscode.Disposable {
   }
 
   private explorerState(): Record<string, string[]> {
-    return this.state.get<Record<string, string[]>>(STORE_EXPLORER_STATE, {});
+    return this.uiState.get<Record<string, string[]>>(STORE_EXPLORER_STATE, {});
   }
 
   private zoneExpanded(): Record<string, boolean> {
@@ -106,7 +143,9 @@ export class StateStorage implements vscode.Disposable {
       createdAt: Date.now(),
     };
 
-    await this.state.update(STORE_REPOSITORIES, [...this.repos(), repo]);
+    await this.runExclusive(async () => {
+      await this.state.update(STORE_REPOSITORIES, [...this.repos(), repo]);
+    });
     this._onDidChange.fire();
     console.log('[StateStorage] addRepository: result:', repo);
     return repo;
@@ -197,73 +236,77 @@ export class StateStorage implements vscode.Disposable {
     id: string,
     data: Partial<Pick<Repository, 'name' | 'currentBranch'>>,
   ): Promise<Repository> => {
-    const list = this.repos();
-    const idx = list.findIndex((r) => r.repositoryId === id);
-    if (idx === -1) {
-      throw new Error(errRepoIdNotFound(id));
-    }
-
-    const original = list[idx];
-    const repo = { ...original };
-
-    if (data.name !== undefined) {
-      const trimmed = data.name.trim();
-      if (!trimmed) {
-        throw new Error(ERR_REPO_NAME_EMPTY);
+    return this.runExclusive(async () => {
+      const list = this.repos();
+      const idx = list.findIndex((r) => r.repositoryId === id);
+      if (idx === -1) {
+        throw new Error(errRepoIdNotFound(id));
       }
-      repo.name = trimmed;
-    }
 
-    if (data.currentBranch !== undefined) {
-      const trimmed = data.currentBranch.trim();
-      if (!trimmed) {
-        throw new Error(ERR_CURRENT_BRANCH_EMPTY);
+      const original = list[idx];
+      const repo = { ...original };
+
+      if (data.name !== undefined) {
+        const trimmed = data.name.trim();
+        if (!trimmed) {
+          throw new Error(ERR_REPO_NAME_EMPTY);
+        }
+        repo.name = trimmed;
       }
-      repo.currentBranch = trimmed;
-    }
 
-    if (repo.name === original.name && repo.currentBranch === original.currentBranch) {
-      return original;
-    }
+      if (data.currentBranch !== undefined) {
+        const trimmed = data.currentBranch.trim();
+        if (!trimmed) {
+          throw new Error(ERR_CURRENT_BRANCH_EMPTY);
+        }
+        repo.currentBranch = trimmed;
+      }
 
-    list[idx] = repo;
-    await this.state.update(STORE_REPOSITORIES, list);
-    this._onDidChange.fire();
-    console.log('[StateStorage] updateRepository: result:', repo);
-    return repo;
+      if (repo.name === original.name && repo.currentBranch === original.currentBranch) {
+        return original;
+      }
+
+      list[idx] = repo;
+      await this.state.update(STORE_REPOSITORIES, list);
+      this._onDidChange.fire();
+      console.log('[StateStorage] updateRepository: result:', repo);
+      return repo;
+    });
   };
 
   toggleRepoExpanded = async (id: string): Promise<void> => {
-    const list = this.repos();
-    const idx = list.findIndex((r) => r.repositoryId === id);
-    if (idx === -1) {
-      throw new Error(errRepoIdNotFound(id));
-    }
+    await this.runExclusive(async () => {
+      const list = this.repos();
+      const idx = list.findIndex((r) => r.repositoryId === id);
+      if (idx === -1) {
+        throw new Error(errRepoIdNotFound(id));
+      }
 
-    list[idx] = { ...list[idx], isExpanded: !list[idx].isExpanded };
-    await this.state.update(STORE_REPOSITORIES, list);
-    this._onDidChange.fire();
-    console.log('[StateStorage] toggleRepoExpanded:', { id, isExpanded: list[idx].isExpanded });
+      list[idx] = { ...list[idx], isExpanded: !list[idx].isExpanded };
+      await this.state.update(STORE_REPOSITORIES, list);
+      this._onDidChange.fire();
+      console.log('[StateStorage] toggleRepoExpanded:', { id, isExpanded: list[idx].isExpanded });
+    });
   };
 
   removeRepository = async (id: string): Promise<void> => {
     console.log('[StateStorage] removeRepository:', { id });
-    const list = this.repos();
-    const filtered = list.filter((r) => r.repositoryId !== id);
-    if (filtered.length < list.length) {
+    await this.runExclusive(async () => {
+      const list = this.repos();
+      const filtered = list.filter((r) => r.repositoryId !== id);
+      if (filtered.length >= list.length) return;
+
       const agentList = this.agents();
       const removedAgentIds = new Set(
         agentList.filter((a) => a.repoId === id).map((a) => a.agentId),
       );
 
-      // Prepare all cleanup data before writes
       const writes: Thenable<void>[] = [
         this.state.update(STORE_AGENTS, agentList.filter((a) => a.repoId !== id)),
         this.state.update(STORE_WORKTREES, this.worktrees().filter((w) => w.repoId !== id)),
         this.state.update(STORE_REPOSITORIES, filtered),
       ];
 
-      // Clean zone expanded state
       const ze = this.zoneExpanded();
       const prefix = `${id}::`;
       const cleanedZe: Record<string, boolean> = {};
@@ -274,18 +317,17 @@ export class StateStorage implements vscode.Disposable {
         writes.push(this.state.update(STORE_ZONE_EXPANDED, cleanedZe));
       }
 
-      // Clean explorer state
       const es = this.explorerState();
       const cleanedKeys = Object.keys(es).filter((k) => k !== id && !removedAgentIds.has(k));
       if (cleanedKeys.length < Object.keys(es).length) {
         const cleaned: Record<string, string[]> = {};
         for (const k of cleanedKeys) cleaned[k] = es[k];
-        writes.push(this.state.update(STORE_EXPLORER_STATE, cleaned));
+        writes.push(this.uiState.update(STORE_EXPLORER_STATE, cleaned));
       }
 
       await Promise.all(writes);
       this._onDidChange.fire();
-    }
+    });
   };
 
   // ── Agents ─────────────────────────────────────────────────────
@@ -296,36 +338,38 @@ export class StateStorage implements vscode.Disposable {
       throw new Error(ERR_AGENT_NAME_EMPTY);
     }
 
-    const repos = this.repos();
-    const repo = repos.find((r) => r.repositoryId === repoId);
-    if (!repo) {
-      throw new Error(errRepoIdNotFound(repoId));
-    }
+    return this.runExclusive(async () => {
+      const repos = this.repos();
+      const repo = repos.find((r) => r.repositoryId === repoId);
+      if (!repo) {
+        throw new Error(errRepoIdNotFound(repoId));
+      }
 
-    const agent: Agent = {
-      agentId: randomUUID(),
-      repoId,
-      name: trimmedName,
-      branch: branch.trim(),
-      cli,
-      status: AGENT_STATUS_CREATED,
-      isFocused: false,
-      sessionId: null,
-      lastPrompt: null,
-      startedAt: null,
-      completedAt: null,
-      createdAt: Date.now(),
-      templateName: null,
-      outputSummary: null,
-      forkedFrom: null,
-      promptQueue: [],
-      contextUsage: null,
-    };
+      const agent: Agent = {
+        agentId: randomUUID(),
+        repoId,
+        name: trimmedName,
+        branch: branch.trim(),
+        cli,
+        status: AGENT_STATUS_CREATED,
+        isFocused: false,
+        sessionId: null,
+        lastPrompt: null,
+        startedAt: null,
+        completedAt: null,
+        createdAt: Date.now(),
+        templateName: null,
+        outputSummary: null,
+        forkedFrom: null,
+        promptQueue: [],
+        contextUsage: null,
+      };
 
-    await this.state.update(STORE_AGENTS, [...this.agents(), agent]);
-    this._onDidChange.fire();
-    console.log('[StateStorage] addAgent: result:', agent);
-    return agent;
+      await this.state.update(STORE_AGENTS, [...this.agents(), agent]);
+      this._onDidChange.fire();
+      console.log('[StateStorage] addAgent: result:', agent);
+      return agent;
+    });
   };
 
   getAgent = async (id: string): Promise<Agent | undefined> => {
@@ -344,22 +388,31 @@ export class StateStorage implements vscode.Disposable {
     id: string,
     data: Partial<Pick<Agent, 'name' | 'status' | 'sessionId' | 'lastPrompt' | 'startedAt' | 'completedAt' | 'templateName' | 'outputSummary' | 'forkedFrom' | 'promptQueue' | 'contextUsage'>>,
   ): Promise<Agent> => {
-    const list = this.agents();
-    const idx = list.findIndex((a) => a.agentId === id);
-    if (idx === -1) {
-      throw new Error(errAgentIdNotFound(id));
-    }
-
-    const original = list[idx];
-    const agent = { ...original };
-
-    if (data.name !== undefined) {
-      const trimmed = data.name.trim();
-      if (!trimmed) {
-        throw new Error(ERR_AGENT_NAME_EMPTY);
+    return this.runExclusive(async () => {
+      const list = this.agents();
+      const idx = list.findIndex((a) => a.agentId === id);
+      if (idx === -1) {
+        throw new Error(errAgentIdNotFound(id));
       }
-      agent.name = trimmed;
-    }
+
+      const original = list[idx];
+      const agent = { ...original };
+
+      if (data.name !== undefined) {
+        const trimmed = data.name.trim();
+        if (!trimmed) {
+          throw new Error(ERR_AGENT_NAME_EMPTY);
+        }
+        const collision = list.some(
+          (a) => a.agentId !== id
+            && a.repoId === original.repoId
+            && a.name.toLowerCase() === trimmed.toLowerCase(),
+        );
+        if (collision) {
+          throw new Error(`An agent named "${trimmed}" already exists in this repository.`);
+        }
+        agent.name = trimmed;
+      }
 
     if (data.status !== undefined) agent.status = data.status;
     if (data.sessionId !== undefined) agent.sessionId = data.sessionId;
@@ -390,43 +443,46 @@ export class StateStorage implements vscode.Disposable {
       return original;
     }
 
-    list[idx] = agent;
-    await this.state.update(STORE_AGENTS, list);
-    this._onDidChange.fire();
-    console.log('[StateStorage] updateAgent: result:', agent);
-    return agent;
+      list[idx] = agent;
+      await this.state.update(STORE_AGENTS, list);
+      this._onDidChange.fire();
+      console.log('[StateStorage] updateAgent: result:', agent);
+      return agent;
+    });
   };
 
   removeAgent = async (id: string): Promise<void> => {
     console.log('[StateStorage] removeAgent:', { id });
-    const list = this.agents();
-    const filtered = list.filter((a) => a.agentId !== id);
-    if (filtered.length < list.length) {
+    await this.runExclusive(async () => {
+      const list = this.agents();
+      const filtered = list.filter((a) => a.agentId !== id);
+      if (filtered.length >= list.length) return;
+
       await this.state.update(STORE_AGENTS, filtered);
       const es = this.explorerState();
       if (id in es) {
         const { [id]: _, ...rest } = es;
-        await this.state.update(STORE_EXPLORER_STATE, rest);
+        await this.uiState.update(STORE_EXPLORER_STATE, rest);
       }
       this._onDidChange.fire();
-    }
+    });
   };
 
   focusAgent = async (agentId: string): Promise<void> => {
-    const list = this.agents();
-    const idx = list.findIndex((a) => a.agentId === agentId);
-    if (idx === -1) {
-      throw new Error(errAgentIdNotFound(agentId));
-    }
-    const alreadySole = list[idx].isFocused && list.every((a) => a.agentId === agentId || !a.isFocused);
-    if (alreadySole) {
-      return;
-    }
+    await this.runExclusive(async () => {
+      const list = this.agents();
+      const idx = list.findIndex((a) => a.agentId === agentId);
+      if (idx === -1) {
+        throw new Error(errAgentIdNotFound(agentId));
+      }
+      const alreadySole = list[idx].isFocused && list.every((a) => a.agentId === agentId || !a.isFocused);
+      if (alreadySole) return;
 
-    const updated = list.map((a) => ({ ...a, isFocused: a.agentId === agentId }));
-    await this.state.update(STORE_AGENTS, updated);
-    this._onDidChange.fire();
-    console.log('[StateStorage] focusAgent:', { agentId });
+      const updated = list.map((a) => ({ ...a, isFocused: a.agentId === agentId }));
+      await this.state.update(STORE_AGENTS, updated);
+      this._onDidChange.fire();
+      console.log('[StateStorage] focusAgent:', { agentId });
+    });
   };
 
   // ── Worktrees ─────────────────────────────────────────────────
@@ -439,7 +495,9 @@ export class StateStorage implements vscode.Disposable {
       path,
     };
 
-    await this.state.update(STORE_WORKTREES, [...this.worktrees(), worktree]);
+    await this.runExclusive(async () => {
+      await this.state.update(STORE_WORKTREES, [...this.worktrees(), worktree]);
+    });
     this._onDidChange.fire();
     console.log('[StateStorage] addWorktree: result:', worktree);
     return worktree;
@@ -451,12 +509,13 @@ export class StateStorage implements vscode.Disposable {
 
   removeWorktreeByBranch = async (repoId: string, branch: string): Promise<void> => {
     console.log('[StateStorage] removeWorktreeByBranch:', { repoId, branch });
-    const list = this.worktrees();
-    const filtered = list.filter((w) => !(w.repoId === repoId && w.branch === branch));
-    if (filtered.length < list.length) {
+    await this.runExclusive(async () => {
+      const list = this.worktrees();
+      const filtered = list.filter((w) => !(w.repoId === repoId && w.branch === branch));
+      if (filtered.length >= list.length) return;
+
       await this.state.update(STORE_WORKTREES, filtered);
 
-      // Clean up zone expanded state for the removed branch
       const key = this.zoneKey(repoId, branch);
       const ze = this.zoneExpanded();
       if (key in ze) {
@@ -465,7 +524,7 @@ export class StateStorage implements vscode.Disposable {
       }
 
       this._onDidChange.fire();
-    }
+    });
   };
 
   getAllWorktrees = async (): Promise<Worktree[]> => {
@@ -475,12 +534,14 @@ export class StateStorage implements vscode.Disposable {
   // ── Zones ─────────────────────────────────────────────────────
 
   toggleZoneExpanded = async (repoId: string, branch: string): Promise<void> => {
-    const key = this.zoneKey(repoId, branch);
-    const map = this.zoneExpanded();
-    const current = map[key] ?? true;
-    await this.state.update(STORE_ZONE_EXPANDED, { ...map, [key]: !current });
-    this._onDidChange.fire();
-    console.log('[StateStorage] toggleZoneExpanded:', { repoId, branch, isExpanded: !current });
+    await this.runExclusive(async () => {
+      const key = this.zoneKey(repoId, branch);
+      const map = this.zoneExpanded();
+      const current = map[key] ?? true;
+      await this.state.update(STORE_ZONE_EXPANDED, { ...map, [key]: !current });
+      this._onDidChange.fire();
+      console.log('[StateStorage] toggleZoneExpanded:', { repoId, branch, isExpanded: !current });
+    });
   };
 
   getFocusedAgent = async (): Promise<Agent | undefined> => {
@@ -490,15 +551,28 @@ export class StateStorage implements vscode.Disposable {
   // ── Templates ──────────────────────────────────────────────────
 
   addTemplate = async (name: string, prompt: string): Promise<AgentTemplate> => {
-    const template: AgentTemplate = {
-      templateId: randomUUID(),
-      name: name.trim(),
-      prompt: prompt.trim(),
-      createdAt: Date.now(),
-    };
-    await this.state.update(STORE_TEMPLATES, [...this.templates(), template]);
-    this._onDidChange.fire();
-    return template;
+    const trimmedName = name.trim();
+    if (!trimmedName) throw new Error('Template name cannot be empty.');
+
+    return this.runExclusive(async () => {
+      const existing = this.templates();
+      const collision = existing.find(
+        (t) => t.name.toLowerCase() === trimmedName.toLowerCase(),
+      );
+      if (collision) {
+        throw new Error(`Template "${trimmedName}" already exists.`);
+      }
+
+      const template: AgentTemplate = {
+        templateId: randomUUID(),
+        name: trimmedName,
+        prompt: prompt.trim(),
+        createdAt: Date.now(),
+      };
+      await this.state.update(STORE_TEMPLATES, [...existing, template]);
+      this._onDidChange.fire();
+      return template;
+    });
   };
 
   getAllTemplates = (): AgentTemplate[] => {
@@ -506,12 +580,13 @@ export class StateStorage implements vscode.Disposable {
   };
 
   removeTemplate = async (templateId: string): Promise<void> => {
-    const list = this.templates();
-    const filtered = list.filter((t) => t.templateId !== templateId);
-    if (filtered.length < list.length) {
+    await this.runExclusive(async () => {
+      const list = this.templates();
+      const filtered = list.filter((t) => t.templateId !== templateId);
+      if (filtered.length >= list.length) return;
       await this.state.update(STORE_TEMPLATES, filtered);
       this._onDidChange.fire();
-    }
+    });
   };
 
   // ── Queue ──────────────────────────────────────────────────────
@@ -568,7 +643,9 @@ export class StateStorage implements vscode.Disposable {
   };
 
   setExpandedPaths = async (scopeKey: string, paths: string[]): Promise<void> => {
-    await this.state.update(STORE_EXPLORER_STATE, { ...this.explorerState(), [scopeKey]: paths });
+    await this.runExclusive(async () => {
+      await this.uiState.update(STORE_EXPLORER_STATE, { ...this.explorerState(), [scopeKey]: paths });
+    });
   };
 
   // ── Internal ───────────────────────────────────────────────────

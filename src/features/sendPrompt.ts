@@ -20,11 +20,13 @@ export const sendPrompt = async (
     return;
   }
 
-  const prompt = await vscode.window.showInputBox({
+  const raw = await vscode.window.showInputBox({
     prompt: INPUT_SEND_PROMPT_PROMPT,
     placeHolder: INPUT_SEND_PROMPT_PLACEHOLDER,
     ignoreFocusOut: true,
   });
+  if (raw === undefined) return;
+  const prompt = raw.trim();
   if (!prompt) return;
 
   // Re-read status after input to avoid TOCTOU race

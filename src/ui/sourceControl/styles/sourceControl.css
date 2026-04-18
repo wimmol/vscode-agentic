@@ -145,6 +145,9 @@ body {
 .sc-status-added { color: var(--vscode-gitDecoration-untrackedResourceForeground, var(--vscode-charts-green)); }
 .sc-status-deleted { color: var(--vscode-gitDecoration-deletedResourceForeground, var(--vscode-charts-red)); }
 .sc-status-untracked { color: var(--vscode-gitDecoration-untrackedResourceForeground, var(--vscode-charts-green)); }
+.sc-status-renamed { color: var(--vscode-gitDecoration-renamedResourceForeground, var(--vscode-charts-blue)); }
+.sc-status-copied { color: var(--vscode-gitDecoration-renamedResourceForeground, var(--vscode-charts-blue)); }
+.sc-status-conflict { color: var(--vscode-gitDecoration-conflictingResourceForeground, var(--vscode-errorForeground)); }
 
 .sc-file-path {
   overflow: hidden;

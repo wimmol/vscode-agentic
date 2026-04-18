@@ -24,6 +24,8 @@ export class AgentPanelProvider implements vscode.WebviewViewProvider, vscode.Di
 
   private view: vscode.WebviewView | undefined;
   private readonly disposables: vscode.Disposable[] = [];
+  /** Listeners scoped to the current webview instance; replaced on every resolve. */
+  private viewDisposables: vscode.Disposable[] = [];
   private pushStateTimer: ReturnType<typeof setTimeout> | undefined;
   private lastSyncTime = 0;
 
@@ -37,6 +39,10 @@ export class AgentPanelProvider implements vscode.WebviewViewProvider, vscode.Di
   }
 
   resolveWebviewView(webviewView: vscode.WebviewView): void {
+    // Dispose any previously-resolved view's listeners before wiring up new ones.
+    for (const d of this.viewDisposables) d.dispose();
+    this.viewDisposables = [];
+
     this.view = webviewView;
 
     webviewView.webview.options = {
@@ -50,18 +56,20 @@ export class AgentPanelProvider implements vscode.WebviewViewProvider, vscode.Di
       if (webviewView.visible) {
         void this.syncAndPush();
       }
-    }, null, this.disposables);
+    }, null, this.viewDisposables);
 
     webviewView.webview.onDidReceiveMessage((message) => {
       if (message.function === CMD_READY) {
         console.log('[AgentPanelProvider] webview ready, pushing initial state');
         void this.pushState();
       }
-    }, null, this.disposables);
+    }, null, this.viewDisposables);
 
     webviewView.onDidDispose(() => {
       this.view = undefined;
-    }, null, this.disposables);
+      for (const d of this.viewDisposables) d.dispose();
+      this.viewDisposables = [];
+    }, null, this.viewDisposables);
 
     this._onDidResolveView.fire(webviewView);
   }
@@ -103,6 +111,8 @@ export class AgentPanelProvider implements vscode.WebviewViewProvider, vscode.Di
       clearTimeout(this.pushStateTimer);
     }
     this._onDidResolveView.dispose();
+    for (const d of this.viewDisposables) d.dispose();
+    this.viewDisposables = [];
     for (const d of this.disposables) {
       d.dispose();
     }

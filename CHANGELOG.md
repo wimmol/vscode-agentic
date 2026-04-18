@@ -1,8 +1,36 @@
 # Changelog
 
+## [0.6.4] - 2026-04-16
+
+### Fixed
+
+- **Worktree rollback** — Partial worktree creation now cleans up on failure instead of leaving orphaned branches/directories.
+- **Orphaned terminals** — Creating a new terminal for an agent disposes the existing one first, preventing ghost processes.
+- **Terminal cleanup on repo removal** — All agent terminals are closed before the repository is deleted from storage.
+- **Send Prompt race condition** — Agent status is re-read after the input box to prevent queuing when the agent already finished.
+- **Tool-use timeout** — Stale-detection no longer prematurely marks agents as idle while a tool is executing.
+- **Tool-cycle status** — Assistant activity during tool-use cycles now keeps the agent status as RUNNING.
+- **Context usage tokens** — Token count now sums uncached, cache-creation, and cache-read input tokens.
+- **Shell quoting** — File paths sent to the terminal via the explorer are now properly quoted.
+- **Source control error state** — Git status failures now clear the change list instead of showing stale data.
+- **File watcher disposal** — Event subscriptions on file watchers are now explicitly tracked and disposed.
+- **Git stdout safety** — Large git output is truncated at the buffer limit instead of growing unbounded.
+- **Division by zero** — Context level guard for agents with zero total tokens.
+
+### Changed
+
+- **Agent tile selection** — Detail panel is now tied to the focused/selected agent instead of a separate expand toggle.
+- **Tile styling** — Selected tile uses a subtle gray highlight; hover highlight removed.
+- **Prompt compression** — Long prompts in the detail view collapse to first 3 + last 3 lines.
+- **Worktree paths in UI** — Branch zones now carry their worktree path through to the agent tile detail view.
+- **Source control watchers** — The source control panel auto-refreshes on file system changes.
+- **Scoped commits** — Source control commits only the displayed changed paths instead of `git add -A`.
+- **Error boundary** — Retry button replaces the static "check console" message.
+
 ## [0.6.0] - 2026-04-15
 
 ### Added
+
 
 - **Agent templates** — Create reusable prompt templates (name + prompt) via Command Palette. Pick a template when creating an agent, or start blank.
 - **Prompt queue** — Send prompts to running agents; they queue up and auto-execute sequentially when each task completes.

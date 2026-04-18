@@ -127,7 +127,8 @@ export const addAgent = async (
       valueSelection: [0, suggested.length],
       validateInput: (v) => {
         const trimmed = v.trim();
-        if (!trimmed) return `Press Enter to use "${suggested}"`;
+        // Empty → accept (falls back to `suggested`). Non-empty → enforce branch rules.
+        if (!trimmed) return undefined;
         return validateBranchName(v);
       },
       ignoreFocusOut: true,

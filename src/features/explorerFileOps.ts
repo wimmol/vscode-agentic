@@ -161,44 +161,87 @@ export const cutItems = (items: FileItemLike[]): void => {
   clipboard = { uris: items.map((i) => i.resourceUri), cut: true };
 };
 
+/**
+ * Resolve the paste source. Prefers the internal module clipboard
+ * (set via copyItems/cutItems). Falls back to the OS clipboard,
+ * interpreting its text as one or more file paths separated by
+ * newlines. Returns undefined if nothing paste-able is present.
+ */
+const resolvePasteSource = async (): Promise<{ uris: vscode.Uri[]; cut: boolean } | undefined> => {
+  if (clipboard && clipboard.uris.length > 0) return clipboard;
+
+  const text = (await vscode.env.clipboard.readText()).trim();
+  if (!text) return undefined;
+
+  const candidates = text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  const uris: vscode.Uri[] = [];
+  for (const candidate of candidates) {
+    const absolute = path.isAbsolute(candidate) ? candidate : undefined;
+    if (!absolute) continue;
+    const uri = vscode.Uri.file(absolute);
+    if (await exists(uri)) uris.push(uri);
+  }
+
+  return uris.length > 0 ? { uris, cut: false } : undefined;
+};
+
 export const pasteItems = async (explorer: ExplorerRef, item?: FileItemLike): Promise<void> => {
-  if (!clipboard || clipboard.uris.length === 0) return;
+  const source = await resolvePasteSource();
+  if (!source) {
+    vscode.window.showInformationMessage('Clipboard is empty — copy a file first.');
+    return;
+  }
 
   const dir = getTargetDir(item, explorer.getRoots());
   if (!dir) return;
 
-  const { uris, cut } = clipboard;
+  const { uris, cut } = source;
+  const errors: string[] = [];
 
   for (const sourceUri of uris) {
     const baseName = path.basename(sourceUri.fsPath);
     let targetUri = vscode.Uri.file(path.join(dir, baseName));
 
-    if (cut) {
-      if (sourceUri.fsPath === targetUri.fsPath) continue;
-      if (targetUri.fsPath.startsWith(sourceUri.fsPath + path.sep)) continue;
-      let overwrite = false;
-      if (await exists(targetUri)) {
-        const choice = await vscode.window.showQuickPick(
-          ['Replace', 'Keep Both', 'Cancel'],
-          { placeHolder: `"${baseName}" already exists in destination`, ignoreFocusOut: true },
-        );
-        if (!choice || choice === 'Cancel') continue;
-        if (choice === 'Keep Both') {
-          targetUri = await findUniqueName(dir, baseName);
-        } else {
-          overwrite = true;
+    try {
+      if (cut) {
+        if (sourceUri.fsPath === targetUri.fsPath) continue;
+        if (targetUri.fsPath.startsWith(sourceUri.fsPath + path.sep)) continue;
+        let overwrite = false;
+        if (await exists(targetUri)) {
+          const choice = await vscode.window.showQuickPick(
+            ['Replace', 'Keep Both', 'Cancel'],
+            { placeHolder: `"${baseName}" already exists in destination`, ignoreFocusOut: true },
+          );
+          if (!choice || choice === 'Cancel') continue;
+          if (choice === 'Keep Both') {
+            targetUri = await findUniqueName(dir, baseName);
+          } else {
+            overwrite = true;
+          }
         }
+        await vscode.workspace.fs.rename(sourceUri, targetUri, { overwrite });
+      } else {
+        if (await exists(targetUri)) {
+          targetUri = await findUniqueName(dir, baseName);
+        }
+        await vscode.workspace.fs.copy(sourceUri, targetUri, { overwrite: false });
       }
-      await vscode.workspace.fs.rename(sourceUri, targetUri, { overwrite });
-    } else {
-      if (await exists(targetUri)) {
-        targetUri = await findUniqueName(dir, baseName);
-      }
-      await vscode.workspace.fs.copy(sourceUri, targetUri, { overwrite: false });
+    } catch (err) {
+      errors.push(`${baseName}: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
-  if (cut) clipboard = undefined;
+  if (errors.length > 0) {
+    vscode.window.showErrorMessage(
+      `Paste completed with ${errors.length} error(s): ${errors.join('; ')}`,
+    );
+  }
+
+  if (cut && clipboard) clipboard = undefined;
   explorer.refresh();
 };
 

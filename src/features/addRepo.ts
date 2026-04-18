@@ -1,9 +1,9 @@
-import { existsSync } from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import type { StateStorage } from '../db';
 import { BROWSE_LABEL, DEFAULT_CURRENT_BRANCH } from '../constants/repo';
 import { GIT_DIR } from '../constants/paths';
+import { getCurrentBranch } from '../services/GitService';
 import {
   ERR_NOT_GIT_REPO,
   ERR_REPO_ALREADY_ADDED,
@@ -16,15 +16,28 @@ interface RepoPickItem extends vscode.QuickPickItem {
   folderPath?: string;
 }
 
-const getWorkspaceGitFolders = (): RepoPickItem[] => {
+const pathExists = async (p: string): Promise<boolean> => {
+  try {
+    await vscode.workspace.fs.stat(vscode.Uri.file(p));
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const getWorkspaceGitFolders = async (): Promise<RepoPickItem[]> => {
   const folders = vscode.workspace.workspaceFolders ?? [];
-  return folders
-    .filter((wf) => existsSync(path.join(wf.uri.fsPath, GIT_DIR)))
-    .map((wf) => ({
-      label: wf.name,
-      description: wf.uri.fsPath,
-      folderPath: wf.uri.fsPath,
-    }));
+  const results: RepoPickItem[] = [];
+  for (const wf of folders) {
+    if (await pathExists(path.join(wf.uri.fsPath, GIT_DIR))) {
+      results.push({
+        label: wf.name,
+        description: wf.uri.fsPath,
+        folderPath: wf.uri.fsPath,
+      });
+    }
+  }
+  return results;
 };
 
 const pickViaOsDialog = async (): Promise<string | undefined> => {
@@ -41,7 +54,7 @@ const pickViaOsDialog = async (): Promise<string | undefined> => {
 
   const folderPath = result[0].fsPath;
 
-  if (!existsSync(path.join(folderPath, GIT_DIR))) {
+  if (!(await pathExists(path.join(folderPath, GIT_DIR)))) {
     vscode.window.showErrorMessage(ERR_NOT_GIT_REPO);
     return undefined;
   }
@@ -53,7 +66,8 @@ export const addRepo = async (storage: StateStorage): Promise<void> => {
   const existingRepos = await storage.getAllRepositories();
   const existingPaths = new Set(existingRepos.map((r) => r.localPath));
 
-  const suggestions = getWorkspaceGitFolders().filter((f) => !existingPaths.has(f.folderPath!));
+  const folderSuggestions = await getWorkspaceGitFolders();
+  const suggestions = folderSuggestions.filter((f) => !existingPaths.has(f.folderPath!));
 
   const items: RepoPickItem[] = [
     ...suggestions,
@@ -84,14 +98,31 @@ export const addRepo = async (storage: StateStorage): Promise<void> => {
   }
 
   const name = path.basename(folderPath);
-  await storage.addRepository(name, folderPath, DEFAULT_CURRENT_BRANCH);
+  const branch = (await getCurrentBranch(folderPath)) ?? DEFAULT_CURRENT_BRANCH;
+  await storage.addRepository(name, folderPath, branch);
 
-  // Also add to the VS Code workspace if not already there.
-  const alreadyInWorkspace = (vscode.workspace.workspaceFolders ?? []).some(
-    (wf) => wf.uri.fsPath === folderPath,
-  );
+  // Also add to the VS Code workspace if not already there. Skip the add if
+  // the workspace is empty — calling updateWorkspaceFolders(0, 0, …) on an
+  // empty workspace restarts the extension host and kills every agent
+  // terminal. Tell the user how to open the folder manually instead.
+  const workspaceFolders = vscode.workspace.workspaceFolders ?? [];
+  const alreadyInWorkspace = workspaceFolders.some((wf) => wf.uri.fsPath === folderPath);
   if (!alreadyInWorkspace) {
-    const insertAt = vscode.workspace.workspaceFolders?.length ?? 0;
-    vscode.workspace.updateWorkspaceFolders(insertAt, 0, { uri: vscode.Uri.file(folderPath) });
+    if (workspaceFolders.length === 0) {
+      vscode.window
+        .showInformationMessage(
+          `Added "${name}". Open it as a folder to work with its files.`,
+          'Open Folder',
+        )
+        .then((choice) => {
+          if (choice === 'Open Folder') {
+            void vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(folderPath), true);
+          }
+        });
+    } else {
+      vscode.workspace.updateWorkspaceFolders(workspaceFolders.length, 0, {
+        uri: vscode.Uri.file(folderPath),
+      });
+    }
   }
 };

@@ -1,5 +1,6 @@
 import { createRoot } from 'react-dom/client';
 import { SourceControlPage } from './SourceControlPage';
+import { ErrorBoundary } from '../shared/atoms/ErrorBoundary';
 import './styles/sourceControl.css';
 import '@vscode/codicons/dist/codicon.css';
 import type { ScWebviewToExtensionMessage } from '../../types/sourceControl';
@@ -15,4 +16,8 @@ declare const acquireVsCodeApi: () => VsCodeApi;
 export const vscode = acquireVsCodeApi();
 
 const root = createRoot(document.getElementById('root')!);
-root.render(<SourceControlPage />);
+root.render(
+  <ErrorBoundary>
+    <SourceControlPage />
+  </ErrorBoundary>,
+);

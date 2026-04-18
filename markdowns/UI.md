@@ -90,12 +90,12 @@ Displayed under repo header when expanded. Ordered by creation time.
 
 #### Action Buttons
 
-| Button | Codicon           | Handler (stub)                  | Description                                                  |
-|--------|-------------------|---------------------------------|--------------------------------------------------------------|
-| Clone  | `$(copy)`         | `onCloneAgentClick(agentId)`    | Create agent copy with suffix `_c1`, `_c2`, etc.             |
-| Stop   | `$(debug-stop)`   | `onStopAgentClick(agentId)`     | Stop current agent task                                      |
-| Remove | `$(trash)`        | `onRemoveAgentClick(agentId)`   | Remove the agent. Disabled while status is `running`         |
-| Clear  | `$(clear-all)`    | `onClearAgentClick(agentId)`    | Clear agent context                                          |
+| Button        | Codicon             | Handler                         | Description                                                          |
+|---------------|---------------------|---------------------------------|----------------------------------------------------------------------|
+| Send Prompt   | `$(edit)`           | `onSendPrompt(agentId)`         | Send a new prompt to the agent (or queue it if running).             |
+| Fork          | `$(repo-forked)`    | `onForkAgent(agentId)`          | Create a fresh agent seeded with this one's last prompt and summary. |
+| Rename        | `$(pencil)`         | `onRenameAgent(agentId)`        | Rename the agent.                                                    |
+| Remove        | `$(trash)`          | `onRemoveClick(agentId)`        | Remove the agent. Disabled while status is `running`.                |
 
 #### Tile Click
 

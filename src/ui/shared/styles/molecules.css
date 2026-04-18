@@ -227,7 +227,7 @@
 .context-bar {
   height: 2px;
   border-radius: 1px;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--vscode-list-hoverBackground);
   margin-top: 2px;
   overflow: hidden;
 }
@@ -256,7 +256,7 @@
   font-size: 9px;
   padding: 1px 5px;
   border-radius: 2px;
-  background: rgba(55, 148, 255, 0.15);
+  background: var(--vscode-badge-background);
   color: var(--vscode-charts-blue);
   font-weight: 600;
   text-transform: uppercase;
@@ -268,7 +268,7 @@
   font-size: 9px;
   padding: 1px 5px;
   border-radius: 2px;
-  background: rgba(209, 134, 22, 0.15);
+  background: var(--vscode-inputValidation-warningBackground);
   color: var(--vscode-charts-orange);
   font-weight: 600;
   flex-shrink: 0;
@@ -290,7 +290,7 @@
   font-size: 10px;
   color: var(--vscode-charts-green);
   padding: 3px 0 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  border-top: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
   margin-top: 2px;
   display: flex;
   align-items: center;
@@ -316,7 +316,7 @@
 .agent-detail {
   font-size: 11px;
   color: var(--vscode-descriptionForeground);
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
   margin-top: 2px;
   padding-top: 6px;
   display: flex;
@@ -358,7 +358,7 @@
   gap: 4px;
   margin-top: 4px;
   padding-top: 4px;
-  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  border-top: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
   flex-wrap: wrap;
 }
 
@@ -376,7 +376,7 @@
 }
 
 .detail-btn:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--vscode-list-hoverBackground);
   color: var(--vscode-foreground);
 }
 
@@ -386,7 +386,7 @@
 }
 
 .detail-btn--warn:hover {
-  background: rgba(209, 134, 22, 0.1);
+  background: var(--vscode-inputValidation-warningBackground);
 }
 
 .detail-btn .codicon {
@@ -399,7 +399,7 @@
   font-size: 10px;
   color: var(--vscode-descriptionForeground);
   padding: 4px 0 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  border-top: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
   margin-top: 2px;
 }
 

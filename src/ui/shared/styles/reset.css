@@ -14,6 +14,16 @@ body {
   background-color: var(--vscode-sideBar-background);
   line-height: 1.4;
   overflow-x: hidden;
+}
+
+/* Disable selection on chrome/controls, but leave prompts, names, and branches
+ * selectable so users can copy text out of the panel. */
+button,
+nav,
+.agent-tile-header,
+.agent-tile-actions,
+.queue-remove,
+.detail-btn {
   user-select: none;
 }
 
