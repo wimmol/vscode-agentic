@@ -2,13 +2,10 @@ import * as vscode from 'vscode';
 import type { StateStorage } from '../db';
 import type { FileExplorerProvider } from '../services/FileExplorerProvider';
 import type { TerminalService } from '../services/TerminalService';
-import { INVALID_BRANCH_RE } from '../constants/git';
 import { AGENT_CLI_CLAUDE_CODE } from '../constants/agent';
 import {
   ERR_REPO_NOT_FOUND,
   ERR_WORKTREE_NOT_FOUND,
-  ERR_BRANCH_EMPTY,
-  ERR_BRANCH_INVALID,
   INPUT_ADD_AGENT_TITLE,
   INPUT_ADD_AGENT_PLACEHOLDER,
   PICK_ADD_AGENT_TITLE,
@@ -26,23 +23,7 @@ import {
 } from '../constants/messages';
 import { worktreePath, ensureBranch, createWorktree, removeWorktree } from '../services/GitService';
 import { generateAgentName } from '../utils/nameGenerator';
-
-const nextBranchName = (prefix: string, existingBranches: Set<string>): string => {
-  let n = 1;
-  while (existingBranches.has(`${prefix}-${n}`)) n++;
-  return `${prefix}-${n}`;
-};
-
-const validateBranchName = (value: string): string | undefined => {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return ERR_BRANCH_EMPTY;
-  }
-  if (INVALID_BRANCH_RE.test(trimmed)) {
-    return ERR_BRANCH_INVALID;
-  }
-  return undefined;
-};
+import { nextBranchName, validateBranchName } from './branchNaming';
 
 interface BranchPickItem extends vscode.QuickPickItem {
   branch: string;
@@ -53,8 +34,6 @@ export const addAgent = async (
   explorer: FileExplorerProvider,
   terminalService: TerminalService,
   repoId: string,
-  initialPrompt?: string,
-  branchHint?: string,
 ): Promise<string | undefined> => {
   const repo = await storage.getRepository(repoId);
   if (!repo) {
@@ -117,8 +96,7 @@ export const addAgent = async (
   if (picked.branch === PICK_NEW_BRANCH_VALUE) {
     // Suggest a unique branch name based on context
     const existingBranches = new Set(worktrees.map((w) => w.branch));
-    const prefix = branchHint || 'tree';
-    const suggested = nextBranchName(prefix, existingBranches);
+    const suggested = nextBranchName('tree', existingBranches);
 
     const input = await vscode.window.showInputBox({
       title: INPUT_ADD_AGENT_TITLE,
@@ -174,36 +152,38 @@ export const addAgent = async (
     cwd = wt.path;
   }
 
-  // Template picker
   let templateName: string | null = null;
-  if (!initialPrompt) {
-    const templates = storage.getAllTemplates();
-    if (templates.length > 0) {
-      interface TemplatePickItem extends vscode.QuickPickItem {
-        templatePrompt?: string;
-        templateName?: string;
-      }
+  let templateColor: string | null = null;
+  let systemPrompt: string | null = null;
+  const templates = storage.getAllTemplates();
+  if (templates.length > 0) {
+    interface TemplatePickItem extends vscode.QuickPickItem {
+      templatePrompt?: string;
+      templateName?: string;
+      templateColor?: string;
+    }
 
-      const templateItems: TemplatePickItem[] = [
-        { label: PICK_TEMPLATE_BLANK_LABEL, description: PICK_TEMPLATE_BLANK_DESCRIPTION },
-        ...templates.map((t) => ({
-          label: t.name,
-          description: t.prompt.slice(0, 60),
-          templatePrompt: t.prompt,
-          templateName: t.name,
-        })),
-      ];
+    const templateItems: TemplatePickItem[] = [
+      { label: PICK_TEMPLATE_BLANK_LABEL, description: PICK_TEMPLATE_BLANK_DESCRIPTION },
+      ...templates.map((t) => ({
+        label: t.name,
+        description: t.prompt.slice(0, 60),
+        templatePrompt: t.prompt,
+        templateName: t.name,
+        templateColor: t.color,
+      })),
+    ];
 
-      const templatePick = await vscode.window.showQuickPick(templateItems, {
-        title: PICK_TEMPLATE_TITLE,
-        placeHolder: PICK_TEMPLATE_PLACEHOLDER,
-      });
-      if (!templatePick) return;
+    const templatePick = await vscode.window.showQuickPick(templateItems, {
+      title: PICK_TEMPLATE_TITLE,
+      placeHolder: PICK_TEMPLATE_PLACEHOLDER,
+    });
+    if (!templatePick) return;
 
-      if (templatePick.templatePrompt) {
-        initialPrompt = templatePick.templatePrompt;
-        templateName = templatePick.templateName ?? null;
-      }
+    if (templatePick.templatePrompt) {
+      systemPrompt = templatePick.templatePrompt;
+      templateName = templatePick.templateName ?? null;
+      templateColor = templatePick.templateColor ?? null;
     }
   }
 
@@ -214,10 +194,11 @@ export const addAgent = async (
 
   let agent;
   try {
-    agent = await storage.addAgent(repoId, agentName, branch, AGENT_CLI_CLAUDE_CODE);
-    if (templateName) {
-      await storage.updateAgent(agent.agentId, { templateName });
-    }
+    agent = await storage.addAgent(repoId, agentName, branch, AGENT_CLI_CLAUDE_CODE, {
+      templateName,
+      templateColor,
+      systemPrompt,
+    });
   } catch (err) {
     if (picked.branch === PICK_NEW_BRANCH_VALUE) {
       await removeWorktree(repo.localPath, cwd);
@@ -227,7 +208,14 @@ export const addAgent = async (
   }
 
   explorer.showRepo(cwd, repo.name, branch, !isCurrent);
-  terminalService.createTerminal(agent.agentId, agentName, branch, repo.name, cwd, undefined, initialPrompt);
+  terminalService.createTerminal({
+    agentId: agent.agentId,
+    agentName,
+    branch,
+    repoName: repo.name,
+    cwd,
+    systemPrompt,
+  });
   await storage.focusAgent(agent.agentId);
   return agent.agentId;
 };

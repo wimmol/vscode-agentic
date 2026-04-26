@@ -1,0 +1,64 @@
+/* Observatory design tokens.
+   Values hardcoded (not VS Code theme vars) — the design is intentionally
+   themed and does not follow the host theme. */
+
+:root {
+  /* ── Surfaces ── */
+  --obs-bg:            #0d0f14;
+  --obs-bg-surface:    #131721;
+  --obs-bg-raised:     #1a1e29;
+  --obs-bg-inset:      #0a0c12;
+  --obs-bg-panel:      #0e1118;
+
+  /* ── Lines ── */
+  --obs-line:          #1c212c;
+  --obs-line-strong:   #262c39;
+
+  /* ── Text ── */
+  --obs-fg:            #d7dbe4;
+  --obs-fg-plus:       #ecedf2;
+  --obs-fg-muted:      #848b9e;
+  --obs-fg-dim:        #585e72;
+  --obs-fg-faint:      #3a3f4d;
+
+  /* ── Accent (brand + default / basic template) ── */
+  --obs-accent:        #8fb4cc;
+  --obs-accent-soft:   rgba(143, 180, 204, 0.10);
+  --obs-accent-med:    rgba(143, 180, 204, 0.16);
+  --obs-accent-line:   rgba(143, 180, 204, 0.30);
+  --obs-accent-glow:   rgba(143, 180, 204, 0.30);
+
+  /* ── Status signals (used on the rail and context threshold only) ── */
+  --obs-run:           #c79a5f;
+  --obs-run-soft:      rgba(199, 154, 95, 0.10);
+  --obs-run-line:      rgba(199, 154, 95, 0.24);
+  --obs-idle:          #82b199;
+  --obs-err:           #c07676;
+  --obs-err-soft:      rgba(192, 118, 118, 0.10);
+  --obs-queue:         #a090ba;
+  --obs-queue-soft:    rgba(160, 144, 186, 0.14);
+
+  /* ── 10-colour template palette ── */
+  --obs-tc-1:  #8fb4cc;   /* sky     (default for "basic") */
+  --obs-tc-2:  #7fb2a8;   /* teal */
+  --obs-tc-3:  #82b199;   /* sage */
+  --obs-tc-4:  #9bb47e;   /* leaf */
+  --obs-tc-5:  #b0aa7a;   /* ochre */
+  --obs-tc-6:  #c8a080;   /* clay */
+  --obs-tc-7:  #c28894;   /* rose */
+  --obs-tc-8:  #a494bf;   /* lavender */
+  --obs-tc-9:  #8b9dc9;   /* indigo */
+  --obs-tc-10: #9098a8;   /* slate */
+
+  /* ── Typography ── */
+  --obs-font-ui:       "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --obs-font-mono:     "Geist Mono", ui-monospace, Menlo, Consolas, monospace;
+  --obs-font-serif:    "Instrument Serif", Georgia, serif;
+
+  /* ── Shared metrics ── */
+  --obs-radius-sm:     2px;
+  --obs-radius:        3px;
+  --obs-radius-md:     4px;
+  --obs-tile-rail:     3px;
+  --obs-tile-rail-sel: 5px;
+}

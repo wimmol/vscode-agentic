@@ -47,13 +47,18 @@ export const syncWorkspaceRepos = async (storage: StateStorage): Promise<void> =
  */
 export const refreshCurrentBranches = async (storage: StateStorage): Promise<void> => {
   const repos = await storage.getAllRepositories();
-  for (const repo of repos) {
-    const detected = await getCurrentBranch(repo.localPath);
-    if (!detected || detected === repo.currentBranch) continue;
-    try {
-      await storage.updateRepository(repo.repositoryId, { currentBranch: detected });
-    } catch (err) {
-      logger.warn('refreshCurrentBranches update failed', { repo: repo.name, err: String(err) });
-    }
-  }
+  // Git detection per repo is independent — run concurrently so N repos don't
+  // add N× spawn latency to activation's deferred path.
+  const detected = await Promise.all(repos.map((r) => getCurrentBranch(r.localPath)));
+  await Promise.all(
+    repos.map(async (repo, i) => {
+      const next = detected[i];
+      if (!next || next === repo.currentBranch) return;
+      try {
+        await storage.updateRepository(repo.repositoryId, { currentBranch: next });
+      } catch (err) {
+        logger.warn('refreshCurrentBranches update failed', { repo: repo.name, err: String(err) });
+      }
+    }),
+  );
 };

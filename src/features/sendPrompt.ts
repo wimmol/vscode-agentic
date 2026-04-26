@@ -45,6 +45,13 @@ export const sendPrompt = async (
   }
 
   terminal.sendText(prompt, true);
-  terminal.show(true);
-  await storage.updateAgent(agentId, { status: AGENT_STATUS_RUNNING, startedAt: Date.now(), completedAt: null });
+  // Reflect the new prompt immediately so the tile doesn't show the previous
+  // turn until SessionWatcher parses the reply.
+  await storage.updateAgent(agentId, {
+    status: AGENT_STATUS_RUNNING,
+    startedAt: Date.now(),
+    completedAt: null,
+    lastPrompt: prompt,
+    outputSummary: null,
+  });
 };

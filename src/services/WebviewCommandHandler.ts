@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import type { StateStorage } from '../db';
 import type { AgentPanelProvider } from './AgentPanelProvider';
 import type { FileExplorerProvider } from './FileExplorerProvider';
+import type { TemplateEditorProvider } from './TemplateEditorProvider';
 import type { TerminalService } from './TerminalService';
 import type { WebviewToExtensionMessage } from '../types/messages';
 import {
@@ -13,17 +14,22 @@ import {
   CMD_ROOT_CLICK,
   CMD_REPO_ROOT_CLICK,
   CMD_AGENT_CLICK,
-  CMD_TOGGLE_ZONE_EXPANDED,
   CMD_CLOSE_WORKTREE,
   CMD_SEND_PROMPT,
-  CMD_FORK_AGENT,
   CMD_RENAME_AGENT,
   CMD_REMOVE_QUEUE_ITEM,
+  CMD_LAUNCH_TEMPLATE,
+  CMD_MANAGE_TEMPLATES,
+  CMD_NEW_WORKTREE,
+  CMD_MERGE_WORKTREE,
+  CMD_SELECT_WORKTREE,
 } from '../constants/commands';
 import { sendPrompt } from '../features/sendPrompt';
-import { forkAgent } from '../features/forkAgent';
 import { renameAgent } from '../features/renameAgent';
 import { addAgent } from '../features/addAgent';
+import { launchAgent } from '../features/launchAgent';
+import { newWorktree } from '../features/newWorktree';
+import { mergeWorktree } from '../features/mergeWorktree';
 import { addRepo } from '../features/addRepo';
 import { removeAgent } from '../features/removeAgent';
 import { removeRepo } from '../features/removeRepo';
@@ -48,6 +54,7 @@ export class WebviewCommandHandler implements vscode.Disposable {
     private readonly storage: StateStorage,
     private readonly explorer: FileExplorerProvider,
     private readonly terminalService: TerminalService,
+    private readonly templateEditor: TemplateEditorProvider,
   ) {
     this.disposables.push(
       provider.onDidResolveView((view) => {
@@ -112,9 +119,16 @@ export class WebviewCommandHandler implements vscode.Disposable {
         case CMD_AGENT_CLICK:
           await agentClick(this.storage, this.explorer, this.terminalService, this.requireString(args, 'agentId'));
           break;
-        case CMD_TOGGLE_ZONE_EXPANDED:
-          await this.storage.toggleZoneExpanded(this.requireString(args, 'repoId'), this.requireString(args, 'branch'));
+        case CMD_SELECT_WORKTREE: {
+          const branchArg = args['branch'];
+          const branch =
+            branchArg === null ? null : this.requireString(args, 'branch');
+          await this.storage.setSelectedWorktree(
+            this.requireString(args, 'repoId'),
+            branch,
+          );
           break;
+        }
         case CMD_CLOSE_WORKTREE:
           await closeWorktree(
             this.storage,
@@ -126,9 +140,6 @@ export class WebviewCommandHandler implements vscode.Disposable {
         case CMD_SEND_PROMPT:
           await sendPrompt(this.storage, this.terminalService, this.requireString(args, 'agentId'));
           break;
-        case CMD_FORK_AGENT:
-          await forkAgent(this.storage, this.explorer, this.terminalService, this.requireString(args, 'agentId'));
-          break;
         case CMD_RENAME_AGENT:
           await renameAgent(this.storage, this.requireString(args, 'agentId'));
           break;
@@ -136,6 +147,38 @@ export class WebviewCommandHandler implements vscode.Disposable {
           await this.storage.removeFromQueue(
             this.requireString(args, 'agentId'),
             this.requireNumber(args, 'index'),
+          );
+          break;
+        case CMD_LAUNCH_TEMPLATE: {
+          // One-click launch — the chip row already knows the target branch
+          // (repo's current branch or the selected worktree's branch).
+          // No quick-picks.
+          const templateIdArg = args['templateId'];
+          const templateId =
+            typeof templateIdArg === 'string' && templateIdArg ? templateIdArg : null;
+          await launchAgent(
+            this.storage,
+            this.explorer,
+            this.terminalService,
+            this.requireString(args, 'repoId'),
+            this.requireString(args, 'branch'),
+            templateId,
+          );
+          break;
+        }
+        case CMD_MANAGE_TEMPLATES:
+          this.templateEditor.open();
+          break;
+        case CMD_NEW_WORKTREE:
+          // Creates a worktree only. Does NOT spawn an agent — spawning is
+          // driven from the per-scope launch row afterwards.
+          await newWorktree(this.storage, this.requireString(args, 'repoId'));
+          break;
+        case CMD_MERGE_WORKTREE:
+          await mergeWorktree(
+            this.storage,
+            this.requireString(args, 'repoId'),
+            this.requireString(args, 'branch'),
           );
           break;
       }

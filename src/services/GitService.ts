@@ -151,6 +151,40 @@ export const deleteBranch = async (repoPath: string, branch: string): Promise<vo
   }
 };
 
+export interface MergeResult {
+  ok: boolean;
+  /** `merge` on success, `conflict` when git exited non-zero with conflict
+   *  markers, `error` for any other failure. */
+  outcome: 'merge' | 'conflict' | 'error';
+  /** Raw stderr from git — surfaced to the user when useful, logged in full. */
+  stderr: string;
+}
+
+/** Run `git merge --no-ff <branch>` in `repoPath`. Caller is responsible for
+ *  ensuring repoPath points at the target branch (the one being merged into). */
+export const mergeBranch = async (repoPath: string, branch: string): Promise<MergeResult> => {
+  const { stdout, stderr, exitCode } = await run(
+    ['merge', '--no-ff', '--no-edit', branch],
+    repoPath,
+    GIT_WORKTREE_TIMEOUT,
+  );
+  if (exitCode === 0) {
+    return { ok: true, outcome: 'merge', stderr };
+  }
+  const combined = `${stdout}\n${stderr}`;
+  const isConflict = /conflict|merge failed/i.test(combined);
+  return { ok: false, outcome: isConflict ? 'conflict' : 'error', stderr };
+};
+
+/** Abort an in-progress merge. Best-effort; silent on failure. */
+export const abortMerge = async (repoPath: string): Promise<void> => {
+  try {
+    await execFile('git', ['merge', '--abort'], gitOpts(repoPath));
+  } catch {
+    // Best-effort — no merge may be in progress.
+  }
+};
+
 export interface GitWorktreeEntry {
   path: string;
   branch: string;

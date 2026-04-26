@@ -6,8 +6,8 @@ interface ElapsedTimeProps {
   completedAt: number;
 }
 
+/** Human duration for a finished run, e.g. "2m 14s". */
 export const ElapsedTime = ({ startedAt, completedAt }: ElapsedTimeProps) => {
   const elapsed = Math.max(0, Math.floor((completedAt - startedAt) / MS_PER_SECOND));
-
-  return <span className="timer">{formatTime(elapsed)}</span>;
+  return <span className="tile__time">{formatTime(elapsed)}</span>;
 };

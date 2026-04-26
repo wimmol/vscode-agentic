@@ -50,6 +50,23 @@
           "type": "boolean",
           "default": false,
           "description": "Run agents with --dangerously-skip-permissions flag (no confirmation prompts)."
+        },
+        "vscode-agentic.summariser.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Summarise long prompts and agent output with a local model. Falls back to truncation when disabled or the model fails."
+        },
+        "vscode-agentic.summariser.thresholdChars": {
+          "type": "number",
+          "default": 320,
+          "minimum": 80,
+          "description": "Only summarise text longer than this many characters. Shorter text is shown as-is."
+        },
+        "vscode-agentic.summariser.stabilityMs": {
+          "type": "number",
+          "default": 2000,
+          "minimum": 200,
+          "description": "Milliseconds text must remain unchanged before a summary is computed. Prevents re-running the model during streaming output."
         }
       }
     },
@@ -132,16 +149,9 @@
         "category": "Agentic"
       },
       {
-        "command": "vscode-agentic.createTemplate",
-        "title": "Create Agent Template",
-        "icon": "$(add)",
-        "category": "Agentic",
-        "enablement": "vscode-agentic.hasRepos"
-      },
-      {
-        "command": "vscode-agentic.removeTemplate",
-        "title": "Remove Agent Template",
-        "icon": "$(trash)",
+        "command": "vscode-agentic.manageTemplates",
+        "title": "Manage Agent Templates",
+        "icon": "$(symbol-color)",
         "category": "Agentic"
       },
       {
@@ -287,8 +297,8 @@
   "scripts": {
     "vscode:prepublish": "npm run typecheck && npm run compile:prod",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.webview.json",
-    "compile:prod": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --minify --drop:console --tsconfig=tsconfig.json && esbuild src/ui/index.tsx --bundle --outfile=out/ui/index.js --format=esm --jsx=automatic --loader:.ttf=file --minify --drop:console --tsconfig=tsconfig.webview.json && esbuild src/ui/sourceControl/index.tsx --bundle --outfile=out/ui/sourceControl.js --format=esm --jsx=automatic --loader:.ttf=file --minify --drop:console --tsconfig=tsconfig.webview.json",
-    "compile": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --sourcemap --tsconfig=tsconfig.json && esbuild src/ui/index.tsx --bundle --outfile=out/ui/index.js --format=esm --jsx=automatic --loader:.ttf=file --sourcemap --tsconfig=tsconfig.webview.json && esbuild src/ui/sourceControl/index.tsx --bundle --outfile=out/ui/sourceControl.js --format=esm --jsx=automatic --loader:.ttf=file --sourcemap --tsconfig=tsconfig.webview.json",
+    "compile:prod": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --external:@xenova/transformers --external:onnxruntime-web --external:onnxruntime-node --external:sharp --format=cjs --platform=node --minify --drop:console --tsconfig=tsconfig.json && esbuild src/ui/index.tsx --bundle --outfile=out/ui/index.js --format=esm --jsx=automatic --loader:.ttf=file --minify --drop:console --tsconfig=tsconfig.webview.json && esbuild src/ui/sourceControl/index.tsx --bundle --outfile=out/ui/sourceControl.js --format=esm --jsx=automatic --loader:.ttf=file --minify --drop:console --tsconfig=tsconfig.webview.json && esbuild src/ui/templateEditor/index.tsx --bundle --outfile=out/ui/templateEditor.js --format=esm --jsx=automatic --loader:.ttf=file --minify --drop:console --tsconfig=tsconfig.webview.json",
+    "compile": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --external:@xenova/transformers --external:onnxruntime-web --external:onnxruntime-node --external:sharp --format=cjs --platform=node --sourcemap --tsconfig=tsconfig.json && esbuild src/ui/index.tsx --bundle --outfile=out/ui/index.js --format=esm --jsx=automatic --loader:.ttf=file --sourcemap --tsconfig=tsconfig.webview.json && esbuild src/ui/sourceControl/index.tsx --bundle --outfile=out/ui/sourceControl.js --format=esm --jsx=automatic --loader:.ttf=file --sourcemap --tsconfig=tsconfig.webview.json && esbuild src/ui/templateEditor/index.tsx --bundle --outfile=out/ui/templateEditor.js --format=esm --jsx=automatic --loader:.ttf=file --sourcemap --tsconfig=tsconfig.webview.json",
     "package": "npx vsce package",
     "watch": "npm run compile -- --watch",
     "lint": "eslint src/",
@@ -297,10 +307,12 @@
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\""
   },
   "devDependencies": {
+    "@types/node": "^25.6.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/vscode": "^1.74.0",
     "@vscode/codicons": "^0.0.44",
+    "@vscode/vsce": "^3.0.0",
     "esbuild": "^0.27.3",
     "eslint": "^9.0.0",
     "eslint-config-prettier": "^10.0.0",
@@ -308,10 +320,10 @@
     "eslint-plugin-react-hooks": "^5.0.0",
     "prettier": "^3.4.0",
     "typescript": "^5.7.0",
-    "@vscode/vsce": "^3.0.0",
     "typescript-eslint": "^8.0.0"
   },
   "dependencies": {
+    "@xenova/transformers": "^2.17.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   }

@@ -8,7 +8,7 @@ vscode-agentic/
 │   │   ├── index.ts                 — async createStateStorage factory (with globalState migration)
 │   │   ├── models.ts                — plain TS models (Repository, Agent, Worktree, AgentTemplate)
 │   │   └── StateStorage.ts          — async CRUD, validation, serialized writes, schema migrations
-│   ├── features/                    — feature-first command implementations (addAgent, forkAgent, …)
+│   ├── features/                    — feature-first command implementations (addAgent, renameAgent, …)
 │   ├── services/                    — long-lived components: AgentPanelProvider, SourceControlProvider,
 │   │                                  FileExplorerProvider, TerminalService, SessionWatcher,
 │   │                                  WebviewCommandHandler, GitService, Logger

@@ -1,4 +1,4 @@
-import type { RepoWithZones } from './index';
+import type { RepoWithScopes, AgentTemplate } from './index';
 import {
   MSG_TYPE_UPDATE,
   PROTOCOL_VERSION,
@@ -11,12 +11,15 @@ import {
   CMD_ADD_AGENT,
   CMD_REMOVE_AGENT,
   CMD_AGENT_CLICK,
-  CMD_TOGGLE_ZONE_EXPANDED,
   CMD_CLOSE_WORKTREE,
   CMD_SEND_PROMPT,
-  CMD_FORK_AGENT,
   CMD_RENAME_AGENT,
   CMD_REMOVE_QUEUE_ITEM,
+  CMD_LAUNCH_TEMPLATE,
+  CMD_MANAGE_TEMPLATES,
+  CMD_NEW_WORKTREE,
+  CMD_MERGE_WORKTREE,
+  CMD_SELECT_WORKTREE,
 } from '../constants/commands';
 
 // ── Extension → Webview ───────────────────────────────────────────
@@ -25,7 +28,8 @@ export interface StateUpdateMessage {
   type: typeof MSG_TYPE_UPDATE;
   /** Protocol version of the message envelope. Receiver compares to its own constant. */
   protocol: typeof PROTOCOL_VERSION;
-  repos: RepoWithZones[];
+  repos: RepoWithScopes[];
+  templates: AgentTemplate[];
 }
 
 export type ExtensionToWebviewMessage = StateUpdateMessage;
@@ -47,12 +51,15 @@ export type WebviewToExtensionMessage =
   | MessageBase<typeof CMD_ADD_AGENT, { repoId: string }>
   | MessageBase<typeof CMD_REMOVE_AGENT, { agentId: string }>
   | MessageBase<typeof CMD_AGENT_CLICK, { agentId: string }>
-  | MessageBase<typeof CMD_TOGGLE_ZONE_EXPANDED, { repoId: string; branch: string }>
   | MessageBase<typeof CMD_CLOSE_WORKTREE, { repoId: string; branch: string }>
   | MessageBase<typeof CMD_SEND_PROMPT, { agentId: string }>
-  | MessageBase<typeof CMD_FORK_AGENT, { agentId: string }>
   | MessageBase<typeof CMD_RENAME_AGENT, { agentId: string }>
-  | MessageBase<typeof CMD_REMOVE_QUEUE_ITEM, { agentId: string; index: number }>;
+  | MessageBase<typeof CMD_REMOVE_QUEUE_ITEM, { agentId: string; index: number }>
+  | MessageBase<typeof CMD_LAUNCH_TEMPLATE, { repoId: string; branch: string; templateId: string | null }>
+  | MessageBase<typeof CMD_MANAGE_TEMPLATES, Record<string, never>>
+  | MessageBase<typeof CMD_NEW_WORKTREE, { repoId: string }>
+  | MessageBase<typeof CMD_MERGE_WORKTREE, { repoId: string; branch: string }>
+  | MessageBase<typeof CMD_SELECT_WORKTREE, { repoId: string; branch: string | null }>;
 
 // ── Message creators ─────────────────────────────────────────────
 
@@ -96,11 +103,6 @@ export const agentClickMessage = (agentId: string): WebviewToExtensionMessage =>
   args: { agentId },
 });
 
-export const toggleZoneExpandedMessage = (repoId: string, branch: string): WebviewToExtensionMessage => ({
-  function: CMD_TOGGLE_ZONE_EXPANDED,
-  args: { repoId, branch },
-});
-
 export const closeWorktreeMessage = (repoId: string, branch: string): WebviewToExtensionMessage => ({
   function: CMD_CLOSE_WORKTREE,
   args: { repoId, branch },
@@ -108,11 +110,6 @@ export const closeWorktreeMessage = (repoId: string, branch: string): WebviewToE
 
 export const sendPromptMessage = (agentId: string): WebviewToExtensionMessage => ({
   function: CMD_SEND_PROMPT,
-  args: { agentId },
-});
-
-export const forkAgentMessage = (agentId: string): WebviewToExtensionMessage => ({
-  function: CMD_FORK_AGENT,
   args: { agentId },
 });
 
@@ -124,4 +121,36 @@ export const renameAgentMessage = (agentId: string): WebviewToExtensionMessage =
 export const removeQueueItemMessage = (agentId: string, index: number): WebviewToExtensionMessage => ({
   function: CMD_REMOVE_QUEUE_ITEM,
   args: { agentId, index },
+});
+
+export const launchTemplateMessage = (
+  repoId: string,
+  branch: string,
+  templateId: string | null,
+): WebviewToExtensionMessage => ({
+  function: CMD_LAUNCH_TEMPLATE,
+  args: { repoId, branch, templateId },
+});
+
+export const manageTemplatesMessage = (): WebviewToExtensionMessage => ({
+  function: CMD_MANAGE_TEMPLATES,
+  args: {},
+});
+
+export const newWorktreeMessage = (repoId: string): WebviewToExtensionMessage => ({
+  function: CMD_NEW_WORKTREE,
+  args: { repoId },
+});
+
+export const mergeWorktreeMessage = (repoId: string, branch: string): WebviewToExtensionMessage => ({
+  function: CMD_MERGE_WORKTREE,
+  args: { repoId, branch },
+});
+
+export const selectWorktreeMessage = (
+  repoId: string,
+  branch: string | null,
+): WebviewToExtensionMessage => ({
+  function: CMD_SELECT_WORKTREE,
+  args: { repoId, branch },
 });

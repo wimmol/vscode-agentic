@@ -7,39 +7,57 @@
 }
 
 body {
-  font-family: var(--vscode-font-family);
-  font-size: var(--vscode-font-size);
-  font-weight: var(--vscode-font-weight);
-  color: var(--vscode-foreground);
-  background-color: var(--vscode-sideBar-background);
-  line-height: 1.4;
+  font-family: var(--obs-font-ui);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--obs-fg);
+  background-color: var(--obs-bg);
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "ss01", "cv11";
 }
 
-/* Disable selection on chrome/controls, but leave prompts, names, and branches
+button {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+/* Only controls and chrome are unselectable; prompts/results/names stay
  * selectable so users can copy text out of the panel. */
 button,
 nav,
-.agent-tile-header,
-.agent-tile-actions,
-.queue-remove,
-.detail-btn {
+.tile-actions,
+.tabbar,
+.repo-head,
+.launch,
+.wt-tabs,
+.wt-actions {
   user-select: none;
 }
 
 ::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: var(--vscode-scrollbarSlider-background);
+  background-color: var(--obs-line-strong);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: var(--vscode-scrollbarSlider-hoverBackground);
+  background-color: var(--obs-fg-dim);
 }
 
-::-webkit-scrollbar-thumb:active {
-  background-color: var(--vscode-scrollbarSlider-activeBackground);
+/* Fade-up on first paint — the only retained animation. Used on tiles, repo
+ * sections, and the launch row on mount. Everything else is still. */
+@keyframes obs-fade-up {
+  from { opacity: 0; transform: translateY(3px); }
+  to   { opacity: 1; transform: translateY(0); }
 }

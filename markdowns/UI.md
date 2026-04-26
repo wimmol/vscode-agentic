@@ -93,7 +93,6 @@ Displayed under repo header when expanded. Ordered by creation time.
 | Button        | Codicon             | Handler                         | Description                                                          |
 |---------------|---------------------|---------------------------------|----------------------------------------------------------------------|
 | Send Prompt   | `$(edit)`           | `onSendPrompt(agentId)`         | Send a new prompt to the agent (or queue it if running).             |
-| Fork          | `$(repo-forked)`    | `onForkAgent(agentId)`          | Create a fresh agent seeded with this one's last prompt and summary. |
 | Rename        | `$(pencil)`         | `onRenameAgent(agentId)`        | Rename the agent.                                                    |
 | Remove        | `$(trash)`          | `onRemoveClick(agentId)`        | Remove the agent. Disabled while status is `running`.                |
 

@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react';
-import { formatTime } from '../utils/formatTime';
+import { formatMmss } from '../utils/formatTime';
 import { TIMER_INTERVAL_MS, MS_PER_SECOND } from '../../../constants/timing';
 
 interface TimerProps {
   startedAt: number;
 }
 
+/** Ticking `MM:SS` counter for running agents. */
 export const Timer = ({ startedAt }: TimerProps) => {
-  const [elapsed, setElapsed] = useState(() => Math.max(0, Math.floor((Date.now() - startedAt) / MS_PER_SECOND)));
+  const [elapsed, setElapsed] = useState(() =>
+    Math.max(0, Math.floor((Date.now() - startedAt) / MS_PER_SECOND)),
+  );
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -18,5 +21,5 @@ export const Timer = ({ startedAt }: TimerProps) => {
     return () => clearInterval(interval);
   }, [startedAt]);
 
-  return <span className="timer">{formatTime(elapsed)}</span>;
+  return <span className="tile__time">{formatMmss(elapsed)}</span>;
 };

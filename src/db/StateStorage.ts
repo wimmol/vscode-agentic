@@ -1,16 +1,16 @@
 import { randomUUID } from 'crypto';
 import * as vscode from 'vscode';
 import type { Repository, Worktree, Agent, AgentTemplate } from './models';
-import type { RepoWithZones, BranchZone } from '../types';
+import type { RepoWithScopes, WorktreeScope } from '../types';
 import type { AgentCli } from '../types/agent';
 import { AGENT_STATUS_CREATED } from '../constants/agent';
 import { DEFAULT_CURRENT_BRANCH } from '../constants/repo';
+import { templateColorByIndex } from '../constants/templateColor';
 import {
   STORE_REPOSITORIES,
   STORE_AGENTS,
   STORE_WORKTREES,
   STORE_EXPLORER_STATE,
-  STORE_ZONE_EXPANDED,
   STORE_TEMPLATES,
   STORE_SCHEMA_VERSION,
   CURRENT_SCHEMA_VERSION,
@@ -24,6 +24,27 @@ import {
   errAgentIdNotFound,
 } from '../constants/messages';
 import { logger } from '../services/Logger';
+
+/** Scalar Agent fields `updateAgent` patches in one loop. Kept as a tuple so
+ *  the accepted `AgentPatch` type is derived from it (one source of truth). */
+const AGENT_SCALAR_FIELDS = [
+  'status',
+  'sessionId',
+  'lastPrompt',
+  'startedAt',
+  'completedAt',
+  'templateName',
+  'templateColor',
+  'outputSummary',
+  'lastPromptShort',
+  'outputShort',
+] as const;
+
+type AgentScalarKey = (typeof AGENT_SCALAR_FIELDS)[number];
+
+type AgentPatch = Partial<
+  Pick<Agent, 'name' | 'promptQueue' | 'contextUsage' | AgentScalarKey>
+>;
 
 /**
  * Manages all read/write operations against VS Code workspaceState.
@@ -46,7 +67,7 @@ export class StateStorage implements vscode.Disposable {
   private writeLock: Promise<unknown> = Promise.resolve();
 
   constructor(
-    /** Cross-workspace data (repos, agents, worktrees, templates, zones). */
+    /** Cross-workspace data (repos, agents, worktrees, templates). */
     private readonly state: vscode.Memento,
     /** Per-workspace UI state (explorer expanded folders). */
     private readonly uiState: vscode.Memento = state,
@@ -71,15 +92,23 @@ export class StateStorage implements vscode.Disposable {
   runMigrations = async (): Promise<void> => {
     const stored = this.state.get<number>(STORE_SCHEMA_VERSION, 0);
     if (stored === CURRENT_SCHEMA_VERSION) return;
-    // Reserved for future migrations. Today's schema is backwards-compatible
-    // because every optional field on Agent is defaulted in `agents()`.
+    // Today's schema is read-time-compatible: missing fields are defaulted
+    // in repos() / agents() / templates() and persisted on the next write.
     await this.state.update(STORE_SCHEMA_VERSION, CURRENT_SCHEMA_VERSION);
   };
 
   // ── Helpers ─────────────────────────────────────────────────────
 
   private repos(): Repository[] {
-    return this.state.get<Repository[]>(STORE_REPOSITORIES, []);
+    return this.state.get<Repository[]>(STORE_REPOSITORIES, []).map((r) => ({
+      repositoryId: r.repositoryId,
+      name: r.name,
+      localPath: r.localPath,
+      currentBranch: r.currentBranch,
+      isExpanded: r.isExpanded ?? true,
+      createdAt: r.createdAt ?? Date.now(),
+      selectedWorktreeBranch: r.selectedWorktreeBranch ?? null,
+    }));
   }
 
   private agents(): Agent[] {
@@ -97,15 +126,33 @@ export class StateStorage implements vscode.Disposable {
       completedAt: a.completedAt ?? null,
       createdAt: a.createdAt ?? Date.now(),
       templateName: a.templateName ?? null,
+      templateColor: a.templateColor ?? null,
+      systemPrompt: a.systemPrompt ?? null,
       outputSummary: a.outputSummary ?? null,
-      forkedFrom: a.forkedFrom ?? null,
+      lastPromptShort: a.lastPromptShort ?? null,
+      outputShort: a.outputShort ?? null,
       promptQueue: Array.isArray(a.promptQueue) ? a.promptQueue : [],
       contextUsage: a.contextUsage ?? null,
     }));
   }
 
+  /**
+   * Normalize templates on every read. Missing `color` gets a deterministic
+   * palette swatch based on position; missing `isDefault` resolves so that
+   * exactly one template is flagged (first by insertion order if none is
+   * marked). The enriched shape is picked up on the next write.
+   */
   private templates(): AgentTemplate[] {
-    return this.state.get<AgentTemplate[]>(STORE_TEMPLATES, []);
+    const raw = this.state.get<AgentTemplate[]>(STORE_TEMPLATES, []);
+    const anyDefault = raw.some((t) => t.isDefault === true);
+    return raw.map((t, i) => ({
+      templateId: t.templateId,
+      name: t.name,
+      prompt: t.prompt,
+      createdAt: t.createdAt ?? Date.now(),
+      color: t.color ?? templateColorByIndex(i),
+      isDefault: t.isDefault ?? (!anyDefault && i === 0),
+    }));
   }
 
   private worktrees(): Worktree[] {
@@ -115,12 +162,6 @@ export class StateStorage implements vscode.Disposable {
   private explorerState(): Record<string, string[]> {
     return this.uiState.get<Record<string, string[]>>(STORE_EXPLORER_STATE, {});
   }
-
-  private zoneExpanded(): Record<string, boolean> {
-    return this.state.get<Record<string, boolean>>(STORE_ZONE_EXPANDED, {});
-  }
-
-  private zoneKey = (repoId: string, branch: string): string => `${repoId}::${branch}`;
 
   // ── Repositories ───────────────────────────────────────────────
 
@@ -142,6 +183,7 @@ export class StateStorage implements vscode.Disposable {
       currentBranch: currentBranch.trim() || DEFAULT_CURRENT_BRANCH,
       isExpanded: true,
       createdAt: Date.now(),
+      selectedWorktreeBranch: null,
     };
 
     await this.runExclusive(async () => {
@@ -160,11 +202,16 @@ export class StateStorage implements vscode.Disposable {
     return this.repos();
   };
 
-  getAllReposWithZones = async (): Promise<RepoWithZones[]> => {
+  /**
+   * Primary snapshot the webview consumes. Produces one `RepoWithScopes`
+   * per repo: the repo's own agents (on `currentBranch`) plus one
+   * `WorktreeScope` per worktree, with `agents` populated only for the
+   * selected worktree to keep the payload small.
+   */
+  getAllReposWithScopes = async (): Promise<RepoWithScopes[]> => {
     const repos = this.repos();
     const allAgents = this.agents();
     const allWorktrees = this.worktrees();
-    const expanded = this.zoneExpanded();
 
     // Pre-group agents by repoId → branch → Agent[]
     const agentsByRepoBranch = new Map<string, Map<string, Agent[]>>();
@@ -182,54 +229,44 @@ export class StateStorage implements vscode.Disposable {
       }
     }
 
-    // Pre-group worktrees by repoId → branch → path
-    const worktreeByRepoBranch = new Map<string, Map<string, string>>();
-    for (const wt of allWorktrees) {
-      let byBranch = worktreeByRepoBranch.get(wt.repoId);
-      if (!byBranch) {
-        byBranch = new Map();
-        worktreeByRepoBranch.set(wt.repoId, byBranch);
-      }
-      byBranch.set(wt.branch, wt.path);
-    }
+    // Agent order inside every scope is always oldest-first by createdAt,
+    // stable across snapshots so tiles never reorder when an agent's
+    // status or data changes.
+    const sortAgents = (list: Agent[]): Agent[] =>
+      [...list].sort((a, b) => a.createdAt - b.createdAt);
 
     return repos.map((repo) => {
       const byBranch = agentsByRepoBranch.get(repo.repositoryId) ?? new Map<string, Agent[]>();
-      const wtByBranch = worktreeByRepoBranch.get(repo.repositoryId) ?? new Map<string, string>();
+      const repoWorktrees = allWorktrees.filter((w) => w.repoId === repo.repositoryId);
 
-      // Collect all known branches: current + agent branches + worktree branches
-      const branches = new Set<string>();
-      branches.add(repo.currentBranch);
-      for (const b of byBranch.keys()) branches.add(b);
-      for (const b of wtByBranch.keys()) branches.add(b);
+      const currentAgents = sortAgents(byBranch.get(repo.currentBranch) ?? []);
 
-      const zones: BranchZone[] = [];
+      // Resolve selectedWorktreeBranch: explicit choice if valid, else the
+      // most recently-added worktree, else null. The snapshot reports the
+      // resolved value on the repo so the UI doesn't need to re-derive it.
+      const selectedBranch =
+        repo.selectedWorktreeBranch &&
+        repoWorktrees.some((w) => w.branch === repo.selectedWorktreeBranch)
+          ? repo.selectedWorktreeBranch
+          : repoWorktrees.at(-1)?.branch ?? null;
 
-      // Current branch zone first
-      zones.push({
-        branch: repo.currentBranch,
-        isCurrent: true,
-        isExpanded: expanded[this.zoneKey(repo.repositoryId, repo.currentBranch)] ?? true,
-        worktreePath: null,
-        agents: byBranch.get(repo.currentBranch) ?? [],
+      const worktrees: WorktreeScope[] = repoWorktrees.map((w) => {
+        const raw = byBranch.get(w.branch) ?? [];
+        const isSelected = w.branch === selectedBranch;
+        return {
+          branch: w.branch,
+          path: w.path,
+          agentCount: raw.length,
+          agents: isSelected ? sortAgents(raw) : [],
+        };
       });
 
-      // Other zones, alphabetically sorted
-      const otherBranches = Array.from(branches)
-        .filter((b) => b !== repo.currentBranch)
-        .sort((a, b) => a.localeCompare(b));
-
-      for (const branch of otherBranches) {
-        zones.push({
-          branch,
-          isCurrent: false,
-          isExpanded: expanded[this.zoneKey(repo.repositoryId, branch)] ?? true,
-          worktreePath: wtByBranch.get(branch) ?? null,
-          agents: byBranch.get(branch) ?? [],
-        });
-      }
-
-      return { ...repo, zones };
+      return {
+        ...repo,
+        selectedWorktreeBranch: selectedBranch,
+        currentAgents,
+        worktrees,
+      };
     });
   };
 
@@ -290,6 +327,22 @@ export class StateStorage implements vscode.Disposable {
     });
   };
 
+  /** Persist which worktree tab is active for a repo. `null` clears it. */
+  setSelectedWorktree = async (repoId: string, branch: string | null): Promise<void> => {
+    await this.runExclusive(async () => {
+      const list = this.repos();
+      const idx = list.findIndex((r) => r.repositoryId === repoId);
+      if (idx === -1) {
+        throw new Error(errRepoIdNotFound(repoId));
+      }
+      if (list[idx].selectedWorktreeBranch === branch) return;
+      list[idx] = { ...list[idx], selectedWorktreeBranch: branch };
+      await this.state.update(STORE_REPOSITORIES, list);
+      this._onDidChange.fire();
+      logger.trace('StateStorage setSelectedWorktree', { repoId, branch });
+    });
+  };
+
   removeRepository = async (id: string): Promise<void> => {
     logger.trace('StateStorage removeRepository', { id });
     await this.runExclusive(async () => {
@@ -308,16 +361,6 @@ export class StateStorage implements vscode.Disposable {
         this.state.update(STORE_REPOSITORIES, filtered),
       ];
 
-      const ze = this.zoneExpanded();
-      const prefix = `${id}::`;
-      const cleanedZe: Record<string, boolean> = {};
-      for (const [k, v] of Object.entries(ze)) {
-        if (!k.startsWith(prefix)) cleanedZe[k] = v;
-      }
-      if (Object.keys(cleanedZe).length < Object.keys(ze).length) {
-        writes.push(this.state.update(STORE_ZONE_EXPANDED, cleanedZe));
-      }
-
       const es = this.explorerState();
       const cleanedKeys = Object.keys(es).filter((k) => k !== id && !removedAgentIds.has(k));
       if (cleanedKeys.length < Object.keys(es).length) {
@@ -333,7 +376,13 @@ export class StateStorage implements vscode.Disposable {
 
   // ── Agents ─────────────────────────────────────────────────────
 
-  addAgent = async (repoId: string, name: string, branch: string, cli: AgentCli): Promise<Agent> => {
+  addAgent = async (
+    repoId: string,
+    name: string,
+    branch: string,
+    cli: AgentCli,
+    initial: Partial<Pick<Agent, 'templateName' | 'templateColor' | 'systemPrompt'>> = {},
+  ): Promise<Agent> => {
     const trimmedName = name.trim();
     if (!trimmedName) {
       throw new Error(ERR_AGENT_NAME_EMPTY);
@@ -359,9 +408,12 @@ export class StateStorage implements vscode.Disposable {
         startedAt: null,
         completedAt: null,
         createdAt: Date.now(),
-        templateName: null,
+        templateName: initial.templateName ?? null,
+        templateColor: initial.templateColor ?? null,
+        systemPrompt: initial.systemPrompt ?? null,
         outputSummary: null,
-        forkedFrom: null,
+        lastPromptShort: null,
+        outputShort: null,
         promptQueue: [],
         contextUsage: null,
       };
@@ -377,6 +429,10 @@ export class StateStorage implements vscode.Disposable {
     return this.agents().find((a) => a.agentId === id);
   };
 
+  getAllAgents = async (): Promise<Agent[]> => {
+    return this.agents();
+  };
+
   getAgentsByRepo = async (repoId: string): Promise<Agent[]> => {
     return this.agents().filter((a) => a.repoId === repoId);
   };
@@ -387,7 +443,7 @@ export class StateStorage implements vscode.Disposable {
 
   updateAgent = async (
     id: string,
-    data: Partial<Pick<Agent, 'name' | 'status' | 'sessionId' | 'lastPrompt' | 'startedAt' | 'completedAt' | 'templateName' | 'outputSummary' | 'forkedFrom' | 'promptQueue' | 'contextUsage'>>,
+    data: AgentPatch,
   ): Promise<Agent> => {
     return this.runExclusive(async () => {
       const list = this.agents();
@@ -415,34 +471,22 @@ export class StateStorage implements vscode.Disposable {
         agent.name = trimmed;
       }
 
-    if (data.status !== undefined) agent.status = data.status;
-    if (data.sessionId !== undefined) agent.sessionId = data.sessionId;
-    if (data.lastPrompt !== undefined) agent.lastPrompt = data.lastPrompt;
-    if (data.startedAt !== undefined) agent.startedAt = data.startedAt;
-    if (data.completedAt !== undefined) agent.completedAt = data.completedAt;
-    if (data.templateName !== undefined) agent.templateName = data.templateName;
-    if (data.outputSummary !== undefined) agent.outputSummary = data.outputSummary;
-    if (data.forkedFrom !== undefined) agent.forkedFrom = data.forkedFrom;
-    if (data.promptQueue !== undefined) agent.promptQueue = data.promptQueue;
-    if (data.contextUsage !== undefined) agent.contextUsage = data.contextUsage;
+      for (const key of AGENT_SCALAR_FIELDS) {
+        if (data[key] !== undefined) (agent[key] as Agent[typeof key]) = data[key]!;
+      }
+      if (data.promptQueue !== undefined) agent.promptQueue = data.promptQueue;
+      if (data.contextUsage !== undefined) agent.contextUsage = data.contextUsage;
 
-    if (
-      agent.name === original.name &&
-      agent.status === original.status &&
-      agent.sessionId === original.sessionId &&
-      agent.lastPrompt === original.lastPrompt &&
-      agent.startedAt === original.startedAt &&
-      agent.completedAt === original.completedAt &&
-      agent.templateName === original.templateName &&
-      agent.outputSummary === original.outputSummary &&
-      agent.forkedFrom === original.forkedFrom &&
-      agent.promptQueue.length === original.promptQueue.length &&
-      agent.promptQueue.every((p, i) => p === original.promptQueue[i]) &&
-      agent.contextUsage?.used === original.contextUsage?.used &&
-      agent.contextUsage?.total === original.contextUsage?.total
-    ) {
-      return original;
-    }
+      const scalarUnchanged = AGENT_SCALAR_FIELDS.every((k) => agent[k] === original[k]);
+      const queueUnchanged =
+        agent.promptQueue.length === original.promptQueue.length &&
+        agent.promptQueue.every((p, i) => p === original.promptQueue[i]);
+      const usageUnchanged =
+        agent.contextUsage?.used === original.contextUsage?.used &&
+        agent.contextUsage?.total === original.contextUsage?.total;
+      if (agent.name === original.name && scalarUnchanged && queueUnchanged && usageUnchanged) {
+        return original;
+      }
 
       list[idx] = agent;
       await this.state.update(STORE_AGENTS, list);
@@ -517,11 +561,12 @@ export class StateStorage implements vscode.Disposable {
 
       await this.state.update(STORE_WORKTREES, filtered);
 
-      const key = this.zoneKey(repoId, branch);
-      const ze = this.zoneExpanded();
-      if (key in ze) {
-        const { [key]: _, ...rest } = ze;
-        await this.state.update(STORE_ZONE_EXPANDED, rest);
+      // Clear selectedWorktreeBranch if it pointed at the one being removed.
+      const repoList = this.repos();
+      const repoIdx = repoList.findIndex((r) => r.repositoryId === repoId);
+      if (repoIdx !== -1 && repoList[repoIdx].selectedWorktreeBranch === branch) {
+        repoList[repoIdx] = { ...repoList[repoIdx], selectedWorktreeBranch: null };
+        await this.state.update(STORE_REPOSITORIES, repoList);
       }
 
       this._onDidChange.fire();
@@ -532,26 +577,17 @@ export class StateStorage implements vscode.Disposable {
     return this.worktrees();
   };
 
-  // ── Zones ─────────────────────────────────────────────────────
-
-  toggleZoneExpanded = async (repoId: string, branch: string): Promise<void> => {
-    await this.runExclusive(async () => {
-      const key = this.zoneKey(repoId, branch);
-      const map = this.zoneExpanded();
-      const current = map[key] ?? true;
-      await this.state.update(STORE_ZONE_EXPANDED, { ...map, [key]: !current });
-      this._onDidChange.fire();
-      logger.trace('StateStorage toggleZoneExpanded', { repoId, branch, isExpanded: !current });
-    });
-  };
-
   getFocusedAgent = async (): Promise<Agent | undefined> => {
     return this.agents().find((a) => a.isFocused);
   };
 
   // ── Templates ──────────────────────────────────────────────────
 
-  addTemplate = async (name: string, prompt: string): Promise<AgentTemplate> => {
+  addTemplate = async (
+    name: string,
+    prompt: string,
+    options: { color?: string; isDefault?: boolean } = {},
+  ): Promise<AgentTemplate> => {
     const trimmedName = name.trim();
     if (!trimmedName) throw new Error('Template name cannot be empty.');
 
@@ -564,15 +600,95 @@ export class StateStorage implements vscode.Disposable {
         throw new Error(`Template "${trimmedName}" already exists.`);
       }
 
+      const color = options.color ?? templateColorByIndex(existing.length);
+      // First template becomes default automatically; later ones are non-default
+      // unless the caller opts in.
+      const wantsDefault = options.isDefault ?? existing.length === 0;
       const template: AgentTemplate = {
         templateId: randomUUID(),
         name: trimmedName,
         prompt: prompt.trim(),
+        color,
+        isDefault: wantsDefault,
         createdAt: Date.now(),
       };
-      await this.state.update(STORE_TEMPLATES, [...existing, template]);
+
+      // Enforce the single-default invariant when opting in.
+      const nextList = wantsDefault
+        ? [...existing.map((t) => ({ ...t, isDefault: false })), template]
+        : [...existing, template];
+
+      await this.state.update(STORE_TEMPLATES, nextList);
       this._onDidChange.fire();
       return template;
+    });
+  };
+
+  /** Update any subset of the template fields. Rejects empty names and
+   *  case-insensitive name collisions with other templates. */
+  updateTemplate = async (
+    templateId: string,
+    patch: Partial<Pick<AgentTemplate, 'name' | 'prompt' | 'color'>>,
+  ): Promise<AgentTemplate> => {
+    return this.runExclusive(async () => {
+      const list = this.templates();
+      const idx = list.findIndex((t) => t.templateId === templateId);
+      if (idx === -1) {
+        throw new Error(`Template ${templateId} not found.`);
+      }
+
+      const original = list[idx];
+      const next = { ...original };
+
+      if (patch.name !== undefined) {
+        const trimmed = patch.name.trim();
+        if (!trimmed) throw new Error('Template name cannot be empty.');
+        const collision = list.some(
+          (t) =>
+            t.templateId !== templateId &&
+            t.name.toLowerCase() === trimmed.toLowerCase(),
+        );
+        if (collision) {
+          throw new Error(`Template "${trimmed}" already exists.`);
+        }
+        next.name = trimmed;
+      }
+
+      if (patch.prompt !== undefined) next.prompt = patch.prompt.trim();
+      if (patch.color !== undefined) next.color = patch.color;
+
+      if (
+        next.name === original.name &&
+        next.prompt === original.prompt &&
+        next.color === original.color
+      ) {
+        return original;
+      }
+
+      list[idx] = next;
+      await this.state.update(STORE_TEMPLATES, list);
+      this._onDidChange.fire();
+      return next;
+    });
+  };
+
+  /** Mark exactly one template as default, clearing the flag on all others. */
+  setDefaultTemplate = async (templateId: string): Promise<void> => {
+    await this.runExclusive(async () => {
+      const list = this.templates();
+      const target = list.find((t) => t.templateId === templateId);
+      if (!target) {
+        throw new Error(`Template ${templateId} not found.`);
+      }
+      if (target.isDefault && list.every((t) => t.isDefault === (t.templateId === templateId))) {
+        return;
+      }
+      const next = list.map((t) => ({
+        ...t,
+        isDefault: t.templateId === templateId,
+      }));
+      await this.state.update(STORE_TEMPLATES, next);
+      this._onDidChange.fire();
     });
   };
 
@@ -580,11 +696,31 @@ export class StateStorage implements vscode.Disposable {
     return this.templates();
   };
 
+  getTemplate = (templateId: string): AgentTemplate | undefined => {
+    return this.templates().find((t) => t.templateId === templateId);
+  };
+
+  /**
+   * Seeds a default `basic` template on first activation if the user has no
+   * templates yet. Idempotent: only runs while the list is empty, so deleting
+   * `basic` while keeping other templates won't trigger a re-seed.
+   */
+  ensureDefaultTemplate = async (): Promise<void> => {
+    if (this.templates().length > 0) return;
+    await this.addTemplate('basic', '', { isDefault: true });
+  };
+
   removeTemplate = async (templateId: string): Promise<void> => {
     await this.runExclusive(async () => {
       const list = this.templates();
+      const removed = list.find((t) => t.templateId === templateId);
+      if (!removed) return;
       const filtered = list.filter((t) => t.templateId !== templateId);
-      if (filtered.length >= list.length) return;
+      // If we dropped the default, promote the first survivor so the invariant
+      // "exactly one default when the list is non-empty" is preserved.
+      if (removed.isDefault && filtered.length > 0 && !filtered.some((t) => t.isDefault)) {
+        filtered[0] = { ...filtered[0], isDefault: true };
+      }
       await this.state.update(STORE_TEMPLATES, filtered);
       this._onDidChange.fire();
     });
@@ -592,31 +728,49 @@ export class StateStorage implements vscode.Disposable {
 
   // ── Queue ──────────────────────────────────────────────────────
 
+  private mutateQueue = async <T>(
+    agentId: string,
+    missingBehavior: 'throw' | 'returnUndefined',
+    mutate: (queue: string[]) => { next: string[]; result: T } | null,
+  ): Promise<T | undefined> => {
+    return this.runExclusive(async () => {
+      const list = this.agents();
+      const idx = list.findIndex((a) => a.agentId === agentId);
+      if (idx === -1) {
+        if (missingBehavior === 'throw') throw new Error(errAgentIdNotFound(agentId));
+        return undefined;
+      }
+      const agent = list[idx];
+      const outcome = mutate([...agent.promptQueue]);
+      if (!outcome) return undefined;
+      list[idx] = { ...agent, promptQueue: outcome.next };
+      await this.state.update(STORE_AGENTS, list);
+      this._onDidChange.fire();
+      return outcome.result;
+    });
+  };
+
   pushToQueue = async (agentId: string, prompt: string): Promise<void> => {
-    const agent = await this.getAgent(agentId);
-    if (!agent) throw new Error(errAgentIdNotFound(agentId));
-    const queue = [...agent.promptQueue, prompt];
-    await this.updateAgent(agentId, { promptQueue: queue });
+    await this.mutateQueue(agentId, 'throw', (queue) => ({
+      next: [...queue, prompt],
+      result: undefined as void,
+    }));
   };
 
   shiftFromQueue = async (agentId: string): Promise<string | undefined> => {
-    const agent = await this.getAgent(agentId);
-    if (!agent) return undefined;
-    const queue = [...agent.promptQueue];
-    if (queue.length === 0) return undefined;
-    const next = queue.shift()!;
-    await this.updateAgent(agentId, { promptQueue: queue });
-    return next;
+    return this.mutateQueue(agentId, 'returnUndefined', (queue) => {
+      if (queue.length === 0) return null;
+      const next = queue.shift()!;
+      return { next: queue, result: next };
+    });
   };
 
   removeFromQueue = async (agentId: string, index: number): Promise<void> => {
-    const agent = await this.getAgent(agentId);
-    if (!agent) throw new Error(errAgentIdNotFound(agentId));
-    const queue = [...agent.promptQueue];
-    if (index >= 0 && index < queue.length) {
+    await this.mutateQueue(agentId, 'throw', (queue) => {
+      if (index < 0 || index >= queue.length) return null;
       queue.splice(index, 1);
-      await this.updateAgent(agentId, { promptQueue: queue });
-    }
+      return { next: queue, result: undefined as void };
+    });
   };
 
   // ── Convenience ─────────────────────────────────────────────────

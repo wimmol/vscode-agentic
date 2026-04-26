@@ -3,16 +3,22 @@ import type { StateStorage } from '../db';
 import type { ExtensionToWebviewMessage } from '../types/messages';
 import { VIEW_AGENTS } from '../constants/views';
 import { CMD_READY, MSG_TYPE_UPDATE, PROTOCOL_VERSION } from '../constants/commands';
+import type { AgentTemplate } from '../types';
 import { syncWorktrees } from '../features/syncWorktrees';
 import { buildWebviewHtml } from '../utils/webview';
 import { logger } from './Logger';
+
+/** Cheap string digest of the template list; used to detect when the list
+ *  has actually changed so we can reuse the previous reference on the wire. */
+const templatesSignature = (list: AgentTemplate[]): string =>
+  list.map((t) => `${t.templateId}:${t.name}:${t.color}:${t.isDefault}:${t.prompt.length}`).join('|');
 
 /**
  * Bridges StateStorage and the Agent Panel webview.
  *
  * Registers as a WebviewViewProvider for the sidebar panel.
  * On every StateStorage change (and on initial resolve), reads the full
- * state, assembles RepoWithZones[], and pushes it to the webview.
+ * state, assembles RepoWithScopes[], and pushes it to the webview.
  * This is the only place where extension→webview communication happens.
  */
 export class AgentPanelProvider implements vscode.WebviewViewProvider, vscode.Disposable {
@@ -81,6 +87,12 @@ export class AgentPanelProvider implements vscode.WebviewViewProvider, vscode.Di
       this.lastSyncTime = now;
       await syncWorktrees(this.storage);
     }
+    // syncWorktrees may have fired storage.onDidChange which scheduled a
+    // debounced push. Cancel it — the immediate push below is authoritative.
+    if (this.pushStateTimer) {
+      clearTimeout(this.pushStateTimer);
+      this.pushStateTimer = undefined;
+    }
     await this.pushState();
   };
 
@@ -94,13 +106,30 @@ export class AgentPanelProvider implements vscode.WebviewViewProvider, vscode.Di
     }, 100);
   };
 
+  /** Snapshot of the last templates array, compared by shallow identity of
+   *  each template's fields — lets us skip shipping the list on pushes that
+   *  only changed agent state (which is most of them). */
+  private lastTemplatesSig: string | undefined;
+  private lastTemplates: ExtensionToWebviewMessage['templates'] = [];
+
   private pushState = async (): Promise<void> => {
     if (!this.view) {
       return;
     }
 
-    const repos = await this.storage.getAllReposWithZones();
-    const message: ExtensionToWebviewMessage = { type: MSG_TYPE_UPDATE, protocol: PROTOCOL_VERSION, repos };
+    const repos = await this.storage.getAllReposWithScopes();
+    const templates = this.storage.getAllTemplates();
+    const sig = templatesSignature(templates);
+    if (sig !== this.lastTemplatesSig) {
+      this.lastTemplatesSig = sig;
+      this.lastTemplates = templates;
+    }
+    const message: ExtensionToWebviewMessage = {
+      type: MSG_TYPE_UPDATE,
+      protocol: PROTOCOL_VERSION,
+      repos,
+      templates: this.lastTemplates,
+    };
     await this.view.webview.postMessage(message);
   };
 

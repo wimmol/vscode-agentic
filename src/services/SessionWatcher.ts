@@ -91,6 +91,12 @@ export class SessionWatcher {
   constructor(
     private readonly storage: StateStorage,
     private readonly onQueueDrain?: (agentId: string, prompt: string) => void,
+    /** Optional — when present, long prompts / outputs are summarised into
+     *  the agent's `lastPromptShort` / `outputShort` fields. */
+    private readonly summariser?: {
+      schedule: (agentId: string, kind: 'prompt' | 'output', text: string | null) => void;
+      cancel: (agentId: string) => void;
+    },
   ) {}
 
   /**
@@ -175,6 +181,7 @@ export class SessionWatcher {
       this.trackedSessionIds.delete(entry.sessionId);
       this.watchers.delete(agentId);
     }
+    this.summariser?.cancel(agentId);
   };
 
   /** Send VS Code notification when agent finishes. */
@@ -478,6 +485,9 @@ export class SessionWatcher {
       entry.awaitingToolResult = false;
     }
 
+    // Keep the full assistant text for the summariser; clip only the stored
+    // `outputSummary` so the untruncated raw string can still be summarised.
+    const fullAssistantText = lastAssistantText;
     if (lastAssistantText && lastAssistantText.length > 200) {
       lastAssistantText = lastAssistantText.slice(0, 200) + '…';
     }
@@ -500,6 +510,10 @@ export class SessionWatcher {
           ...(outputSummary !== undefined && { outputSummary }),
           ...(lastContextUsage && { contextUsage: lastContextUsage }),
         });
+        this.summariser?.schedule(agentId, 'prompt', lastPrompt);
+        if (endTurnTimestamp) {
+          this.summariser?.schedule(agentId, 'output', fullAssistantText ?? null);
+        }
 
         // Notification on completion
         if (wasRunning && status === AGENT_STATUS_IDLE) {
@@ -519,6 +533,7 @@ export class SessionWatcher {
           ...(lastAssistantText && { outputSummary: lastAssistantText }),
           ...(lastContextUsage && { contextUsage: lastContextUsage }),
         });
+        this.summariser?.schedule(agentId, 'output', fullAssistantText ?? null);
 
         const approxDuration = Math.max(0, endTurnTimestamp - entry.startedAt);
         this.notifyCompletion(agentId, approxDuration);
