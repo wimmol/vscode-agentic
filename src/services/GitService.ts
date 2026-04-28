@@ -1,6 +1,7 @@
 import { execFile as execFileCb, spawn } from 'child_process';
 import { promisify } from 'util';
 import * as path from 'path';
+import * as vscode from 'vscode';
 import { GIT_TIMEOUT, GIT_WORKTREE_TIMEOUT, GIT_MAX_BUFFER } from '../constants/git';
 import { WORKTREES_DIR } from '../constants/paths';
 import {
@@ -10,6 +11,7 @@ import {
   GIT_PULL_TIMEOUT_MS,
 } from '../constants/sourceControl';
 import type { FileChange } from '../types/sourceControl';
+import { logger } from './Logger';
 
 const execFile = promisify(execFileCb);
 
@@ -19,46 +21,113 @@ const gitOpts = (cwd: string, timeout = GIT_TIMEOUT) => ({
   maxBuffer: GIT_MAX_BUFFER,
 });
 
-export const worktreePath = (repoPath: string, branch: string): string =>
-  path.join(repoPath, WORKTREES_DIR, branch);
+/**
+ * Per-repo worktree mutex: concurrent `git worktree add/remove` on the
+ * same repo corrupts git's worktree list. Queue writes so only one
+ * mutating worktree op runs per repo path at a time.
+ */
+const worktreeLocks = new Map<string, Promise<unknown>>();
 
-export const ensureBranch = async (repoPath: string, branch: string): Promise<void> => {
+const withWorktreeLock = async <T>(repoPath: string, fn: () => Promise<T>): Promise<T> => {
+  const prev = worktreeLocks.get(repoPath) ?? Promise.resolve();
+  const next = prev.then(fn, fn);
+  worktreeLocks.set(repoPath, next.catch(() => undefined));
   try {
-    await execFile('git', ['branch', branch], gitOpts(repoPath));
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : '';
-    if (!msg.includes('already exists')) {
-      throw err;
+    return await next;
+  } finally {
+    if (worktreeLocks.get(repoPath) === next.catch(() => undefined)) {
+      worktreeLocks.delete(repoPath);
     }
   }
 };
 
-export const createWorktree = async (repoPath: string, worktreePath: string, branch: string): Promise<void> => {
+export const worktreePath = (repoPath: string, branch: string): string =>
+  path.join(repoPath, WORKTREES_DIR, branch);
+
+/**
+ * Returns the name of the currently checked-out branch, or undefined if
+ * detached HEAD / not a git repo / any other failure.
+ */
+export const getCurrentBranch = async (repoPath: string): Promise<string | undefined> => {
   try {
+    const { stdout } = await execFile(
+      'git',
+      ['--no-optional-locks', 'symbolic-ref', '--short', 'HEAD'],
+      gitOpts(repoPath),
+    );
+    const branch = stdout.trim();
+    return branch || undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+/**
+ * Returns true when `cwd` is a linked worktree rather than the main repo.
+ * Detects by comparing --git-dir (per-worktree) vs --git-common-dir (shared).
+ */
+export const isWorktree = async (cwd: string): Promise<boolean> => {
+  try {
+    const [gitDir, commonDir] = await Promise.all([
+      execFile('git', ['--no-optional-locks', 'rev-parse', '--git-dir'], gitOpts(cwd)),
+      execFile('git', ['--no-optional-locks', 'rev-parse', '--git-common-dir'], gitOpts(cwd)),
+    ]);
+    return path.resolve(cwd, gitDir.stdout.trim()) !== path.resolve(cwd, commonDir.stdout.trim());
+  } catch {
+    return false;
+  }
+};
+
+/** Returns true if the named ref exists locally (branch, tag, etc.). */
+const refExists = async (repoPath: string, ref: string): Promise<boolean> => {
+  try {
+    await execFile(
+      'git',
+      ['--no-optional-locks', 'rev-parse', '--verify', '--quiet', ref],
+      gitOpts(repoPath),
+    );
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+export const ensureBranch = async (repoPath: string, branch: string): Promise<void> => {
+  if (await refExists(repoPath, `refs/heads/${branch}`)) return;
+  await execFile('git', ['branch', branch], gitOpts(repoPath));
+};
+
+export const createWorktree = async (repoPath: string, worktreePath: string, branch: string): Promise<void> => {
+  await withWorktreeLock(repoPath, async () => {
+    // If a worktree at that path already exists, `git worktree add` fails;
+    // check the path up front instead of parsing the English error message.
+    try {
+      const entries = await listWorktrees(repoPath);
+      if (entries.some((e) => e.path === worktreePath)) return;
+    } catch {
+      // listWorktrees is best-effort; fall through and let `add` error surface.
+    }
     await execFile(
       'git',
       ['worktree', 'add', worktreePath, branch],
       gitOpts(repoPath, GIT_WORKTREE_TIMEOUT),
     );
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : '';
-    if (!msg.includes('already exists')) {
-      throw err;
-    }
-  }
+  });
 };
 
 export const removeWorktree = async (repoPath: string, worktreePath: string): Promise<void> => {
-  try {
-    await execFile('git', ['worktree', 'remove', '--force', worktreePath], gitOpts(repoPath, GIT_WORKTREE_TIMEOUT));
-  } catch {
-    // Best-effort — worktree may already be gone.
-  }
-  try {
-    await execFile('git', ['worktree', 'prune'], gitOpts(repoPath));
-  } catch {
-    // Best-effort cleanup.
-  }
+  await withWorktreeLock(repoPath, async () => {
+    try {
+      await execFile('git', ['worktree', 'remove', '--force', worktreePath], gitOpts(repoPath, GIT_WORKTREE_TIMEOUT));
+    } catch {
+      // Best-effort — worktree may already be gone.
+    }
+    try {
+      await execFile('git', ['worktree', 'prune'], gitOpts(repoPath));
+    } catch {
+      // Best-effort cleanup.
+    }
+  });
 };
 
 export const hasUncommittedChanges = async (wtPath: string): Promise<boolean> => {
@@ -79,6 +148,40 @@ export const deleteBranch = async (repoPath: string, branch: string): Promise<vo
     await execFile('git', ['branch', '-D', branch], gitOpts(repoPath));
   } catch {
     // Best-effort — branch may not exist or may be checked out elsewhere.
+  }
+};
+
+export interface MergeResult {
+  ok: boolean;
+  /** `merge` on success, `conflict` when git exited non-zero with conflict
+   *  markers, `error` for any other failure. */
+  outcome: 'merge' | 'conflict' | 'error';
+  /** Raw stderr from git — surfaced to the user when useful, logged in full. */
+  stderr: string;
+}
+
+/** Run `git merge --no-ff <branch>` in `repoPath`. Caller is responsible for
+ *  ensuring repoPath points at the target branch (the one being merged into). */
+export const mergeBranch = async (repoPath: string, branch: string): Promise<MergeResult> => {
+  const { stdout, stderr, exitCode } = await run(
+    ['merge', '--no-ff', '--no-edit', branch],
+    repoPath,
+    GIT_WORKTREE_TIMEOUT,
+  );
+  if (exitCode === 0) {
+    return { ok: true, outcome: 'merge', stderr };
+  }
+  const combined = `${stdout}\n${stderr}`;
+  const isConflict = /conflict|merge failed/i.test(combined);
+  return { ok: false, outcome: isConflict ? 'conflict' : 'error', stderr };
+};
+
+/** Abort an in-progress merge. Best-effort; silent on failure. */
+export const abortMerge = async (repoPath: string): Promise<void> => {
+  try {
+    await execFile('git', ['merge', '--abort'], gitOpts(repoPath));
+  } catch {
+    // Best-effort — no merge may be in progress.
   }
 };
 
@@ -107,9 +210,11 @@ export const listWorktrees = async (repoPath: string): Promise<GitWorktreeEntry[
   const entries: GitWorktreeEntry[] = [];
   const blocks = stdout.split('\n\n').filter((b) => b.trim());
 
-  // Skip the first block — it's the main worktree
-  for (let i = 1; i < blocks.length; i++) {
-    const lines = blocks[i].split('\n');
+  // Parse every block; skip entries whose path matches the requested repoPath
+  // (the main worktree). Ordering of blocks is not guaranteed, so matching by
+  // path is more robust than "skip index 0".
+  for (const block of blocks) {
+    const lines = block.split('\n');
     let wtPath = '';
     let branch = '';
     for (const line of lines) {
@@ -119,9 +224,9 @@ export const listWorktrees = async (repoPath: string): Promise<GitWorktreeEntry[
         branch = line.slice('branch refs/heads/'.length);
       }
     }
-    if (wtPath && branch) {
-      entries.push({ path: wtPath, branch });
-    }
+    if (!wtPath || !branch) continue;
+    if (wtPath === repoPath) continue;
+    entries.push({ path: wtPath, branch });
   }
 
   return entries;
@@ -136,12 +241,22 @@ interface GitResult {
   truncated: boolean;
 }
 
-const run = (args: string[], cwd: string, timeoutMs: number): Promise<GitResult> =>
+const run = (
+  args: string[],
+  cwd: string,
+  timeoutMs: number,
+  token?: vscode.CancellationToken,
+): Promise<GitResult> =>
   new Promise((resolve, reject) => {
     const proc = spawn('git', args, { cwd, timeout: timeoutMs });
     let stdout = '';
     let stderr = '';
     let truncated = false;
+
+    const cancelSub = token?.onCancellationRequested(() => {
+      // SIGTERM lets git flush its writes; spawn's `timeout` would SIGKILL.
+      proc.kill('SIGTERM');
+    });
 
     proc.stdout?.on('data', (chunk: Buffer) => {
       if (!truncated && stdout.length < GIT_MAX_BUFFER) {
@@ -151,13 +266,22 @@ const run = (args: string[], cwd: string, timeoutMs: number): Promise<GitResult>
       }
     });
     proc.stderr?.on('data', (chunk: Buffer) => { stderr += chunk.toString(); });
-    proc.on('error', reject);
-    proc.on('close', (code) => resolve({ stdout, stderr, exitCode: code ?? 1, truncated }));
+    proc.on('error', (err) => {
+      cancelSub?.dispose();
+      reject(err);
+    });
+    proc.on('close', (code) => {
+      cancelSub?.dispose();
+      if (truncated) {
+        logger.warn('git output truncated at GIT_MAX_BUFFER', { args, cwd });
+      }
+      resolve({ stdout, stderr, exitCode: code ?? 1, truncated });
+    });
   });
 
 export const gitStatus = async (cwd: string): Promise<FileChange[]> => {
   const { stdout } = await run(
-    ['--no-optional-locks', 'status', '--porcelain', '-z'],
+    ['--no-optional-locks', 'status', '--porcelain', '-z', '--untracked-files=all'],
     cwd,
     GIT_STATUS_TIMEOUT_MS,
   );
@@ -169,52 +293,40 @@ export const gitStatus = async (cwd: string): Promise<FileChange[]> => {
   let i = 0;
   while (i < entries.length) {
     const entry = entries[i];
-    const status = entry.substring(0, 2).trim();
+    // Preserve the two-char porcelain XY so UI can distinguish staged vs unstaged.
+    const rawStatus = entry.substring(0, 2);
+    const status = rawStatus.trim() || rawStatus;
     const filePath = entry.substring(3);
 
-    // Renames and copies have a second NUL-delimited field (the original name) — skip it
-    if (status.startsWith('R') || status.startsWith('C')) {
+    // Renames and copies have a second NUL-delimited field (the original name).
+    if (rawStatus.startsWith('R') || rawStatus.startsWith('C')) {
+      const fromPath = entries[i + 1];
+      changes.push({ status, path: filePath, fromPath });
       i += 2;
     } else {
+      changes.push({ status, path: filePath });
       i += 1;
     }
-
-    changes.push({ status, path: filePath });
   }
 
   return changes;
 };
 
 export const gitCommit = async (cwd: string, message: string, paths?: string[]): Promise<GitResult> => {
-  const addArgs = paths && paths.length > 0
-    ? ['add', '--', ...paths]
-    : ['add', '-A'];
-  const addResult = await run(addArgs, cwd, GIT_COMMIT_TIMEOUT_MS);
+  // If no paths supplied, refuse rather than silently staging everything.
+  if (!paths || paths.length === 0) {
+    return { stdout: '', stderr: 'Nothing to commit (no paths supplied).', exitCode: 1, truncated: false };
+  }
+  const addResult = await run(['add', '--', ...paths], cwd, GIT_COMMIT_TIMEOUT_MS);
   if (addResult.exitCode !== 0) return addResult;
   return run(['commit', '-m', message], cwd, GIT_COMMIT_TIMEOUT_MS);
 };
 
-export const gitPush = async (cwd: string): Promise<GitResult> =>
-  run(['push'], cwd, GIT_PUSH_TIMEOUT_MS);
+export const gitPush = async (cwd: string, token?: vscode.CancellationToken): Promise<GitResult> =>
+  run(['push'], cwd, GIT_PUSH_TIMEOUT_MS, token);
 
-export const gitPull = async (cwd: string): Promise<GitResult> =>
-  run(['pull'], cwd, GIT_PULL_TIMEOUT_MS);
-
-export const gitDiffStat = async (cwd: string): Promise<string> => {
-  const staged = await run(
-    ['--no-optional-locks', 'diff', '--cached', '--stat'],
-    cwd,
-    GIT_STATUS_TIMEOUT_MS,
-  );
-  if (staged.stdout.trim()) return staged.stdout;
-
-  const unstaged = await run(
-    ['--no-optional-locks', 'diff', '--stat'],
-    cwd,
-    GIT_STATUS_TIMEOUT_MS,
-  );
-  return unstaged.stdout;
-};
+export const gitPull = async (cwd: string, token?: vscode.CancellationToken): Promise<GitResult> =>
+  run(['pull'], cwd, GIT_PULL_TIMEOUT_MS, token);
 
 /** Generate a short commit message from a list of file changes. */
 export const suggestCommitMessage = (changes: FileChange[]): string => {

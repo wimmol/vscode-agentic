@@ -6,11 +6,14 @@ interface TabHeaderProps {
   onAddRepoClick: () => void;
 }
 
-export const TabHeader = ({ onRootClick, onAddRepoClick }: TabHeaderProps) => {
-  return (
-    <nav className="tab-header">
-      <IconButton icon="root-folder" onClick={onRootClick} title={LABEL_NAVIGATE_WORKSPACE} />
-      <IconButton icon="add" onClick={onAddRepoClick} title={LABEL_ADD_REPO} />
-    </nav>
-  );
-};
+/** Top bar of the Agentic panel: brand glyph + label, then repo/tool actions. */
+export const TabHeader = ({ onRootClick, onAddRepoClick }: TabHeaderProps) => (
+  <nav className="tabbar">
+    <div className="tabbar__brand">
+      <span className="tabbar__glyph" aria-hidden />
+      <span className="tabbar__label">Agentic</span>
+    </div>
+    <IconButton icon="root-folder" onClick={onRootClick} title={LABEL_NAVIGATE_WORKSPACE} />
+    <IconButton icon="add" onClick={onAddRepoClick} title={LABEL_ADD_REPO} />
+  </nav>
+);

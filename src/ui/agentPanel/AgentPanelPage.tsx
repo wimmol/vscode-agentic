@@ -3,7 +3,6 @@ import { AgentPanelView } from './AgentPanelView';
 import { useAgentPanel } from './useAgentPanel';
 import { vscode } from '../index';
 import {
-  addAgentMessage,
   addRepoMessage,
   agentClickMessage,
   closeWorktreeMessage,
@@ -12,19 +11,18 @@ import {
   repoRootClickMessage,
   rootClickMessage,
   toggleRepoExpandedMessage,
-  toggleZoneExpandedMessage,
   sendPromptMessage,
-  forkAgentMessage,
   renameAgentMessage,
   removeQueueItemMessage,
+  launchTemplateMessage,
+  manageTemplatesMessage,
+  newWorktreeMessage,
+  mergeWorktreeMessage,
+  selectWorktreeMessage,
 } from '../../types/messages';
 
 export const AgentPanelPage = () => {
-  const repos = useAgentPanel();
-
-  const onAddAgentClick = useCallback((repoId: string) => {
-    vscode.postMessage(addAgentMessage(repoId));
-  }, []);
+  const { repos, templates } = useAgentPanel();
 
   const onRootClick = useCallback(() => {
     vscode.postMessage(rootClickMessage());
@@ -46,10 +44,6 @@ export const AgentPanelPage = () => {
     vscode.postMessage(toggleRepoExpandedMessage(repoId));
   }, []);
 
-  const onToggleZoneClick = useCallback((repoId: string, branch: string) => {
-    vscode.postMessage(toggleZoneExpandedMessage(repoId, branch));
-  }, []);
-
   const onRemoveAgentClick = useCallback((agentId: string) => {
     vscode.postMessage(removeAgentMessage(agentId));
   }, []);
@@ -66,10 +60,6 @@ export const AgentPanelPage = () => {
     vscode.postMessage(sendPromptMessage(agentId));
   }, []);
 
-  const onForkAgent = useCallback((agentId: string) => {
-    vscode.postMessage(forkAgentMessage(agentId));
-  }, []);
-
   const onRenameAgent = useCallback((agentId: string) => {
     vscode.postMessage(renameAgentMessage(agentId));
   }, []);
@@ -78,23 +68,49 @@ export const AgentPanelPage = () => {
     vscode.postMessage(removeQueueItemMessage(agentId, index));
   }, []);
 
+  const onLaunchTemplate = useCallback(
+    (repoId: string, branch: string, templateId: string | null) => {
+      vscode.postMessage(launchTemplateMessage(repoId, branch, templateId));
+    },
+    [],
+  );
+
+  const onManageTemplates = useCallback(() => {
+    vscode.postMessage(manageTemplatesMessage());
+  }, []);
+
+  const onNewWorktree = useCallback((repoId: string) => {
+    vscode.postMessage(newWorktreeMessage(repoId));
+  }, []);
+
+  const onMergeWorktree = useCallback((repoId: string, branch: string) => {
+    vscode.postMessage(mergeWorktreeMessage(repoId, branch));
+  }, []);
+
+  const onSelectWorktree = useCallback((repoId: string, branch: string | null) => {
+    vscode.postMessage(selectWorktreeMessage(repoId, branch));
+  }, []);
+
   return (
     <AgentPanelView
       repos={repos}
+      templates={templates}
       onRootClick={onRootClick}
       onAddRepoClick={onAddRepoClick}
       onRepoRootClick={onRepoRootClick}
-      onAddAgentClick={onAddAgentClick}
       onRemoveRepoClick={onRemoveRepoClick}
       onToggleRepoClick={onToggleRepoClick}
-      onToggleZoneClick={onToggleZoneClick}
       onAgentClick={onAgentClick}
       onRemoveAgentClick={onRemoveAgentClick}
       onCloseWorktreeClick={onCloseWorktreeClick}
       onSendPrompt={onSendPrompt}
-      onForkAgent={onForkAgent}
       onRenameAgent={onRenameAgent}
       onRemoveQueueItem={onRemoveQueueItem}
+      onLaunchTemplate={onLaunchTemplate}
+      onManageTemplates={onManageTemplates}
+      onNewWorktree={onNewWorktree}
+      onMergeWorktree={onMergeWorktree}
+      onSelectWorktree={onSelectWorktree}
     />
   );
 };

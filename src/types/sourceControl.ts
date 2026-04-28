@@ -6,8 +6,12 @@ import type {
 // ── Data ────────────────────────────────────────────────────────
 
 export interface FileChange {
-  status: string;   // M, A, D, ?, R, etc.
-  path: string;     // relative to repo root
+  /** Two-character porcelain XY (e.g. "MM", " M", "M ", "A ", "??", "R "). */
+  status: string;
+  /** Destination path, relative to repo root. */
+  path: string;
+  /** For renames/copies, the original path. */
+  fromPath?: string;
 }
 
 // ── Extension → Webview ─────────────────────────────────────────
@@ -17,6 +21,8 @@ export interface ScStateUpdateMessage {
   changes: FileChange[];
   repoName: string;
   isLoading: boolean;
+  branch: string | null;
+  isWorktree: boolean;
 }
 
 export interface ScSuggestResultMessage {

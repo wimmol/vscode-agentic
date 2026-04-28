@@ -2,10 +2,11 @@ import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import './shared/styles/index.css';
 import type { WebviewToExtensionMessage } from '../types/messages';
-import type { RepoWithZones } from '../types';
+import type { RepoWithScopes, AgentTemplate } from '../types';
 
 interface WebviewState {
-  repos?: RepoWithZones[];
+  repos?: RepoWithScopes[];
+  templates?: AgentTemplate[];
 }
 
 interface VsCodeApi {

@@ -3,6 +3,7 @@ import { basename, join } from 'path';
 import { homedir } from 'os';
 import * as vscode from 'vscode';
 import type { StateStorage } from '../db';
+import type { Agent } from '../db/models';
 import { terminalName } from '../constants/terminal';
 import { CLAUDE_DIR, CLAUDE_PROJECTS_DIR, UUID_RE } from '../constants/paths';
 import {
@@ -10,6 +11,7 @@ import {
   AGENT_STATUS_RUNNING,
   DEFAULT_AGENT_COMMAND,
   CLI_FLAG_BYPASS_PERMISSIONS,
+  CLI_FLAG_APPEND_SYSTEM_PROMPT,
 } from '../constants/agent';
 import { CONFIG_SECTION, CONFIG_BYPASS_PERMISSIONS } from '../constants/views';
 import {
@@ -28,6 +30,7 @@ import {
 } from '../constants/messages';
 import { removeWorktree, deleteBranch, hasUncommittedChanges } from './GitService';
 import { SessionWatcher } from './SessionWatcher';
+import { logger } from './Logger';
 
 /**
  * Compute the Claude project directory for a given working directory.
@@ -37,8 +40,18 @@ import { SessionWatcher } from './SessionWatcher';
 export const claudeProjectDir = (cwd: string): string =>
   join(homedir(), CLAUDE_DIR, CLAUDE_PROJECTS_DIR, cwd.replace(/[/.]/g, '-'));
 
-/** Wrap a string in single quotes for safe shell interpolation. */
-export const shellQuote = (s: string): string => `'${s.replace(/'/g, "'\\''")}'`;
+/**
+ * Wrap a string for safe shell interpolation. Uses single quotes on
+ * POSIX shells and double quotes with backtick-escaping on cmd.exe /
+ * PowerShell. We don't know which shell VS Code will spawn, so default
+ * to the platform's typical shell behavior.
+ */
+export const shellQuote = (s: string): string => {
+  if (process.platform === 'win32') {
+    return `"${s.replace(/"/g, '""')}"`;
+  }
+  return `'${s.replace(/'/g, "'\\''")}'`;
+};
 
 /**
  * Manages agent↔terminal mappings and lifecycle.
@@ -73,20 +86,30 @@ export class TerminalService implements vscode.Disposable {
   /** Set to true after restoreAll completes. Health checks are skipped until then. */
   private restored = false;
 
-  constructor(private readonly storage: StateStorage) {
-    this.sessionWatcher = new SessionWatcher(storage, (agentId, prompt) => {
-      const terminal = this.terminals.get(agentId);
-      if (terminal) {
-        terminal.sendText(prompt, true);
-        terminal.show(true);
-        this.storage.updateAgent(agentId, { status: AGENT_STATUS_RUNNING }).catch(() => {});
-      }
-    });
+  constructor(
+    private readonly storage: StateStorage,
+    summariser?: {
+      schedule: (agentId: string, kind: 'prompt' | 'output', text: string | null) => void;
+      cancel: (agentId: string) => void;
+    },
+  ) {
+    this.sessionWatcher = new SessionWatcher(
+      storage,
+      (agentId, prompt) => {
+        const terminal = this.terminals.get(agentId);
+        if (terminal) {
+          terminal.sendText(prompt, true);
+          terminal.show(true);
+          this.storage.updateAgent(agentId, { status: AGENT_STATUS_RUNNING }).catch(() => {});
+        }
+      },
+      summariser,
+    );
     this.disposables.push(
       vscode.window.onDidCloseTerminal((terminal) => {
         this.onTerminalClosed(terminal).catch((err) => {
           const msg = err instanceof Error ? err.message : String(err);
-          console.error('[TerminalService] onTerminalClosed error:', msg);
+          logger.error('TerminalService onTerminalClosed', err);
           vscode.window.showErrorMessage(msg);
         });
       }),
@@ -94,7 +117,7 @@ export class TerminalService implements vscode.Disposable {
 
     this.healthTimer = setInterval(() => {
       this.checkTerminalHealth().catch((err) => {
-        console.error('[TerminalService] health check error:', err);
+        logger.error('TerminalService health check', err);
       });
     }, HEALTH_CHECK_INTERVAL_MS);
   }
@@ -104,16 +127,18 @@ export class TerminalService implements vscode.Disposable {
    * Pass a sessionId to resume that exact Claude session.
    * When no sessionId is given, a new session starts and we detect its id.
    */
-  createTerminal = (
-    agentId: string,
-    agentName: string,
-    branch: string,
-    repoName: string,
-    cwd: string,
-    sessionId?: string | null,
-    initialPrompt?: string,
-    isRunning?: boolean,
-  ): vscode.Terminal => {
+  createTerminal = (opts: {
+    agentId: string;
+    agentName: string;
+    branch: string;
+    repoName: string;
+    cwd: string;
+    sessionId?: string | null;
+    initialPrompt?: string;
+    isRunning?: boolean;
+    systemPrompt?: string | null;
+  }): vscode.Terminal => {
+    const { agentId, agentName, branch, repoName, cwd, sessionId, initialPrompt, isRunning, systemPrompt } = opts;
     const name = terminalName(agentName, branch, repoName);
 
     this.closeTerminal(agentId);
@@ -123,19 +148,38 @@ export class TerminalService implements vscode.Disposable {
       cwd,
       location: { viewColumn: vscode.ViewColumn.Two },
     });
-    terminal.sendText(this.buildCommand(sessionId, initialPrompt));
+    terminal.sendText(this.buildCommand(sessionId, initialPrompt, cwd, systemPrompt));
     this.terminals.set(agentId, terminal);
 
     if (sessionId) {
-      console.log('[TerminalService] startWatching existing session:', { agentId, sessionId, cwd });
+      logger.trace('TerminalService startWatching existing session', { agentId, sessionId, cwd });
       this.sessionWatcher.startWatching(agentId, sessionId, cwd, isRunning);
     } else {
-      console.log('[TerminalService] detecting new session:', { agentId, cwd, dir: claudeProjectDir(cwd) });
+      logger.trace('TerminalService detecting new session', { agentId, cwd, dir: claudeProjectDir(cwd) });
       this.detectSessionId(agentId, cwd);
     }
 
     return terminal;
   };
+
+  /** Recreate a terminal from an existing Agent record — used by `restoreAll`
+   *  on activation and by the close-dialog "Reopen Terminal" path. */
+  private recreateFromAgent = (
+    agent: Agent,
+    repoName: string,
+    cwd: string,
+    isRunning: boolean,
+  ): vscode.Terminal =>
+    this.createTerminal({
+      agentId: agent.agentId,
+      agentName: agent.name,
+      branch: agent.branch,
+      repoName,
+      cwd,
+      sessionId: agent.sessionId,
+      isRunning,
+      systemPrompt: agent.systemPrompt,
+    });
 
   /** Get the tracked terminal for an agent. */
   getTerminal = (agentId: string): vscode.Terminal | undefined => {
@@ -148,8 +192,14 @@ export class TerminalService implements vscode.Disposable {
     this.sessionWatcher.stopWatching(agentId);
     const terminal = this.terminals.get(agentId);
     if (terminal) {
+      // Add to `removing` BEFORE dispose so the close handler skips its dialog.
+      // try/finally guarantees the marker survives even if dispose throws (#42).
       this.removing.add(agentId);
-      terminal.dispose();
+      try {
+        terminal.dispose();
+      } catch (err) {
+        logger.warn('TerminalService dispose threw', { agentId, err: String(err) });
+      }
       // Don't delete from this.terminals here — let onTerminalClosed do it
       // so the handler can find the entry and clean up the removing Set.
     }
@@ -157,52 +207,38 @@ export class TerminalService implements vscode.Disposable {
 
   /** Restore terminals for every agent in the database. Called once during activation. */
   restoreAll = async (): Promise<void> => {
-    const [repos, allWorktrees] = await Promise.all([
-      this.storage.getAllReposWithZones(),
+    const [repos, allAgents, allWorktrees] = await Promise.all([
+      this.storage.getAllRepositories(),
+      this.storage.getAllAgents(),
       this.storage.getAllWorktrees(),
     ]);
 
     const worktreeByKey = new Map(allWorktrees.map((wt) => [`${wt.repoId}::${wt.branch}`, wt]));
     const existingByName = new Map(vscode.window.terminals.map((t) => [t.name, t]));
+    const reposById = new Map(repos.map((r) => [r.repositoryId, r]));
 
-    // Collect agent terminal names so we can close unrelated terminals after restore.
-    const agentTerminalNames = new Set<string>();
+    for (const agent of allAgents) {
+      const repo = reposById.get(agent.repoId);
+      if (!repo) continue;
 
-    for (const repo of repos) {
-      for (const zone of repo.zones) {
-        for (const agent of zone.agents) {
-          const worktree = worktreeByKey.get(`${agent.repoId}::${agent.branch}`);
-          const cwd = worktree?.path ?? repo.localPath;
+      const worktree = worktreeByKey.get(`${agent.repoId}::${agent.branch}`);
+      const cwd = worktree?.path ?? repo.localPath;
 
-          const name = terminalName(agent.name, agent.branch, repo.name);
-          agentTerminalNames.add(name);
+      const name = terminalName(agent.name, agent.branch, repo.name);
+      const wasRunning = agent.status === AGENT_STATUS_RUNNING;
 
-          const wasRunning = agent.status === AGENT_STATUS_RUNNING;
-
-          // Adopt an existing terminal if one already matches by name.
-          // Don't send any command — the terminal is already running.
-          const existing = existingByName.get(name);
-          if (existing) {
-            this.terminals.set(agent.agentId, existing);
-            if (agent.sessionId) {
-              this.sessionWatcher.startWatching(agent.agentId, agent.sessionId, cwd, wasRunning);
-            }
-            continue;
-          }
-
-          this.createTerminal(
-            agent.agentId, agent.name, agent.branch, repo.name, cwd,
-            agent.sessionId, undefined, wasRunning,
-          );
+      // Adopt an existing terminal if one already matches by name.
+      // Don't send any command — the terminal is already running.
+      const existing = existingByName.get(name);
+      if (existing) {
+        this.terminals.set(agent.agentId, existing);
+        if (agent.sessionId) {
+          this.sessionWatcher.startWatching(agent.agentId, agent.sessionId, cwd, wasRunning);
         }
+        continue;
       }
-    }
 
-    // Close all pre-existing terminals that don't belong to any agent.
-    for (const [name, terminal] of existingByName) {
-      if (!agentTerminalNames.has(name)) {
-        terminal.dispose();
-      }
+      this.recreateFromAgent(agent, repo.name, cwd, wasRunning);
     }
 
     this.restored = true;
@@ -211,17 +247,22 @@ export class TerminalService implements vscode.Disposable {
   // ── Private ───────────────────────────────────────────────────────
 
   /**
-   * Build the shell command.
-   * When a sessionId is provided, appends `--resume <id>` to resume that exact session.
-   * When an initialPrompt is provided, appends it as a positional argument so
-   * Claude starts the interactive session with that prompt already submitted.
+   * Build the shell command. Resolves the bypass-permissions config against
+   * the agent's cwd so per-folder overrides apply (#69).
    */
-  private buildCommand = (sessionId?: string | null, initialPrompt?: string): string => {
+  private buildCommand = (
+    sessionId?: string | null,
+    initialPrompt?: string,
+    cwd?: string,
+    systemPrompt?: string | null,
+  ): string => {
+    const scope = cwd ? vscode.Uri.file(cwd) : undefined;
     const bypass = vscode.workspace
-      .getConfiguration(CONFIG_SECTION)
+      .getConfiguration(CONFIG_SECTION, scope)
       .get<boolean>(CONFIG_BYPASS_PERMISSIONS, false);
     let cmd = DEFAULT_AGENT_COMMAND;
     if (bypass) cmd += ` ${CLI_FLAG_BYPASS_PERMISSIONS}`;
+    if (systemPrompt) cmd += ` ${CLI_FLAG_APPEND_SYSTEM_PROMPT} ${shellQuote(systemPrompt)}`;
     if (sessionId && UUID_RE.test(sessionId)) cmd += ` --resume ${sessionId}`;
     if (initialPrompt) cmd += ` ${shellQuote(initialPrompt)}`;
     return cmd;
@@ -263,7 +304,7 @@ export class TerminalService implements vscode.Disposable {
           }
         }
         if (claimedId) {
-          console.log('[TerminalService] session detected:', { agentId, sessionId: claimedId, attempt: attempts });
+          logger.info('TerminalService session detected', { agentId, sessionId: claimedId, attempt: attempts });
           this.detectors.delete(agentId);
           try {
             await this.storage.updateAgent(agentId, { sessionId: claimedId });
@@ -283,7 +324,7 @@ export class TerminalService implements vscode.Disposable {
       } else {
         // Switch to slow polling instead of giving up — session may still appear.
         if (attempts === SESSION_POLL_MAX_ATTEMPTS) {
-          console.log('[TerminalService] session detection switching to slow poll:', { agentId, dir });
+          logger.trace('TerminalService session detection switching to slow poll', { agentId, dir });
         }
         this.detectors.set(agentId, setTimeout(poll, SLOW_SESSION_POLL_INTERVAL_MS));
       }
@@ -313,7 +354,7 @@ export class TerminalService implements vscode.Disposable {
 
     for (const [agentId, terminal] of this.terminals) {
       if (!liveTerminals.has(terminal)) {
-        console.warn('[TerminalService] orphaned terminal reference detected:', agentId);
+        logger.warn('TerminalService orphaned terminal reference', { agentId });
         this.terminals.delete(agentId);
         this.stopDetecting(agentId);
         this.sessionWatcher.stopWatching(agentId);
@@ -386,6 +427,8 @@ export class TerminalService implements vscode.Disposable {
     const branchAgents = isCurrent ? [] : await this.storage.getAgentsByRepoBranch(agent.repoId, agent.branch);
     const isLastOnWorktreeBranch = !isCurrent && branchAgents.length <= 1;
 
+    const wasRunning = agent.status === AGENT_STATUS_RUNNING;
+
     // Current branch or shared worktree — simple remove/reopen dialog
     if (!isLastOnWorktreeBranch) {
       const choice = await vscode.window.showWarningMessage(
@@ -398,8 +441,7 @@ export class TerminalService implements vscode.Disposable {
         await this.storage.removeAgent(agentId);
         return;
       }
-      const reopened = this.createTerminal(agentId, agent.name, agent.branch, repo.name, cwd, agent.sessionId);
-      reopened.show(false);
+      this.recreateFromAgent(agent, repo.name, cwd, wasRunning).show(false);
       return;
     }
 
@@ -428,8 +470,7 @@ export class TerminalService implements vscode.Disposable {
     }
 
     // "Reopen Terminal" or dialog dismissed — resume the exact session.
-    const reopened = this.createTerminal(agentId, agent.name, agent.branch, repo.name, cwd, agent.sessionId);
-    reopened.show(false);
+    this.recreateFromAgent(agent, repo.name, cwd, wasRunning).show(false);
   };
 
   dispose(): void {

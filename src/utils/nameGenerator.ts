@@ -8,7 +8,7 @@ const NAMES = [
 
 const pick = <T>(arr: readonly T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
-const MAX_ATTEMPTS = 200;
+const MAX_ATTEMPTS = 40;
 
 /**
  * Generates a unique short human name (under 6 letters, capitalized).
@@ -17,9 +17,13 @@ const MAX_ATTEMPTS = 200;
 export const generateAgentName = (existingNames: string[]): string => {
   const taken = new Set(existingNames.map((n) => n.toLowerCase()));
 
-  for (let i = 0; i < MAX_ATTEMPTS; i++) {
-    const name = pick(NAMES);
-    if (!taken.has(name.toLowerCase())) return name;
+  // If every bare name is taken, don't burn cycles guessing — go straight to
+  // the suffix fallback.
+  if (taken.size < NAMES.length) {
+    for (let i = 0; i < MAX_ATTEMPTS; i++) {
+      const name = pick(NAMES);
+      if (!taken.has(name.toLowerCase())) return name;
+    }
   }
 
   const base = pick(NAMES);

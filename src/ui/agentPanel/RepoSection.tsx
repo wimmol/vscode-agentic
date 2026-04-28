@@ -1,111 +1,192 @@
+import { useMemo } from 'react';
 import { RepoHeader } from '../shared/molecules/RepoHeader';
-import { ZoneHeader } from '../shared/molecules/ZoneHeader';
+import { LaunchRow, type LaunchTemplate } from '../shared/molecules/LaunchRow';
+import { WorktreeTabs } from '../shared/molecules/WorktreeTabs';
 import { AgentTile } from '../shared/molecules/AgentTile';
-import { EmptyState } from '../shared/atoms/EmptyState';
-import type { RepoWithZones } from '../../types';
-import { LABEL_EMPTY_AGENTS } from '../../constants/messages';
+import { EmptyAgents } from '../shared/atoms/EmptyAgents';
+import { EmptyWorktree } from '../shared/atoms/EmptyWorktree';
+import type { RepoWithScopes, Agent, AgentTemplate } from '../../types';
 
-interface RepoSectionProps {
-  repo: RepoWithZones;
-  onRepoRootClick: () => void;
-  onAddAgentClick: () => void;
-  onRemoveRepoClick: () => void;
-  onToggleRepoClick: () => void;
-  onToggleZoneClick: (repoId: string, branch: string) => void;
+interface AgentCallbacks {
   onAgentClick: (agentId: string) => void;
   onRemoveAgentClick: (agentId: string) => void;
-  onCloseWorktreeClick: (repoId: string, branch: string) => void;
   onSendPrompt: (agentId: string) => void;
-  onForkAgent: (agentId: string) => void;
   onRenameAgent: (agentId: string) => void;
   onRemoveQueueItem: (agentId: string, index: number) => void;
 }
 
+interface RepoSectionProps extends AgentCallbacks {
+  repo: RepoWithScopes;
+  /** Global template list — same for every repo. */
+  templates: AgentTemplate[];
+  onRepoRootClick: () => void;
+  onRemoveRepoClick: () => void;
+  onToggleRepoClick: () => void;
+  onCloseWorktreeClick: (repoId: string, branch: string) => void;
+  /** One-click launch. Caller already resolved the scope's branch. */
+  onLaunchTemplate: (repoId: string, branch: string, templateId: string | null) => void;
+  onManageTemplates: () => void;
+  onNewWorktree: (repoId: string) => void;
+  onMergeWorktree: (repoId: string, branch: string) => void;
+  onSelectWorktree: (repoId: string, branch: string | null) => void;
+}
+
+const toLaunchTemplates = (templates: AgentTemplate[]): LaunchTemplate[] =>
+  templates.map((t) => ({
+    templateId: t.templateId,
+    name: t.name,
+    color: t.color,
+    isDefault: t.isDefault,
+  }));
+
+interface ScopeBodyProps extends AgentCallbacks {
+  agents: Agent[];
+  launchTemplates: LaunchTemplate[];
+  onLaunch: (templateId: string | null) => void;
+  onManage: () => void;
+}
+
+/** Launch row + agent tiles (or the empty-state one-liner) — rendered once
+ *  per scope (repo's main branch and the selected worktree). */
+const ScopeBody = ({
+  agents,
+  launchTemplates,
+  onLaunch,
+  onManage,
+  onAgentClick,
+  onRemoveAgentClick,
+  onSendPrompt,
+  onRenameAgent,
+  onRemoveQueueItem,
+}: ScopeBodyProps) => (
+  <>
+    <LaunchRow templates={launchTemplates} onLaunch={onLaunch} onManage={onManage} />
+    {agents.length > 0 ? (
+      <div className="tiles">
+        {agents.map((agent) => (
+          <AgentTile
+            key={agent.agentId}
+            agentId={agent.agentId}
+            name={agent.name}
+            status={agent.status}
+            lastPrompt={agent.lastPrompt}
+            lastPromptShort={agent.lastPromptShort}
+            startedAt={agent.startedAt}
+            completedAt={agent.completedAt}
+            isSelected={agent.isFocused}
+            templateName={agent.templateName}
+            templateColor={agent.templateColor}
+            outputSummary={agent.outputSummary}
+            outputShort={agent.outputShort}
+            promptQueue={agent.promptQueue}
+            contextUsage={agent.contextUsage}
+            onClick={onAgentClick}
+            onRemoveClick={onRemoveAgentClick}
+            onSendPrompt={onSendPrompt}
+            onRenameAgent={onRenameAgent}
+            onRemoveQueueItem={onRemoveQueueItem}
+          />
+        ))}
+      </div>
+    ) : (
+      <EmptyAgents />
+    )}
+  </>
+);
+
 export const RepoSection = ({
   repo,
+  templates,
   onRepoRootClick,
-  onAddAgentClick,
   onRemoveRepoClick,
   onToggleRepoClick,
-  onToggleZoneClick,
   onAgentClick,
   onRemoveAgentClick,
   onCloseWorktreeClick,
   onSendPrompt,
-  onForkAgent,
   onRenameAgent,
   onRemoveQueueItem,
+  onLaunchTemplate,
+  onManageTemplates,
+  onNewWorktree,
+  onMergeWorktree,
+  onSelectWorktree,
 }: RepoSectionProps) => {
-  const hasAnyAgents = repo.zones.some((z) => z.agents.length > 0);
+  const launchTemplates = useMemo(() => toLaunchTemplates(templates), [templates]);
+
+  const activeBranch = repo.selectedWorktreeBranch;
+  const activeWt =
+    activeBranch !== null
+      ? repo.worktrees.find((w) => w.branch === activeBranch) ?? null
+      : null;
+
+  const tabs = useMemo(
+    () =>
+      repo.worktrees.map((w) => ({
+        branch: w.branch,
+        agentCount: w.agentCount,
+      })),
+    [repo.worktrees],
+  );
+
+  const agentCallbacks: AgentCallbacks = {
+    onAgentClick,
+    onRemoveAgentClick,
+    onSendPrompt,
+    onRenameAgent,
+    onRemoveQueueItem,
+  };
 
   return (
-    <section className="repo-section">
+    <section className={`repo${repo.isExpanded ? '' : ' repo--collapsed'}`}>
       <RepoHeader
         name={repo.name}
         expanded={repo.isExpanded}
         onRootClick={onRepoRootClick}
-        onAddAgentClick={onAddAgentClick}
         onRemoveClick={onRemoveRepoClick}
         onToggleClick={onToggleRepoClick}
       />
 
       {repo.isExpanded && (
-        <div className="repo-zones">
-          {!hasAnyAgents && repo.zones.length <= 1 ? (
-            <EmptyState text={LABEL_EMPTY_AGENTS} />
-          ) : (
-            repo.zones.map((zone) => (
-              <section key={zone.branch} className="zone-section">
-                <ZoneHeader
-                  branch={zone.branch}
-                  isCurrent={zone.isCurrent}
-                  expanded={zone.isExpanded}
-                  hasAgents={zone.agents.length > 0}
-                  onToggleClick={() => onToggleZoneClick(repo.repositoryId, zone.branch)}
-                  onCloseClick={
-                    zone.isCurrent
-                      ? undefined
-                      : () => onCloseWorktreeClick(repo.repositoryId, zone.branch)
+        <>
+          <ScopeBody
+            agents={repo.currentAgents}
+            launchTemplates={launchTemplates}
+            onLaunch={(templateId) =>
+              onLaunchTemplate(repo.repositoryId, repo.currentBranch, templateId)
+            }
+            onManage={onManageTemplates}
+            {...agentCallbacks}
+          />
+
+          {repo.worktrees.length > 0 ? (
+            <div className="wt-block">
+              <WorktreeTabs
+                tabs={tabs}
+                selectedBranch={activeBranch}
+                onSelect={(branch) => onSelectWorktree(repo.repositoryId, branch)}
+                onNew={() => onNewWorktree(repo.repositoryId)}
+                onMerge={(branch) => onMergeWorktree(repo.repositoryId, branch)}
+                onDelete={(branch) =>
+                  onCloseWorktreeClick(repo.repositoryId, branch)
+                }
+              />
+              {activeBranch && (
+                <ScopeBody
+                  agents={activeWt?.agents ?? []}
+                  launchTemplates={launchTemplates}
+                  onLaunch={(templateId) =>
+                    onLaunchTemplate(repo.repositoryId, activeBranch, templateId)
                   }
+                  onManage={onManageTemplates}
+                  {...agentCallbacks}
                 />
-
-                {zone.isExpanded && zone.agents.length > 0 && (
-                  <div className="zone-agents">
-                    {zone.agents.map((agent) => (
-                      <AgentTile
-                        key={agent.agentId}
-                        agentId={agent.agentId}
-                        name={agent.name}
-                        status={agent.status}
-                        lastPrompt={agent.lastPrompt}
-                        startedAt={agent.startedAt}
-                        completedAt={agent.completedAt}
-                        isSelected={agent.isFocused}
-                        templateName={agent.templateName}
-                        outputSummary={agent.outputSummary}
-                        forkedFrom={agent.forkedFrom}
-                        promptQueue={agent.promptQueue}
-                        contextUsage={agent.contextUsage}
-                        branch={agent.branch}
-                        worktreePath={zone.worktreePath}
-                        onClick={onAgentClick}
-                        onRemoveClick={onRemoveAgentClick}
-                        onSendPrompt={onSendPrompt}
-                        onForkAgent={onForkAgent}
-                        onRenameAgent={onRenameAgent}
-                        onRemoveQueueItem={onRemoveQueueItem}
-                      />
-                    ))}
-                  </div>
-                )}
-
-                {zone.isExpanded && zone.agents.length === 0 && (
-                  <div className="zone-empty-line" />
-                )}
-              </section>
-            ))
+              )}
+            </div>
+          ) : (
+            <EmptyWorktree onClick={() => onNewWorktree(repo.repositoryId)} />
           )}
-        </div>
+        </>
       )}
     </section>
   );

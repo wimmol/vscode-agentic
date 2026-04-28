@@ -20,11 +20,13 @@ export const sendPrompt = async (
     return;
   }
 
-  const prompt = await vscode.window.showInputBox({
+  const raw = await vscode.window.showInputBox({
     prompt: INPUT_SEND_PROMPT_PROMPT,
     placeHolder: INPUT_SEND_PROMPT_PLACEHOLDER,
     ignoreFocusOut: true,
   });
+  if (raw === undefined) return;
+  const prompt = raw.trim();
   if (!prompt) return;
 
   // Re-read status after input to avoid TOCTOU race
@@ -43,6 +45,13 @@ export const sendPrompt = async (
   }
 
   terminal.sendText(prompt, true);
-  terminal.show(true);
-  await storage.updateAgent(agentId, { status: AGENT_STATUS_RUNNING, startedAt: Date.now(), completedAt: null });
+  // Reflect the new prompt immediately so the tile doesn't show the previous
+  // turn until SessionWatcher parses the reply.
+  await storage.updateAgent(agentId, {
+    status: AGENT_STATUS_RUNNING,
+    startedAt: Date.now(),
+    completedAt: null,
+    lastPrompt: prompt,
+    outputSummary: null,
+  });
 };

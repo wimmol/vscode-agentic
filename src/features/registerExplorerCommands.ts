@@ -17,10 +17,11 @@ import {
   type FileItemLike,
 } from './explorerFileOps';
 import { sendToTerminal } from './sendToTerminal';
+import { logger } from '../services/Logger';
 
 const wrap = (fn: () => Promise<void>) =>
   fn().catch((err: unknown) => {
-    console.error('[Agentic]', err);
+    logger.error('Agentic command failed', err);
     vscode.window.showErrorMessage(`Agentic: ${err instanceof Error ? err.message : String(err)}`);
   });
 

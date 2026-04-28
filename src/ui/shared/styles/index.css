@@ -1,4 +1,5 @@
 @import '@vscode/codicons/dist/codicon.css';
+@import './design-tokens.css';
 @import './reset.css';
 @import './atoms.css';
 @import './molecules.css';

@@ -17,6 +17,8 @@ interface SourceControlState {
   repoName: string;
   isLoading: boolean;
   commitMessage: string;
+  branch: string | null;
+  isWorktree: boolean;
 }
 
 export const useSourceControl = () => {
@@ -25,6 +27,8 @@ export const useSourceControl = () => {
     repoName: '',
     isLoading: false,
     commitMessage: '',
+    branch: null,
+    isWorktree: false,
   });
 
   useEffect(() => {
@@ -36,6 +40,8 @@ export const useSourceControl = () => {
           changes: message.changes,
           repoName: message.repoName,
           isLoading: message.isLoading,
+          branch: message.branch,
+          isWorktree: message.isWorktree,
         }));
       } else if (message.type === SC_MSG_SUGGEST_RESULT) {
         setState((prev) => ({

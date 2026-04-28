@@ -1,42 +1,105 @@
-.icon-button {
+/* ─── Icon button ────────────────────────────────────────────── */
+.ic-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
-  border: none;
-  background: transparent;
-  color: var(--vscode-icon-foreground);
+  width: 26px;
+  height: 26px;
+  border-radius: var(--obs-radius);
+  color: var(--obs-fg-muted);
   cursor: pointer;
-  border-radius: 3px;
-  padding: 0;
+  transition: background 120ms, color 120ms;
 }
-
-.icon-button:hover {
-  background-color: var(--vscode-toolbar-hoverBackground);
+.ic-btn:hover {
+  background: var(--obs-bg-surface);
+  color: var(--obs-fg);
 }
-
-.icon-button:focus-visible {
-  outline: 1px solid var(--vscode-focusBorder);
+.ic-btn:focus-visible {
+  outline: 1px solid var(--obs-accent);
   outline-offset: -1px;
 }
-
-.icon-button:disabled {
-  color: var(--vscode-disabledForeground);
+.ic-btn:disabled {
+  color: var(--obs-fg-faint);
   cursor: default;
 }
+.ic-btn .codicon {
+  font-size: 14px;
+}
 
-.empty-state {
+/* Slim variant for nested contexts (repo head, scope bars) */
+.ic-btn--sm {
+  width: 22px;
+  height: 22px;
+}
+.ic-btn--sm .codicon {
+  font-size: 13px;
+}
+
+/* ─── Template label (on tile) — colour dot + mono name ────── */
+.tpl-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--obs-font-mono);
+  font-size: 10.5px;
+  color: var(--tpl-color, var(--obs-fg-muted));
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.tpl-label::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--tpl-color, var(--obs-fg-muted));
+  flex-shrink: 0;
+}
+
+/* ─── Context badge — "47k/1M", colour thresholds ─────────── */
+.ctx {
+  font-family: var(--obs-font-mono);
+  font-size: 10.5px;
+  line-height: 1.4;
+  color: var(--obs-fg-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.ctx--warn   { color: var(--obs-run); }
+.ctx--danger { color: var(--obs-err); }
+
+/* ─── Empty states ─────────────────────────────────────────── */
+.empty-agents {
+  padding: 10px 14px 14px;
   text-align: center;
-  color: var(--vscode-descriptionForeground);
-  font-size: 0.9em;
-  padding: 16px 8px;
+  color: var(--obs-fg-dim);
+  font-size: 11px;
+  font-style: italic;
+  line-height: 1.5;
 }
 
-.truncated-text {
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.empty-wt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: fit-content;
+  margin: 10px auto 14px;
+  padding: 7px 16px;
+  border: 1px dashed var(--obs-line-strong);
+  border-radius: var(--obs-radius);
+  background: transparent;
+  color: var(--obs-fg-dim);
+  font-size: 10.5px;
+  font-family: var(--obs-font-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 120ms, border-color 120ms;
 }
+.empty-wt:hover {
+  color: var(--obs-accent);
+  border-color: var(--obs-accent-line);
+  border-style: solid;
+}
+.empty-wt .codicon { font-size: 12px; }

@@ -12,6 +12,7 @@ import {
 } from '../constants/explorer';
 import { GIT_DIR } from '../constants/paths';
 import { LABEL_WORKSPACE, LABEL_OPEN_FILE, LABEL_AGENT_PREFIX } from '../constants/messages';
+import { logger } from './Logger';
 
 type ExplorerItem = ScopeHeaderItem | FileItem | ErrorPlaceholderItem;
 
@@ -95,6 +96,10 @@ export class FileExplorerProvider
     return this.roots;
   }
 
+  private rootsEqual(a: string[], b: string[]): boolean {
+    return a.length === b.length && a.every((p, i) => p === b[i]);
+  }
+
   showAllRepos(repoPaths?: string[]): void {
     if (this.mode === 'all' && !repoPaths) {
       return;
@@ -103,9 +108,12 @@ export class FileExplorerProvider
     this.scopeKey = WORKSPACE_SCOPE_KEY;
     this.headerItem = ScopeHeaderItem.workspace();
     if (repoPaths) {
+      const changed = !this.rootsEqual(this.roots, repoPaths);
       this.roots = repoPaths;
-      this.setupWatchers();
-      this._onDidChangeScope.fire(this.roots);
+      if (changed) {
+        this.setupWatchers();
+        this._onDidChangeScope.fire(this.roots);
+      }
       void this.loadExpandedAndRefresh();
     } else {
       void this.loadAndRefresh();
@@ -126,9 +134,12 @@ export class FileExplorerProvider
     this.headerItem = header;
     this.mode = 'scoped';
     this.scopeKey = repoPath;
+    const changed = !this.rootsEqual(this.roots, [repoPath]);
     this.roots = [repoPath];
-    this.setupWatchers();
-    this._onDidChangeScope.fire(this.roots);
+    if (changed) {
+      this.setupWatchers();
+      this._onDidChangeScope.fire(this.roots);
+    }
     void this.loadExpandedAndRefresh();
   }
 
@@ -183,28 +194,36 @@ export class FileExplorerProvider
       return;
     }
 
-    // External URI drop
+    // External URI drop — copy (not move) and only accept file: URIs.
     const uriItem = dataTransfer.get(URI_LIST_MIME);
     if (uriItem) {
       const raw = await uriItem.asString();
       const uris = raw
         .split(/\r?\n/)
         .filter(Boolean)
-        .map((u) => vscode.Uri.parse(u));
+        .map((u) => {
+          try {
+            return vscode.Uri.parse(u, true);
+          } catch {
+            return undefined;
+          }
+        })
+        .filter((u): u is vscode.Uri => u !== undefined && u.scheme === 'file');
+      if (uris.length === 0) return;
       const errors: string[] = [];
       for (const uri of uris) {
         const dest = vscode.Uri.file(path.join(targetDir, path.basename(uri.fsPath)));
         if (uri.fsPath === dest.fsPath) continue;
         try {
-          await vscode.workspace.fs.rename(uri, dest, { overwrite: false });
+          await vscode.workspace.fs.copy(uri, dest, { overwrite: false });
         } catch (err) {
           errors.push(`${path.basename(uri.fsPath)}: ${err}`);
         }
       }
       if (errors.length > 0) {
-        const moved = uris.length - errors.length;
+        const copied = uris.length - errors.length;
         vscode.window.showErrorMessage(
-          `Moved ${moved} of ${uris.length} items. Failed: ${errors.join('; ')}`,
+          `Copied ${copied} of ${uris.length} items. Failed: ${errors.join('; ')}`,
         );
       }
       this.refresh();
@@ -232,7 +251,7 @@ export class FileExplorerProvider
           { overwrite: false },
         );
       } catch (err) {
-        console.error('[FileExplorerProvider] move failed:', err);
+        logger.error('FileExplorerProvider move failed', err);
         vscode.window.showErrorMessage(`Failed to move "${path.basename(item.filePath)}": ${err}`);
       }
     }
@@ -261,12 +280,28 @@ export class FileExplorerProvider
     this._onDidChangeTreeData.fire(undefined);
   }
 
+  private persistPending = false;
+
   private debouncePersist(): void {
     clearTimeout(this.persistTimer);
+    this.persistPending = true;
     this.persistTimer = setTimeout(() => {
+      this.persistPending = false;
       void this.storage.setExpandedPaths(this.scopeKey, [...this.expandedPaths]);
     }, PERSIST_DEBOUNCE_MS);
   }
+
+  /**
+   * Synchronously flush any pending expanded-path persist write.
+   * Called from `dispose` and from `deactivate` so the last collapse/expand
+   * isn't lost when the extension reloads.
+   */
+  flush = async (): Promise<void> => {
+    if (!this.persistPending) return;
+    clearTimeout(this.persistTimer);
+    this.persistPending = false;
+    await this.storage.setExpandedPaths(this.scopeKey, [...this.expandedPaths]);
+  };
 
   private async readDirectory(dirPath: string): Promise<(FileItem | ErrorPlaceholderItem)[]> {
     try {
@@ -281,7 +316,7 @@ export class FileExplorerProvider
         })
         .map((e) => this.createItem(path.join(dirPath, e.name), e.isDirectory()));
     } catch (err) {
-      console.error('[FileExplorerProvider] readDirectory failed:', dirPath, err);
+      logger.error('FileExplorerProvider readDirectory failed', err, { dirPath });
       return [new ErrorPlaceholderItem('Unable to read directory')];
     }
   }
@@ -291,8 +326,13 @@ export class FileExplorerProvider
     return new FileItem(filePath, isDir, expanded);
   }
 
-  private isGitInternal(uri: vscode.Uri): boolean {
-    return uri.fsPath.includes(`${path.sep}${GIT_DIR}${path.sep}`);
+  private isNoisyPath(uri: vscode.Uri): boolean {
+    const sep = path.sep;
+    const fsPath = uri.fsPath;
+    return (
+      fsPath.includes(`${sep}${GIT_DIR}${sep}`)
+      || fsPath.includes(`${sep}node_modules${sep}`)
+    );
   }
 
   private setupWatchers(): void {
@@ -304,10 +344,15 @@ export class FileExplorerProvider
       this.watchers.push(
         watcher,
         watcher.onDidCreate((uri) => {
-          if (!this.isGitInternal(uri)) this.debouncedWatcherRefresh();
+          if (this.isNoisyPath(uri)) return;
+          this.debouncedWatcherRefresh();
+        }),
+        watcher.onDidChange((uri) => {
+          if (this.isNoisyPath(uri)) return;
+          this.debouncedWatcherRefresh();
         }),
         watcher.onDidDelete((uri) => {
-          if (this.isGitInternal(uri)) return;
+          if (this.isNoisyPath(uri)) return;
           this.cleanupDeletedPath(uri.fsPath);
           this.debouncedWatcherRefresh();
         }),
@@ -341,6 +386,11 @@ export class FileExplorerProvider
   }
 
   dispose(): void {
+    if (this.persistPending) {
+      // Best-effort sync flush. dispose is sync; we fire-and-forget here and
+      // rely on the explicit `flush()` from `deactivate` to actually await.
+      void this.flush();
+    }
     clearTimeout(this.persistTimer);
     clearTimeout(this.watcherRefreshTimer);
     this.disposeWatchers();

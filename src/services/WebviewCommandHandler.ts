@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import type { StateStorage } from '../db';
 import type { AgentPanelProvider } from './AgentPanelProvider';
 import type { FileExplorerProvider } from './FileExplorerProvider';
+import type { TemplateEditorProvider } from './TemplateEditorProvider';
 import type { TerminalService } from './TerminalService';
 import type { WebviewToExtensionMessage } from '../types/messages';
 import {
@@ -13,17 +14,22 @@ import {
   CMD_ROOT_CLICK,
   CMD_REPO_ROOT_CLICK,
   CMD_AGENT_CLICK,
-  CMD_TOGGLE_ZONE_EXPANDED,
   CMD_CLOSE_WORKTREE,
   CMD_SEND_PROMPT,
-  CMD_FORK_AGENT,
   CMD_RENAME_AGENT,
   CMD_REMOVE_QUEUE_ITEM,
+  CMD_LAUNCH_TEMPLATE,
+  CMD_MANAGE_TEMPLATES,
+  CMD_NEW_WORKTREE,
+  CMD_MERGE_WORKTREE,
+  CMD_SELECT_WORKTREE,
 } from '../constants/commands';
 import { sendPrompt } from '../features/sendPrompt';
-import { forkAgent } from '../features/forkAgent';
 import { renameAgent } from '../features/renameAgent';
 import { addAgent } from '../features/addAgent';
+import { launchAgent } from '../features/launchAgent';
+import { newWorktree } from '../features/newWorktree';
+import { mergeWorktree } from '../features/mergeWorktree';
 import { addRepo } from '../features/addRepo';
 import { removeAgent } from '../features/removeAgent';
 import { removeRepo } from '../features/removeRepo';
@@ -31,6 +37,7 @@ import { rootClick } from '../features/rootClick';
 import { repoRootClick } from '../features/repoRootClick';
 import { agentClick } from '../features/agentClick';
 import { closeWorktree } from '../features/closeWorktree';
+import { logger } from './Logger';
 
 /**
  * Handles all webview → extension communication.
@@ -47,6 +54,7 @@ export class WebviewCommandHandler implements vscode.Disposable {
     private readonly storage: StateStorage,
     private readonly explorer: FileExplorerProvider,
     private readonly terminalService: TerminalService,
+    private readonly templateEditor: TemplateEditorProvider,
   ) {
     this.disposables.push(
       provider.onDidResolveView((view) => {
@@ -58,58 +66,126 @@ export class WebviewCommandHandler implements vscode.Disposable {
     );
   }
 
+  private isPlainObject = (value: unknown): value is Record<string, unknown> =>
+    typeof value === 'object' && value !== null && !Array.isArray(value);
+
+  private requireString = (args: Record<string, unknown>, key: string): string => {
+    const value = args[key];
+    if (typeof value !== 'string' || !value) {
+      throw new Error(`Invalid ${key}: expected non-empty string`);
+    }
+    return value;
+  };
+
+  private requireNumber = (args: Record<string, unknown>, key: string): number => {
+    const value = args[key];
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+      throw new Error(`Invalid ${key}: expected number`);
+    }
+    return value;
+  };
+
   private handler = async (message: WebviewToExtensionMessage): Promise<void> => {
-    console.log('[WebviewCommandHandler] received message:', message);
+    logger.trace('WebviewCommandHandler received', { function: message?.function });
     try {
+      if (!message || typeof message.function !== 'string') {
+        throw new Error('Invalid message: missing function name');
+      }
+      const args: Record<string, unknown> = this.isPlainObject(message.args) ? message.args : {};
+
       switch (message.function) {
         case CMD_ADD_AGENT: {
-          await addAgent(this.storage, this.explorer, this.terminalService, message.args.repoId);
+          await addAgent(this.storage, this.explorer, this.terminalService, this.requireString(args, 'repoId'));
           break;
         }
         case CMD_ADD_REPO:
           await addRepo(this.storage);
           break;
         case CMD_REMOVE_AGENT:
-          await removeAgent(this.storage, this.terminalService, message.args.agentId);
+          await removeAgent(this.storage, this.terminalService, this.requireString(args, 'agentId'));
           break;
         case CMD_REMOVE_REPO:
-          await removeRepo(this.storage, this.terminalService, message.args.repoId);
+          await removeRepo(this.storage, this.terminalService, this.requireString(args, 'repoId'));
           break;
         case CMD_TOGGLE_REPO_EXPANDED:
-          await this.storage.toggleRepoExpanded(message.args.repoId);
+          await this.storage.toggleRepoExpanded(this.requireString(args, 'repoId'));
           break;
         case CMD_ROOT_CLICK:
           await rootClick(this.storage, this.explorer);
           break;
         case CMD_REPO_ROOT_CLICK:
-          await repoRootClick(this.storage, this.explorer, message.args.repoId);
+          await repoRootClick(this.storage, this.explorer, this.requireString(args, 'repoId'));
           break;
         case CMD_AGENT_CLICK:
-          await agentClick(this.storage, this.explorer, this.terminalService, message.args.agentId);
+          await agentClick(this.storage, this.explorer, this.terminalService, this.requireString(args, 'agentId'));
           break;
-        case CMD_TOGGLE_ZONE_EXPANDED:
-          await this.storage.toggleZoneExpanded(message.args.repoId, message.args.branch);
+        case CMD_SELECT_WORKTREE: {
+          const branchArg = args['branch'];
+          const branch =
+            branchArg === null ? null : this.requireString(args, 'branch');
+          await this.storage.setSelectedWorktree(
+            this.requireString(args, 'repoId'),
+            branch,
+          );
           break;
+        }
         case CMD_CLOSE_WORKTREE:
-          await closeWorktree(this.storage, this.terminalService, message.args.repoId, message.args.branch);
+          await closeWorktree(
+            this.storage,
+            this.terminalService,
+            this.requireString(args, 'repoId'),
+            this.requireString(args, 'branch'),
+          );
           break;
         case CMD_SEND_PROMPT:
-          await sendPrompt(this.storage, this.terminalService, message.args.agentId);
-          break;
-        case CMD_FORK_AGENT:
-          await forkAgent(this.storage, this.explorer, this.terminalService, message.args.agentId);
+          await sendPrompt(this.storage, this.terminalService, this.requireString(args, 'agentId'));
           break;
         case CMD_RENAME_AGENT:
-          await renameAgent(this.storage, message.args.agentId);
+          await renameAgent(this.storage, this.requireString(args, 'agentId'));
           break;
         case CMD_REMOVE_QUEUE_ITEM:
-          await this.storage.removeFromQueue(message.args.agentId, message.args.index);
+          await this.storage.removeFromQueue(
+            this.requireString(args, 'agentId'),
+            this.requireNumber(args, 'index'),
+          );
+          break;
+        case CMD_LAUNCH_TEMPLATE: {
+          // One-click launch — the chip row already knows the target branch
+          // (repo's current branch or the selected worktree's branch).
+          // No quick-picks.
+          const templateIdArg = args['templateId'];
+          const templateId =
+            typeof templateIdArg === 'string' && templateIdArg ? templateIdArg : null;
+          await launchAgent(
+            this.storage,
+            this.explorer,
+            this.terminalService,
+            this.requireString(args, 'repoId'),
+            this.requireString(args, 'branch'),
+            templateId,
+          );
+          break;
+        }
+        case CMD_MANAGE_TEMPLATES:
+          this.templateEditor.open();
+          break;
+        case CMD_NEW_WORKTREE:
+          // Creates a worktree only. Does NOT spawn an agent — spawning is
+          // driven from the per-scope launch row afterwards.
+          await newWorktree(this.storage, this.requireString(args, 'repoId'));
+          break;
+        case CMD_MERGE_WORKTREE:
+          await mergeWorktree(
+            this.storage,
+            this.requireString(args, 'repoId'),
+            this.requireString(args, 'branch'),
+          );
           break;
       }
-      console.log('[WebviewCommandHandler] handled "%s" successfully', message.function);
+      logger.trace('WebviewCommandHandler handled', { function: message.function });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error('[WebviewCommandHandler] error handling "%s":', message.function, msg);
+      logger.error('WebviewCommandHandler error', err, { function: message?.function });
       vscode.window.showErrorMessage(msg);
     }
   };

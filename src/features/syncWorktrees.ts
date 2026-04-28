@@ -20,23 +20,26 @@ export const syncWorktrees = async (storage: StateStorage): Promise<void> => {
     })),
   );
 
+  // Storage writes serialize internally via the write lock, so there's no
+  // correctness benefit to awaiting each call — but running them concurrently
+  // amortises the lock acquisition round-trips when many worktrees diverge.
+  const writes: Promise<unknown>[] = [];
   for (const { repo, gitWorktrees } of repoWorktrees) {
     const stored = allStored.filter((w) => w.repoId === repo.repositoryId);
     const storedByBranch = new Map(stored.map((w) => [w.branch, w]));
     const gitByBranch = new Map(gitWorktrees.map((w) => [w.branch, w]));
 
-    // Add worktrees that exist in git but not in storage
     for (const gw of gitWorktrees) {
       if (!storedByBranch.has(gw.branch)) {
-        await storage.addWorktree(repo.repositoryId, gw.branch, gw.path);
+        writes.push(storage.addWorktree(repo.repositoryId, gw.branch, gw.path));
       }
     }
 
-    // Remove stored worktrees that no longer exist in git
     for (const sw of stored) {
       if (!gitByBranch.has(sw.branch)) {
-        await storage.removeWorktreeByBranch(repo.repositoryId, sw.branch);
+        writes.push(storage.removeWorktreeByBranch(repo.repositoryId, sw.branch));
       }
     }
   }
+  await Promise.all(writes);
 };

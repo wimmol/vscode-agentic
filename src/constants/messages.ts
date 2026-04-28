@@ -74,11 +74,9 @@ export const PICK_NEW_BRANCH_VALUE = '__new__';
 
 // ── New feature labels ──────────────────────────────────────────
 export const LABEL_SEND_PROMPT = 'Send prompt';
-export const LABEL_FORK_AGENT = 'Fork agent';
 export const LABEL_RENAME_AGENT = 'Rename agent';
 export const LABEL_REMOVE_QUEUE_ITEM = 'Remove queued prompt';
 export const LABEL_QUEUED = 'queued';
-export const LABEL_FORK = 'FORK';
 
 // ── Template labels ─────────────────────────────────────────────
 export const INPUT_TEMPLATE_NAME_PROMPT = 'Template name';
