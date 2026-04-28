@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.7.0] - 2026-04-28
 
 ### Sidebar redesign — "Observatory"
 
@@ -29,7 +29,7 @@ Full visual + interaction redesign of the Agentic sidebar. Shipped in three phas
 - **`Repository.selectedWorktreeBranch`** — Drives the worktree tab state. Resolved in the snapshot to most-recent worktree when unset or stale; cleared automatically when the pointed-at worktree is removed. Webview dispatches `CMD_SELECT_WORKTREE` on tab click.
 - **`AgentTemplate.color` + `isDefault`** — User-settable per template; lazy-migrated on read (missing colours picked from palette by index; the first template becomes default if none is marked). `addTemplate` accepts `{color?, isDefault?}`; `setDefaultTemplate` enforces the single-default invariant; `removeTemplate` promotes the first survivor when the default is deleted.
 - **Agent fields** — Added `templateColor` (hex snapshot at launch) and `lastPromptShort` / `outputShort` (local-summariser output). `Repository` and `Agent` readers normalise defaults so old stored records keep working without an explicit migration.
-- **`addAgent` signature** — Accepts an `initial` options bag (`{templateName?, templateColor?, forkedFrom?}`) so `launchAgent` / `forkAgent` set metadata atomically instead of immediately calling `updateAgent`.
+- **`addAgent` signature** — `launchAgent` writes `templateName` / `templateColor` atomically through `storage.addAgent`'s initial options bag instead of a follow-up `updateAgent` call. The standalone `addAgent` feature now takes only `repoId`; the legacy `initialPrompt` / `branchHint` / `seed` parameters are gone.
 - **`StateStorage.updateAgent`** — Accepted fields derived from a single `AGENT_SCALAR_FIELDS` tuple (one source of truth); no-op comparison covers the new short fields and short-circuits when nothing changed, so SessionWatcher polls don't broadcast fresh references.
 - **`sendPrompt`** — Terminal stays in the background (no `terminal.show()`); the tile's `lastPrompt` + `startedAt` update immediately so the UI doesn't show stale state while SessionWatcher parses the new turn.
 - **Tile ordering** — Agents sort by `createdAt` (oldest first) inside every scope and never reorder when status or fields change.
@@ -38,6 +38,11 @@ Full visual + interaction redesign of the Agentic sidebar. Shipped in three phas
 - **Summariser lifecycle** — `SummariserService.cancel(agentId)` fires from `SessionWatcher.stopWatching`, so pending inference doesn't hit deleted agents.
 - **Fonts in webview CSP** — `style-src` / `font-src` now include `fonts.googleapis.com` and `fonts.gstatic.com`; nonces are regenerated per render.
 - **Retired** — `STORE_ZONE_EXPANDED`, `toggleZoneExpanded`, the hash-based `templateColor(name)` utility (replaced by stored `template.color` + fallback), the `createTemplate` / `removeTemplate` quick-pick commands, `manageTemplates.ts` feature, unused `EmptyState` / `StatusIcon` / `TruncatedText` atoms and `ZoneHeader` molecule.
+- **Repo block visual separation** — `.repo-head` now sits on a `--obs-bg-surface` strip with its own hairline, name bumps to 15px on a 40px row; `.repo` blocks are separated by a 4px `--obs-bg-inset` gutter plus a strong inset hairline (`.repo:last-child` drops the trailing gutter).
+
+### Removed
+
+- **Fork agent feature** — `forkAgent` command, `CMD_FORK_AGENT` / `LABEL_FORK_AGENT` / `LABEL_FORK` constants, `forkAgentMessage`, the fork action button on `AgentTile`, and the `Agent.forkedFrom` field (with its row in `AGENT_SCALAR_FIELDS`). Persisted agents that still carry `forkedFrom` in `globalState` are stripped on the next normalize/write — no migration required.
 
 ### Fixed
 
@@ -56,7 +61,7 @@ Bug-fix pass on `staging` prior to the Observatory redesign (referenced by issue
 - **Per-repo worktree mutex** — `git worktree add/remove/ensureBranch` are serialized per repo path (BUGFIX #16, P2).
 - **Localized git error matching** — Error paths no longer key off English-only substrings (BUGFIX #17, P2).
 - **Whitespace prompts** — `sendPrompt` rejects whitespace-only input (BUGFIX #19, P2).
-- **Partial-failure rollback** — `addAgent` / `forkAgent` roll back worktree + metadata when downstream steps fail (BUGFIX #20, P2).
+- **Partial-failure rollback** — `addAgent` rolls back worktree + metadata when downstream steps fail (BUGFIX #20, P2).
 - **ErrorBoundary in Source Control** — The source control webview is now wrapped in the shared error boundary (BUGFIX #21, P2).
 - **SessionWatcher logging** — Silent `catch {}` replaced with structured logger output (BUGFIX #24, P2).
 - **Webview message validation** — `WebviewToExtensionMessage` is a discriminated union validated at the handler boundary (BUGFIX #25, #84, P2).
