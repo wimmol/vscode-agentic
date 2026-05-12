@@ -88,6 +88,15 @@ export class SessionWatcher {
   /** Session IDs currently being watched, for cross-agent deduplication. */
   private readonly trackedSessionIds = new Set<string>();
 
+  /**
+   * Refcount of in-flight session detections per Claude project directory.
+   * While a directory has any pending detection (a launching agent waiting
+   * for its first .jsonl), `pollForNewSession` defers claims so existing
+   * watchers don't steal the launching agent's freshly-created file before
+   * its own atomic `claimSession` runs.
+   */
+  private readonly pendingDetectionDirs = new Map<string, number>();
+
   constructor(
     private readonly storage: StateStorage,
     private readonly onQueueDrain?: (agentId: string, prompt: string) => void,
@@ -112,6 +121,24 @@ export class SessionWatcher {
   /** Release a previously claimed session ID. */
   releaseSession = (sessionId: string): void => {
     this.trackedSessionIds.delete(sessionId);
+  };
+
+  /**
+   * Register that an agent is being launched in `cwd` and is awaiting its
+   * first session file. Existing watchers in the same directory will defer
+   * adopting any new files until detection completes.
+   */
+  addPendingDetection = (cwd: string): void => {
+    const dir = claudeProjectDir(cwd);
+    this.pendingDetectionDirs.set(dir, (this.pendingDetectionDirs.get(dir) ?? 0) + 1);
+  };
+
+  /** Release a pending-detection registration for `cwd`. Idempotent at zero. */
+  removePendingDetection = (cwd: string): void => {
+    const dir = claudeProjectDir(cwd);
+    const next = (this.pendingDetectionDirs.get(dir) ?? 0) - 1;
+    if (next <= 0) this.pendingDetectionDirs.delete(dir);
+    else this.pendingDetectionDirs.set(dir, next);
   };
 
   /**
@@ -221,6 +248,7 @@ export class SessionWatcher {
     }
     this.watchers.clear();
     this.trackedSessionIds.clear();
+    this.pendingDetectionDirs.clear();
   };
 
   // ── Private ───────────────────────────────────────────────────────
@@ -241,10 +269,13 @@ export class SessionWatcher {
     // Re-evaluate a pending candidate from a previous poll cheaply (no readdir).
     if (entry.pendingCandidate) {
       if (this.trackedSessionIds.has(entry.pendingCandidate)) {
-        // Another agent claimed it.
+        // Another agent claimed it (typically the launching agent's detectSessionId).
         entry.knownFiles.add(`${entry.pendingCandidate}.jsonl`);
         entry.pendingCandidate = null;
-      } else if (this.shouldClaimNewSession(agentId, entry.dir)) {
+      } else if (
+        !this.pendingDetectionDirs.has(entry.dir)
+        && this.shouldClaimNewSession(agentId, entry.dir)
+      ) {
         const id = entry.pendingCandidate;
         entry.pendingCandidate = null;
         await this.adoptNewSession(agentId, id, entry);
@@ -278,6 +309,14 @@ export class SessionWatcher {
       }
 
       if (!newSessionId || entry.cancelled) return;
+
+      // A new agent is launching in this dir and hasn't claimed yet — defer
+      // so we don't steal its session file (the file appears before the
+      // launching agent's detectSessionId atomic claim runs).
+      if (this.pendingDetectionDirs.has(entry.dir)) {
+        entry.pendingCandidate = newSessionId;
+        return;
+      }
 
       // When multiple agents share this directory, only the best candidate
       // should claim. Losers store the candidate for cheap re-evaluation

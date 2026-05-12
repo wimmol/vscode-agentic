@@ -45,10 +45,25 @@ export const claudeProjectDir = (cwd: string): string =>
  * POSIX shells and double quotes with backtick-escaping on cmd.exe /
  * PowerShell. We don't know which shell VS Code will spawn, so default
  * to the platform's typical shell behavior.
+ *
+ * Strings containing newlines/tabs are emitted as bash/zsh ANSI-C quoted
+ * `$'...'` so the command stays on a single line — otherwise embedded
+ * newlines inside `'...'` cause the shell to display a `quote>` continuation
+ * prompt for every line, which surfaces in the terminal when launching
+ * agents from multi-line system-prompt templates.
  */
 export const shellQuote = (s: string): string => {
   if (process.platform === 'win32') {
     return `"${s.replace(/"/g, '""')}"`;
+  }
+  if (/[\n\r\t]/.test(s)) {
+    const escaped = s
+      .replace(/\\/g, '\\\\')
+      .replace(/'/g, "\\'")
+      .replace(/\n/g, '\\n')
+      .replace(/\r/g, '\\r')
+      .replace(/\t/g, '\\t');
+    return `$'${escaped}'`;
   }
   return `'${s.replace(/'/g, "'\\''")}'`;
 };
@@ -68,6 +83,13 @@ export class TerminalService implements vscode.Disposable {
 
   /** Active session-detection polling intervals, keyed by agentId. */
   private readonly detectors = new Map<string, NodeJS.Timeout>();
+
+  /**
+   * Per-detector cleanup that releases the pending-detection refcount in
+   * SessionWatcher. Stored once per launching agent and invoked at most once
+   * (success, slow-poll transition, or stopDetecting — whichever fires first).
+   */
+  private readonly detectorCleanups = new Map<string, () => void>();
 
   /** Watches session JSONL files for prompt/timing data. */
   private readonly sessionWatcher: SessionWatcher;
@@ -277,6 +299,11 @@ export class TerminalService implements vscode.Disposable {
     this.stopDetecting(agentId);
     const dir = claudeProjectDir(cwd);
 
+    // Mark this dir as having a pending detection so other agents' dir polls
+    // defer adopting any new file here until our atomic claim runs.
+    this.sessionWatcher.addPendingDetection(cwd);
+    this.detectorCleanups.set(agentId, () => this.sessionWatcher.removePendingDetection(cwd));
+
     // Snapshot existing .jsonl files so we can spot the new one.
     let existing: Set<string>;
     try {
@@ -306,6 +333,7 @@ export class TerminalService implements vscode.Disposable {
         if (claimedId) {
           logger.info('TerminalService session detected', { agentId, sessionId: claimedId, attempt: attempts });
           this.detectors.delete(agentId);
+          this.releaseDetector(agentId);
           try {
             await this.storage.updateAgent(agentId, { sessionId: claimedId });
             this.sessionWatcher.startWatching(agentId, claimedId, cwd);
@@ -325,12 +353,27 @@ export class TerminalService implements vscode.Disposable {
         // Switch to slow polling instead of giving up — session may still appear.
         if (attempts === SESSION_POLL_MAX_ATTEMPTS) {
           logger.trace('TerminalService session detection switching to slow poll', { agentId, dir });
+          // Stop blocking peer dir polls — the launching window is over and
+          // it would be a bug to keep peers permanently deferred.
+          this.releaseDetector(agentId);
         }
         this.detectors.set(agentId, setTimeout(poll, SLOW_SESSION_POLL_INTERVAL_MS));
       }
     };
 
     this.detectors.set(agentId, setTimeout(poll, SESSION_POLL_INTERVAL_MS));
+  };
+
+  /**
+   * Run the agent's pending-detection cleanup once and clear it. Idempotent —
+   * subsequent calls (success after slow-poll, stopDetecting after success, …)
+   * are no-ops, so the SessionWatcher refcount stays correctly balanced.
+   */
+  private releaseDetector = (agentId: string): void => {
+    const cleanup = this.detectorCleanups.get(agentId);
+    if (!cleanup) return;
+    this.detectorCleanups.delete(agentId);
+    cleanup();
   };
 
   /** Stop session-detection polling for an agent. */
@@ -340,6 +383,7 @@ export class TerminalService implements vscode.Disposable {
       clearTimeout(timeout);
       this.detectors.delete(agentId);
     }
+    this.releaseDetector(agentId);
   };
 
   /**
@@ -482,6 +526,7 @@ export class TerminalService implements vscode.Disposable {
       clearTimeout(timeout);
     }
     this.detectors.clear();
+    this.detectorCleanups.clear();
     this.terminals.clear();
     this.removing.clear();
     this.sessionWatcher.dispose();
