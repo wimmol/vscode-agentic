@@ -6,7 +6,6 @@ import {
   TMUX_SOCKET_LABEL,
   TMUX_CONF_RELATIVE_PATH,
   TMUX_INSTALL_URL,
-  tmuxSessionName,
 } from '../constants/terminal';
 import { TMUX_EXEC_TIMEOUT_MS } from '../constants/timing';
 import { CONFIG_SECTION, CONFIG_TERMINAL_MODE } from '../constants/views';
@@ -44,11 +43,10 @@ export const invalidateInstalledCache = (): void => {
   installedCache = undefined;
 };
 
-/** True if a session for the given agent exists on the agentic socket. */
-export const hasSession = async (agentId: string): Promise<boolean> => {
-  const name = tmuxSessionName(agentId);
+/** True if a session with the given name exists on the agentic socket. */
+export const hasSession = async (sessionName: string): Promise<boolean> => {
   try {
-    await execFile('tmux', ['-L', TMUX_SOCKET_LABEL, 'has-session', '-t', `=${name}`], {
+    await execFile('tmux', ['-L', TMUX_SOCKET_LABEL, 'has-session', '-t', `=${sessionName}`], {
       timeout: TMUX_EXEC_TIMEOUT_MS,
     });
     return true;
@@ -58,10 +56,9 @@ export const hasSession = async (agentId: string): Promise<boolean> => {
 };
 
 /** Kill a session if it exists. Idempotent — no error if missing. */
-export const killSession = async (agentId: string): Promise<void> => {
-  const name = tmuxSessionName(agentId);
+export const killSession = async (sessionName: string): Promise<void> => {
   try {
-    await execFile('tmux', ['-L', TMUX_SOCKET_LABEL, 'kill-session', '-t', `=${name}`], {
+    await execFile('tmux', ['-L', TMUX_SOCKET_LABEL, 'kill-session', '-t', `=${sessionName}`], {
       timeout: TMUX_EXEC_TIMEOUT_MS,
     });
   } catch {
@@ -77,30 +74,28 @@ export const killSession = async (agentId: string): Promise<void> => {
  * subprocess and no race with the not-yet-spawned server.
  */
 export const newSessionShellArgs = (opts: {
-  agentId: string;
+  sessionName: string;
   cwd: string;
   claudeCmd: string;
   confPath: string;
 }): string[] => {
-  const name = tmuxSessionName(opts.agentId);
   return [
     '-L', TMUX_SOCKET_LABEL,
     '-f', opts.confPath,
     'new-session', '-A',
-    '-s', name,
+    '-s', opts.sessionName,
     '-c', opts.cwd,
     opts.claudeCmd,
     ';',
-    'set-option', '-t', `=${name}`, '@workdir', opts.cwd,
+    'set-option', '-t', `=${opts.sessionName}`, '@workdir', opts.cwd,
   ];
 };
 
 /** argv for attaching to an existing session, no first command. */
-export const attachShellArgs = (agentId: string): string[] => {
-  const name = tmuxSessionName(agentId);
+export const attachShellArgs = (sessionName: string): string[] => {
   return [
     '-L', TMUX_SOCKET_LABEL,
-    'attach-session', '-t', `=${name}`,
+    'attach-session', '-t', `=${sessionName}`,
   ];
 };
 

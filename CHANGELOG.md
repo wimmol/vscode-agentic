@@ -1,5 +1,44 @@
 # Changelog
 
+## [0.8.1] - 2026-05-16
+
+### Fixed
+
+- **Empty terminals on VS Code reload** — VS Code's persistent terminal panel used to restore Agentic-named terminals from prior sessions whose underlying shell had already exited (or whose agent was removed while VS Code was closed). `TerminalService.restoreAll` now disposes any terminal whose name matches the Agentic tile pattern (`<agent> · <branch> (<repo>)`) but isn't in the current agent set, and any matching terminal whose `exitStatus` is set, before adopt-by-name runs. Adoption also rejects terminals with a non-undefined `exitStatus` so a dead shell is never inherited.
+
+### Changed
+
+- **tmux session naming follows the Agentic tile** — Sessions on the private `-L agentic` socket are now named `agentic-<agent>·<branch>(<repo>)` (with `.`, `:`, whitespace replaced by `_` to satisfy tmux's session-name rules) instead of `agentic-<agentId>`. `tmux ls` now lists Agentic sessions by the same descriptor shown on the tile / VS Code terminal tab. tmux helper APIs (`hasSession`, `killSession`, `newSessionShellArgs`, `attachShellArgs`) now take a fully built session name; `TerminalService` keeps an `agentId → sessionName` map alongside its terminal map so close / silent re-attach paths don't need to refetch the agent.
+- **`tmuxSessionName(agentName, branch, repoName)`** — `src/constants/terminal.ts` exports the new builder plus `AGENTIC_TERMINAL_NAME_RE`, the canonical pattern used to recognise Agentic-owned VS Code terminals during startup cleanup.
+
+### Migration
+
+- Existing tmux sessions named `agentic-<uuid>` are no longer recognised by the new code; their VS Code attach client will be disposed on next reload by the empty-terminal cleanup. End them with `tmux -L agentic kill-server` (or just relaunch the agent) before relying on tmux mode after the upgrade.
+
+
+## [0.8.0] - 2026-05-16
+
+### Persistent tmux terminals — opt-in alternative to VS Code's built-in terminal
+
+New `vscode-agentic.terminalMode` setting selects how agent terminals are hosted. Default mode is unchanged from 0.7.x. The new `tmux` mode runs each agent inside a private tmux session on the `-L agentic` socket so it survives VS Code reload, terminal pane close, and is reattachable from any SSH session on the same host. Design spec: `docs/superpowers/specs/2026-05-15-tmux-terminal-mode-design.md`.
+
+### Added
+
+- **`vscode-agentic.terminalMode` setting** — Enum `default | tmux`. `default` keeps the current behaviour (VS Code's built-in terminal, Claude session resumed by `sessionId` on reload). `tmux` launches each agent under `tmux new-session -A -s agentic-<agentId>` on the private `-L agentic` socket with a bundled `agentic.tmux.conf`. Switching modes wipes all agents (worktrees and branches are preserved on disk); a modal confirms before wiping and the setting reverts at its original scope if cancelled.
+- **`resources/agentic.tmux.conf`** — Bundled, isolated tmux config: `prefix None`, `unbind-key -a`, `mouse on`, `history-limit 2000`, `status off`, `destroy-unattached off`, `remain-on-exit on`, `default-terminal "tmux-256color"`, `terminal-features ",xterm-256color:RGB"`, `extended-keys off`, `set-clipboard off`. Never reads the user's `~/.tmux.conf`.
+- **`src/services/TmuxSession.ts`** — Thin tmux CLI helpers (`isInstalled` with module-level cache, `hasSession`, `killSession`, `newSessionShellArgs`, `attachShellArgs`, `confPath`, `showMissingDialog`). `new-session -A` is used for both fresh launch and post-reload restore — tmux's attach-or-create handles the branch transparently. `set-option @workdir <cwd>` is chained into the `new-session` argv via tmux's `;` command separator, so the diagnostic tag is applied atomically with session creation (no separate subprocess, no race).
+- **`src/features/wipeAgentsOnModeChange.ts`** — Modal-confirmed wipe on `terminalMode` change. Closes terminals (incl. tmux session kill), deletes agent rows in parallel via `Promise.all`, preserves worktrees and branches. Reverts the setting at the same `ConfigurationTarget` (Folder / Workspace / Global) where the user changed it on cancel or when tmux is missing.
+- **`checkAvailable()` precheck on `TerminalService`** — Called by `addAgent` and `launchAgent` before any state mutation. In tmux mode, probes `tmux -V` and shows a shared `showMissingDialog` (Install tmux button → opens `https://github.com/tmux/tmux/wiki/Installing`, Open settings button → opens the `terminalMode` setting) if tmux is missing. Cancels agent creation before any orphan rows can land.
+- **Silent re-attach in tmux mode** — When the VS Code terminal pane closes while the underlying tmux session is still alive (`tmux has-session`), `onTerminalClosed` creates a fresh attach client in the background (no `.show()`) and replaces the stale entry in the agent map. The dialog is only triggered when the tmux session itself is gone.
+- **Constants** — `TERMINAL_MODE_DEFAULT` / `TERMINAL_MODE_TMUX` / `TerminalMode` type, `TMUX_SOCKET_LABEL`, `TMUX_CONF_RELATIVE_PATH`, `TMUX_SESSION_PREFIX`, `TMUX_INSTALL_URL`, `tmuxSessionName(agentId)` in `src/constants/terminal.ts`; `ENV_CLAUDE_DISABLE_MOUSE` + `TMUX_TERMINAL_ENV` in `src/constants/agent.ts`; `TMUX_EXEC_TIMEOUT_MS = 5000` in `src/constants/timing.ts`; `BTN_INSTALL_TMUX`, `BTN_SWITCH_AND_WIPE`, `BTN_OPEN_SETTINGS` in `src/constants/messages.ts`.
+
+### Changed
+
+- **`TerminalService` constructor** — Now takes `tmuxConfPath: string` (pre-computed by `extension.ts` via `tmux.confPath(context.extensionUri.fsPath)`) so the service does not need to know about the `resources/` layout.
+- **`TerminalService.closeTerminal` semantics** — Full teardown for external callers (worktree close, agent remove, repo remove): disposes the VS Code attach client AND kills the tmux session (idempotent). The internal "close-previous-before-create" use case in `createTerminal` was extracted to a new private `disposeTerminalRef`, which only drops the VS Code reference and leaves the tmux session alive.
+- **`clearAgentState` private method** — Extracted from three duplicate `terminals.delete` + `stopDetecting` + `sessionWatcher.stopWatching` triplets in `onTerminalClosed`, programmatic teardown, and `checkTerminalHealth`.
+- **Mouse-wheel scroll in tmux mode** — `CLAUDE_CODE_DISABLE_MOUSE=1` is set in the spawned terminal env (`TMUX_TERMINAL_ENV`) so wheel events flow to tmux and enter copy-mode for scrollback. Trade-off: mouse-click selection inside Claude's TUI no longer works; Claude is keyboard-driven so this is acceptable for the persistence win.
+
 ## [0.7.0] - 2026-04-28
 
 ### Sidebar redesign — "Observatory"
