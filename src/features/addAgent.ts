@@ -35,6 +35,7 @@ export const addAgent = async (
   terminalService: TerminalService,
   repoId: string,
 ): Promise<string | undefined> => {
+  if (!(await terminalService.checkAvailable())) return;
   const repo = await storage.getRepository(repoId);
   if (!repo) {
     vscode.window.showErrorMessage(ERR_REPO_NOT_FOUND);

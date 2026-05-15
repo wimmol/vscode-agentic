@@ -4,7 +4,12 @@ import { homedir } from 'os';
 import * as vscode from 'vscode';
 import type { StateStorage } from '../db';
 import type { Agent } from '../db/models';
-import { terminalName } from '../constants/terminal';
+import {
+  terminalName,
+  TERMINAL_MODE_DEFAULT,
+  TERMINAL_MODE_TMUX,
+  type TerminalMode,
+} from '../constants/terminal';
 import { CLAUDE_DIR, CLAUDE_PROJECTS_DIR, UUID_RE } from '../constants/paths';
 import {
   AGENT_STATUS_ERROR,
@@ -12,8 +17,13 @@ import {
   DEFAULT_AGENT_COMMAND,
   CLI_FLAG_BYPASS_PERMISSIONS,
   CLI_FLAG_APPEND_SYSTEM_PROMPT,
+  TMUX_TERMINAL_ENV,
 } from '../constants/agent';
-import { CONFIG_SECTION, CONFIG_BYPASS_PERMISSIONS } from '../constants/views';
+import {
+  CONFIG_SECTION,
+  CONFIG_BYPASS_PERMISSIONS,
+  CONFIG_TERMINAL_MODE,
+} from '../constants/views';
 import {
   SESSION_POLL_INTERVAL_MS,
   SESSION_POLL_MAX_ATTEMPTS,
@@ -31,6 +41,7 @@ import {
 import { removeWorktree, deleteBranch, hasUncommittedChanges } from './GitService';
 import { SessionWatcher } from './SessionWatcher';
 import { logger } from './Logger';
+import * as tmux from './TmuxSession';
 
 /**
  * Compute the Claude project directory for a given working directory.
@@ -51,6 +62,14 @@ export const shellQuote = (s: string): string => {
     return `"${s.replace(/"/g, '""')}"`;
   }
   return `'${s.replace(/'/g, "'\\''")}'`;
+};
+
+/** Read the current terminal-mode setting for a given workspace scope. */
+export const readTerminalMode = (cwd?: string): TerminalMode => {
+  const scope = cwd ? vscode.Uri.file(cwd) : undefined;
+  return vscode.workspace
+    .getConfiguration(CONFIG_SECTION, scope)
+    .get<TerminalMode>(CONFIG_TERMINAL_MODE, TERMINAL_MODE_DEFAULT);
 };
 
 /**
@@ -88,6 +107,7 @@ export class TerminalService implements vscode.Disposable {
 
   constructor(
     private readonly storage: StateStorage,
+    private readonly tmuxConfPath: string,
     summariser?: {
       schedule: (agentId: string, kind: 'prompt' | 'output', text: string | null) => void;
       cancel: (agentId: string) => void;
@@ -123,9 +143,29 @@ export class TerminalService implements vscode.Disposable {
   }
 
   /**
+   * Verify the current terminal-mode setting can actually run. Surfaces a
+   * user-facing error if tmux mode is selected but `tmux` is missing.
+   * Features call this BEFORE creating any agent records.
+   */
+  checkAvailable = async (): Promise<boolean> => {
+    if (readTerminalMode() !== TERMINAL_MODE_TMUX) return true;
+    if (await tmux.isInstalled()) return true;
+    await tmux.showMissingDialog(
+      'Agentic: tmux is required for terminal mode "tmux" but was not found on PATH. Install tmux or switch terminal mode back to "default".',
+      { offerSettings: true },
+    );
+    return false;
+  };
+
+  /**
    * Create a terminal for an agent and start the agent command.
    * Pass a sessionId to resume that exact Claude session.
    * When no sessionId is given, a new session starts and we detect its id.
+   *
+   * In tmux mode, the shell IS tmux: `new-session -A` attaches to an
+   * existing session of the same name or creates one and runs the
+   * claude command. The same shellArgs work for both fresh launch and
+   * post-reload restore — tmux handles the attach-vs-create branch.
    */
   createTerminal = (opts: {
     agentId: string;
@@ -140,22 +180,42 @@ export class TerminalService implements vscode.Disposable {
   }): vscode.Terminal => {
     const { agentId, agentName, branch, repoName, cwd, sessionId, initialPrompt, isRunning, systemPrompt } = opts;
     const name = terminalName(agentName, branch, repoName);
+    const mode = readTerminalMode(cwd);
+    const claudeCmd = this.buildCommand(sessionId, initialPrompt, cwd, systemPrompt);
 
-    this.closeTerminal(agentId);
+    this.disposeTerminalRef(agentId);
 
-    const terminal = vscode.window.createTerminal({
-      name,
-      cwd,
-      location: { viewColumn: vscode.ViewColumn.Two },
-    });
-    terminal.sendText(this.buildCommand(sessionId, initialPrompt, cwd, systemPrompt));
+    let terminal: vscode.Terminal;
+    if (mode === TERMINAL_MODE_TMUX) {
+      const shellArgs = tmux.newSessionShellArgs({
+        agentId,
+        cwd,
+        claudeCmd,
+        confPath: this.tmuxConfPath,
+      });
+      terminal = vscode.window.createTerminal({
+        name,
+        shellPath: 'tmux',
+        shellArgs,
+        location: { viewColumn: vscode.ViewColumn.Two },
+        env: TMUX_TERMINAL_ENV,
+      });
+    } else {
+      terminal = vscode.window.createTerminal({
+        name,
+        cwd,
+        location: { viewColumn: vscode.ViewColumn.Two },
+      });
+      terminal.sendText(claudeCmd);
+    }
+
     this.terminals.set(agentId, terminal);
 
     if (sessionId) {
-      logger.trace('TerminalService startWatching existing session', { agentId, sessionId, cwd });
+      logger.trace('TerminalService startWatching existing session', { agentId, sessionId, cwd, mode });
       this.sessionWatcher.startWatching(agentId, sessionId, cwd, isRunning);
     } else {
-      logger.trace('TerminalService detecting new session', { agentId, cwd, dir: claudeProjectDir(cwd) });
+      logger.trace('TerminalService detecting new session', { agentId, cwd, mode, dir: claudeProjectDir(cwd) });
       this.detectSessionId(agentId, cwd);
     }
 
@@ -186,8 +246,26 @@ export class TerminalService implements vscode.Disposable {
     return this.terminals.get(agentId);
   };
 
-  /** Mark an agent as being removed programmatically, then dispose its terminal. */
+  /**
+   * Public teardown — fully ends the agent's terminal lifecycle.
+   *
+   * Disposes the VS Code attach client AND kills the tmux session. Both
+   * are safe to call when no session exists (killSession swallows "not
+   * found"), so no mode gate is needed. For the internal
+   * "close-previous-before-create" use case, prefer `disposeTerminalRef`
+   * so the tmux session survives.
+   */
   closeTerminal = (agentId: string): void => {
+    this.disposeTerminalRef(agentId);
+    // Fire-and-forget — agentIds are UUIDs so a delayed kill cannot
+    // collide with any future agent.
+    void tmux.killSession(agentId);
+  };
+
+  /** Dispose only the VS Code terminal reference. tmux session, if any,
+   *  survives. Used internally when refreshing a terminal for the same
+   *  agent (e.g. closing one attach client to open another). */
+  private disposeTerminalRef = (agentId: string): void => {
     this.stopDetecting(agentId);
     this.sessionWatcher.stopWatching(agentId);
     const terminal = this.terminals.get(agentId);
@@ -342,6 +420,14 @@ export class TerminalService implements vscode.Disposable {
     }
   };
 
+  /** Drop all in-memory state for an agent: terminal map entry, session
+   *  detection poll, and session-file watcher. Used by every teardown path. */
+  private clearAgentState = (agentId: string): void => {
+    this.terminals.delete(agentId);
+    this.stopDetecting(agentId);
+    this.sessionWatcher.stopWatching(agentId);
+  };
+
   /**
    * Periodic check that cross-references tracked terminals with VS Code's
    * live terminal list. Cleans up orphaned references where onDidCloseTerminal
@@ -355,9 +441,7 @@ export class TerminalService implements vscode.Disposable {
     for (const [agentId, terminal] of this.terminals) {
       if (!liveTerminals.has(terminal)) {
         logger.warn('TerminalService orphaned terminal reference', { agentId });
-        this.terminals.delete(agentId);
-        this.stopDetecting(agentId);
-        this.sessionWatcher.stopWatching(agentId);
+        this.clearAgentState(agentId);
         try {
           await this.storage.updateAgent(agentId, { status: AGENT_STATUS_ERROR });
         } catch {
@@ -381,15 +465,37 @@ export class TerminalService implements vscode.Disposable {
       return;
     }
 
-    this.terminals.delete(agentId);
-    this.stopDetecting(agentId);
-    this.sessionWatcher.stopWatching(agentId);
-
     // Programmatic removal — another code path already handles cleanup.
     if (this.removing.has(agentId)) {
+      this.clearAgentState(agentId);
       this.removing.delete(agentId);
       return;
     }
+
+    // tmux mode: VS Code attach client closed but the tmux session may
+    // still be alive (user just closed the panel, didn't end the agent).
+    // Silently re-create the attach client so the agent stays reachable.
+    if (readTerminalMode() === TERMINAL_MODE_TMUX && (await tmux.hasSession(agentId))) {
+      const agent = await this.storage.getAgent(agentId);
+      const repo = agent ? await this.storage.getRepository(agent.repoId) : undefined;
+      if (agent && repo) {
+        const reattached = vscode.window.createTerminal({
+          name: terminalName(agent.name, agent.branch, repo.name),
+          shellPath: 'tmux',
+          shellArgs: tmux.attachShellArgs(agentId),
+          location: { viewColumn: vscode.ViewColumn.Two },
+          env: TMUX_TERMINAL_ENV,
+        });
+        // Replace the stale entry; keep session-watcher running.
+        // No .show() — agent stays backgrounded until the user clicks its tile.
+        this.terminals.set(agentId, reattached);
+        logger.trace('TerminalService silent re-attach', { agentId, branch: agent.branch });
+        return;
+      }
+      logger.warn('TerminalService silent re-attach skipped: agent or repo row missing', { agentId });
+    }
+
+    this.clearAgentState(agentId);
 
     // Agent finished normally — silently remove without prompting.
     if (terminal.exitStatus?.code === 0) {
@@ -438,6 +544,8 @@ export class TerminalService implements vscode.Disposable {
         BTN_REOPEN_TERMINAL,
       );
       if (choice === BTN_REMOVE) {
+        // Full teardown — kill tmux session too if present.
+        void tmux.killSession(agentId);
         await this.storage.removeAgent(agentId);
         return;
       }
@@ -460,11 +568,13 @@ export class TerminalService implements vscode.Disposable {
         await deleteBranch(repo.localPath, agent.branch);
         await this.storage.removeWorktreeByBranch(agent.repoId, agent.branch);
       }
+      void tmux.killSession(agentId);
       await this.storage.removeAgent(agentId);
       return;
     }
 
     if (choice === BTN_REMOVE_KEEP_WORKTREE) {
+      void tmux.killSession(agentId);
       await this.storage.removeAgent(agentId);
       return;
     }

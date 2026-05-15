@@ -51,6 +51,16 @@
           "default": false,
           "description": "Run agents with --dangerously-skip-permissions flag (no confirmation prompts)."
         },
+        "vscode-agentic.terminalMode": {
+          "type": "string",
+          "enum": ["default", "tmux"],
+          "enumDescriptions": [
+            "Use VS Code's built-in terminal. Each agent's Claude session is reattached by sessionId on reload.",
+            "Run each agent inside a private tmux session (-L agentic). Survives VS Code reload and terminal close; reattachable from any SSH session. Requires tmux to be installed."
+          ],
+          "default": "default",
+          "description": "How to host agent terminals. Switching modes wipes all agents (worktrees and branches are kept)."
+        },
         "vscode-agentic.summariser.enabled": {
           "type": "boolean",
           "default": true,

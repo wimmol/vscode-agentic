@@ -20,3 +20,8 @@ export const SLOW_SESSION_POLL_INTERVAL_MS = 30_000;
 export const HEALTH_CHECK_INTERVAL_MS = 30_000;
 /** Delay before draining the next queued prompt, giving Claude TUI time to be ready for input. */
 export const QUEUE_DRAIN_DELAY_MS = 1500;
+
+/** Timeout for one-shot tmux CLI subprocesses (has-session, kill-session,
+ *  set-option, list-sessions, -V probe). All are sub-second locally;
+ *  5s is purely a safety margin against a hung server. */
+export const TMUX_EXEC_TIMEOUT_MS = 5_000;

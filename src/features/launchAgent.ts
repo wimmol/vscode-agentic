@@ -25,6 +25,7 @@ export const launchAgent = async (
   branch: string,
   templateId: string | null,
 ): Promise<string | undefined> => {
+  if (!(await terminalService.checkAvailable())) return;
   const repo = await storage.getRepository(repoId);
   if (!repo) {
     vscode.window.showErrorMessage(ERR_REPO_NOT_FOUND);

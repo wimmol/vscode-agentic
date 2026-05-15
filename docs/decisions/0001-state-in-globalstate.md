@@ -1,6 +1,6 @@
 # ADR 0001 — Agent and repo state lives in `globalState`
 
-- Status: Accepted
+- Status: Superseded by [ADR 0002](./0002-state-in-workspacestate.md)
 - Date: 2026-04-18
 
 ## Context

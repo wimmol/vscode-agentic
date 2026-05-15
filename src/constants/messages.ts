@@ -38,6 +38,9 @@ export const BTN_REMOVE_KEEP_WORKTREE = 'Remove & Keep Worktree';
 export const BTN_REOPEN_TERMINAL = 'Reopen Terminal';
 export const BTN_REMOVE = 'Remove';
 export const BTN_REMOVE_WITH_WORKSPACE = 'Remove & Workspace';
+export const BTN_INSTALL_TMUX = 'Install tmux';
+export const BTN_SWITCH_AND_WIPE = 'Switch and wipe agents';
+export const BTN_OPEN_SETTINGS = 'Open settings';
 
 // ── Input box / quick pick ───────────────────────────────────────
 export const INPUT_ADD_AGENT_TITLE = 'Add Agent';

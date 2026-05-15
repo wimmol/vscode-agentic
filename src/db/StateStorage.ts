@@ -47,14 +47,14 @@ type AgentPatch = Partial<
 >;
 
 /**
- * Manages all read/write operations against VS Code workspaceState.
+ * Manages all read/write operations against VS Code state.
  *
- * Fits between the extension layer (commands, webview provider) and the
- * storage — every public method validates input, mutates via Memento,
- * and emits a change event.
+ * Workspace-scoped data (repos, agents, worktrees, schema version,
+ * explorer expand) lives in `workspaceStore`; templates live in
+ * `globalStore` so they can be reused across workspaces.
  *
  * Exists as a class (rather than loose functions) because it owns the
- * Memento reference and the EventEmitter, both of which share a lifetime.
+ * Memento references and the EventEmitter, all of which share a lifetime.
  */
 export class StateStorage implements vscode.Disposable {
   private readonly _onDidChange = new vscode.EventEmitter<void>();
@@ -67,10 +67,10 @@ export class StateStorage implements vscode.Disposable {
   private writeLock: Promise<unknown> = Promise.resolve();
 
   constructor(
-    /** Cross-workspace data (repos, agents, worktrees, templates). */
-    private readonly state: vscode.Memento,
-    /** Per-workspace UI state (explorer expanded folders). */
-    private readonly uiState: vscode.Memento = state,
+    /** Workspace-scoped state: repos, agents, worktrees, schema version, explorer expand. */
+    private readonly workspaceStore: vscode.Memento,
+    /** Global state: templates (shared across workspaces). */
+    private readonly globalStore: vscode.Memento,
   ) {}
 
   private runExclusive = async <T>(fn: () => Promise<T>): Promise<T> => {
@@ -90,17 +90,17 @@ export class StateStorage implements vscode.Disposable {
 
   /** Apply migrations up to CURRENT_SCHEMA_VERSION. */
   runMigrations = async (): Promise<void> => {
-    const stored = this.state.get<number>(STORE_SCHEMA_VERSION, 0);
+    const stored = this.workspaceStore.get<number>(STORE_SCHEMA_VERSION, 0);
     if (stored === CURRENT_SCHEMA_VERSION) return;
     // Today's schema is read-time-compatible: missing fields are defaulted
     // in repos() / agents() / templates() and persisted on the next write.
-    await this.state.update(STORE_SCHEMA_VERSION, CURRENT_SCHEMA_VERSION);
+    await this.workspaceStore.update(STORE_SCHEMA_VERSION, CURRENT_SCHEMA_VERSION);
   };
 
   // ── Helpers ─────────────────────────────────────────────────────
 
   private repos(): Repository[] {
-    return this.state.get<Repository[]>(STORE_REPOSITORIES, []).map((r) => ({
+    return this.workspaceStore.get<Repository[]>(STORE_REPOSITORIES, []).map((r) => ({
       repositoryId: r.repositoryId,
       name: r.name,
       localPath: r.localPath,
@@ -112,7 +112,7 @@ export class StateStorage implements vscode.Disposable {
   }
 
   private agents(): Agent[] {
-    return this.state.get<Agent[]>(STORE_AGENTS, []).map((a) => ({
+    return this.workspaceStore.get<Agent[]>(STORE_AGENTS, []).map((a) => ({
       agentId: a.agentId,
       repoId: a.repoId,
       name: a.name,
@@ -143,7 +143,7 @@ export class StateStorage implements vscode.Disposable {
    * marked). The enriched shape is picked up on the next write.
    */
   private templates(): AgentTemplate[] {
-    const raw = this.state.get<AgentTemplate[]>(STORE_TEMPLATES, []);
+    const raw = this.globalStore.get<AgentTemplate[]>(STORE_TEMPLATES, []);
     const anyDefault = raw.some((t) => t.isDefault === true);
     return raw.map((t, i) => ({
       templateId: t.templateId,
@@ -156,11 +156,11 @@ export class StateStorage implements vscode.Disposable {
   }
 
   private worktrees(): Worktree[] {
-    return this.state.get<Worktree[]>(STORE_WORKTREES, []);
+    return this.workspaceStore.get<Worktree[]>(STORE_WORKTREES, []);
   }
 
   private explorerState(): Record<string, string[]> {
-    return this.uiState.get<Record<string, string[]>>(STORE_EXPLORER_STATE, {});
+    return this.workspaceStore.get<Record<string, string[]>>(STORE_EXPLORER_STATE, {});
   }
 
   // ── Repositories ───────────────────────────────────────────────
@@ -187,7 +187,7 @@ export class StateStorage implements vscode.Disposable {
     };
 
     await this.runExclusive(async () => {
-      await this.state.update(STORE_REPOSITORIES, [...this.repos(), repo]);
+      await this.workspaceStore.update(STORE_REPOSITORIES, [...this.repos(), repo]);
     });
     this._onDidChange.fire();
     logger.trace('StateStorage addRepository', { repo });
@@ -305,7 +305,7 @@ export class StateStorage implements vscode.Disposable {
       }
 
       list[idx] = repo;
-      await this.state.update(STORE_REPOSITORIES, list);
+      await this.workspaceStore.update(STORE_REPOSITORIES, list);
       this._onDidChange.fire();
       logger.trace('StateStorage updateRepository', { repo });
       return repo;
@@ -321,7 +321,7 @@ export class StateStorage implements vscode.Disposable {
       }
 
       list[idx] = { ...list[idx], isExpanded: !list[idx].isExpanded };
-      await this.state.update(STORE_REPOSITORIES, list);
+      await this.workspaceStore.update(STORE_REPOSITORIES, list);
       this._onDidChange.fire();
       logger.trace('StateStorage toggleRepoExpanded', { id, isExpanded: list[idx].isExpanded });
     });
@@ -337,7 +337,7 @@ export class StateStorage implements vscode.Disposable {
       }
       if (list[idx].selectedWorktreeBranch === branch) return;
       list[idx] = { ...list[idx], selectedWorktreeBranch: branch };
-      await this.state.update(STORE_REPOSITORIES, list);
+      await this.workspaceStore.update(STORE_REPOSITORIES, list);
       this._onDidChange.fire();
       logger.trace('StateStorage setSelectedWorktree', { repoId, branch });
     });
@@ -356,9 +356,9 @@ export class StateStorage implements vscode.Disposable {
       );
 
       const writes: Thenable<void>[] = [
-        this.state.update(STORE_AGENTS, agentList.filter((a) => a.repoId !== id)),
-        this.state.update(STORE_WORKTREES, this.worktrees().filter((w) => w.repoId !== id)),
-        this.state.update(STORE_REPOSITORIES, filtered),
+        this.workspaceStore.update(STORE_AGENTS, agentList.filter((a) => a.repoId !== id)),
+        this.workspaceStore.update(STORE_WORKTREES, this.worktrees().filter((w) => w.repoId !== id)),
+        this.workspaceStore.update(STORE_REPOSITORIES, filtered),
       ];
 
       const es = this.explorerState();
@@ -366,7 +366,7 @@ export class StateStorage implements vscode.Disposable {
       if (cleanedKeys.length < Object.keys(es).length) {
         const cleaned: Record<string, string[]> = {};
         for (const k of cleanedKeys) cleaned[k] = es[k];
-        writes.push(this.uiState.update(STORE_EXPLORER_STATE, cleaned));
+        writes.push(this.workspaceStore.update(STORE_EXPLORER_STATE, cleaned));
       }
 
       await Promise.all(writes);
@@ -418,7 +418,7 @@ export class StateStorage implements vscode.Disposable {
         contextUsage: null,
       };
 
-      await this.state.update(STORE_AGENTS, [...this.agents(), agent]);
+      await this.workspaceStore.update(STORE_AGENTS, [...this.agents(), agent]);
       this._onDidChange.fire();
       logger.trace('StateStorage addAgent', { agent });
       return agent;
@@ -489,7 +489,7 @@ export class StateStorage implements vscode.Disposable {
       }
 
       list[idx] = agent;
-      await this.state.update(STORE_AGENTS, list);
+      await this.workspaceStore.update(STORE_AGENTS, list);
       this._onDidChange.fire();
       logger.trace('StateStorage updateAgent', { agentId: agent.agentId, status: agent.status });
       return agent;
@@ -503,11 +503,11 @@ export class StateStorage implements vscode.Disposable {
       const filtered = list.filter((a) => a.agentId !== id);
       if (filtered.length >= list.length) return;
 
-      await this.state.update(STORE_AGENTS, filtered);
+      await this.workspaceStore.update(STORE_AGENTS, filtered);
       const es = this.explorerState();
       if (id in es) {
         const { [id]: _, ...rest } = es;
-        await this.uiState.update(STORE_EXPLORER_STATE, rest);
+        await this.workspaceStore.update(STORE_EXPLORER_STATE, rest);
       }
       this._onDidChange.fire();
     });
@@ -524,7 +524,7 @@ export class StateStorage implements vscode.Disposable {
       if (alreadySole) return;
 
       const updated = list.map((a) => ({ ...a, isFocused: a.agentId === agentId }));
-      await this.state.update(STORE_AGENTS, updated);
+      await this.workspaceStore.update(STORE_AGENTS, updated);
       this._onDidChange.fire();
       logger.trace('StateStorage focusAgent', { agentId });
     });
@@ -541,7 +541,7 @@ export class StateStorage implements vscode.Disposable {
     };
 
     await this.runExclusive(async () => {
-      await this.state.update(STORE_WORKTREES, [...this.worktrees(), worktree]);
+      await this.workspaceStore.update(STORE_WORKTREES, [...this.worktrees(), worktree]);
     });
     this._onDidChange.fire();
     logger.trace('StateStorage addWorktree', { worktree });
@@ -559,14 +559,14 @@ export class StateStorage implements vscode.Disposable {
       const filtered = list.filter((w) => !(w.repoId === repoId && w.branch === branch));
       if (filtered.length >= list.length) return;
 
-      await this.state.update(STORE_WORKTREES, filtered);
+      await this.workspaceStore.update(STORE_WORKTREES, filtered);
 
       // Clear selectedWorktreeBranch if it pointed at the one being removed.
       const repoList = this.repos();
       const repoIdx = repoList.findIndex((r) => r.repositoryId === repoId);
       if (repoIdx !== -1 && repoList[repoIdx].selectedWorktreeBranch === branch) {
         repoList[repoIdx] = { ...repoList[repoIdx], selectedWorktreeBranch: null };
-        await this.state.update(STORE_REPOSITORIES, repoList);
+        await this.workspaceStore.update(STORE_REPOSITORIES, repoList);
       }
 
       this._onDidChange.fire();
@@ -618,7 +618,7 @@ export class StateStorage implements vscode.Disposable {
         ? [...existing.map((t) => ({ ...t, isDefault: false })), template]
         : [...existing, template];
 
-      await this.state.update(STORE_TEMPLATES, nextList);
+      await this.globalStore.update(STORE_TEMPLATES, nextList);
       this._onDidChange.fire();
       return template;
     });
@@ -666,7 +666,7 @@ export class StateStorage implements vscode.Disposable {
       }
 
       list[idx] = next;
-      await this.state.update(STORE_TEMPLATES, list);
+      await this.globalStore.update(STORE_TEMPLATES, list);
       this._onDidChange.fire();
       return next;
     });
@@ -687,7 +687,7 @@ export class StateStorage implements vscode.Disposable {
         ...t,
         isDefault: t.templateId === templateId,
       }));
-      await this.state.update(STORE_TEMPLATES, next);
+      await this.globalStore.update(STORE_TEMPLATES, next);
       this._onDidChange.fire();
     });
   };
@@ -721,7 +721,7 @@ export class StateStorage implements vscode.Disposable {
       if (removed.isDefault && filtered.length > 0 && !filtered.some((t) => t.isDefault)) {
         filtered[0] = { ...filtered[0], isDefault: true };
       }
-      await this.state.update(STORE_TEMPLATES, filtered);
+      await this.globalStore.update(STORE_TEMPLATES, filtered);
       this._onDidChange.fire();
     });
   };
@@ -744,7 +744,7 @@ export class StateStorage implements vscode.Disposable {
       const outcome = mutate([...agent.promptQueue]);
       if (!outcome) return undefined;
       list[idx] = { ...agent, promptQueue: outcome.next };
-      await this.state.update(STORE_AGENTS, list);
+      await this.workspaceStore.update(STORE_AGENTS, list);
       this._onDidChange.fire();
       return outcome.result;
     });
@@ -805,7 +805,7 @@ export class StateStorage implements vscode.Disposable {
    */
   setExpandedPaths = async (scopeKey: string, paths: string[]): Promise<void> => {
     await this.runExclusive(async () => {
-      await this.uiState.update(STORE_EXPLORER_STATE, { ...this.explorerState(), [scopeKey]: paths });
+      await this.workspaceStore.update(STORE_EXPLORER_STATE, { ...this.explorerState(), [scopeKey]: paths });
     });
   };
 

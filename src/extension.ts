@@ -3,14 +3,21 @@ import { createStateStorage } from './db';
 import { registerExplorerCommands } from './features/registerExplorerCommands';
 import { syncWorkspaceRepos, refreshCurrentBranches } from './features/syncWorkspaceRepos';
 import { syncWorktrees } from './features/syncWorktrees';
+import { wipeAgentsOnModeChange } from './features/wipeAgentsOnModeChange';
 import { AgentPanelProvider } from './services/AgentPanelProvider';
 import { FileExplorerProvider } from './services/FileExplorerProvider';
 import { SourceControlProvider } from './services/SourceControlProvider';
 import { SummariserService } from './services/SummariserService';
 import { TemplateEditorProvider } from './services/TemplateEditorProvider';
-import { TerminalService } from './services/TerminalService';
+import { TerminalService, readTerminalMode } from './services/TerminalService';
+import { confPath as tmuxConfPath, invalidateInstalledCache as invalidateTmuxCache } from './services/TmuxSession';
 import { WebviewCommandHandler } from './services/WebviewCommandHandler';
-import { VIEW_EXPLORER, CONFIG_SECTION, CONFIG_BYPASS_PERMISSIONS } from './constants/views';
+import {
+  VIEW_EXPLORER,
+  CONFIG_SECTION,
+  CONFIG_BYPASS_PERMISSIONS,
+  CONFIG_TERMINAL_MODE,
+} from './constants/views';
 import { TE_COMMAND_OPEN } from './constants/templateEditor';
 import { logger } from './services/Logger';
 
@@ -50,7 +57,7 @@ export const activate = async (context: vscode.ExtensionContext) => {
   );
   context.subscriptions.push(summariser);
 
-  const terminalService = new TerminalService(storage, summariser);
+  const terminalService = new TerminalService(storage, tmuxConfPath(context.extensionUri.fsPath), summariser);
   context.subscriptions.push(terminalService);
 
   const templateEditor = new TemplateEditorProvider(context.extensionUri, storage);
@@ -92,6 +99,37 @@ export const activate = async (context: vscode.ExtensionContext) => {
           'Agentic: setting changed. Existing terminals keep the old flag — restart agents to apply.',
         );
       }
+    }),
+  );
+
+  // Track terminalMode changes. Switching modes wipes all agents because
+  // each launch backend (default / tmux) owns the underlying session state
+  // and we don't mix-and-match. The previous-value cache is the only way
+  // to know what to revert to if the user cancels the wipe.
+  let previousTerminalMode = readTerminalMode();
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeConfiguration((event) => {
+      if (!event.affectsConfiguration(`${CONFIG_SECTION}.${CONFIG_TERMINAL_MODE}`)) return;
+      // Re-probe tmux availability — user may have installed it since startup.
+      invalidateTmuxCache();
+      const newMode = readTerminalMode();
+      if (newMode === previousTerminalMode) return;
+      const wipeFrom = previousTerminalMode;
+      // Pre-update so the revert path (which re-fires this event) sees
+      // newMode === previousTerminalMode and bails out.
+      previousTerminalMode = newMode;
+      void (async () => {
+        try {
+          const confirmed = await wipeAgentsOnModeChange(storage, terminalService, newMode, wipeFrom);
+          if (!confirmed) {
+            // wipeAgentsOnModeChange already wrote the previous value back;
+            // realign our cache so a subsequent toggle starts from the right baseline.
+            previousTerminalMode = wipeFrom;
+          }
+        } catch (err) {
+          logger.error('terminalMode change handler failed', err);
+        }
+      })();
     }),
   );
 

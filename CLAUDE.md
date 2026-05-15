@@ -47,7 +47,7 @@
 
 ### State Management
 
-- **`globalState` for cross-workspace data** (agent configs, repo paths). **`workspaceState` for workspace-specific state** (collapsed sections, UI preferences).
+- **`workspaceState` for workspace-scoped data** (repositories, agents, worktrees, schema version, explorer expand state). **`globalState` for genuinely cross-workspace data** (templates, secrets). See ADR 0002.
 - **Always provide defaults when reading Memento:** `globalState.get(key, defaultValue)`.
 - **Fire change events after every store mutation** using `vscode.EventEmitter`. The webview provider reacts to changes.
 - **Never mutate stored objects directly.** Clone, modify, then save. Memento stores by reference — mutations without save are lost on restart.

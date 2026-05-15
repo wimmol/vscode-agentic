@@ -4,15 +4,12 @@
 
 All extension state is persisted via VS Code's `Memento` API.
 
-- **Cross-workspace data** (repositories, agents, worktrees, templates, zone
-  expand state, schema version) lives in `context.globalState`. This means
-  agents created in one workspace are visible when the extension reopens in
-  another.
-- **Per-workspace UI state** (which explorer folders are expanded for each
-  scope) lives in `context.workspaceState`, since it's inherently tied to
-  the folder set currently open.
-
-See `docs/decisions/0001-state-in-globalstate.md` for the rationale.
+- **Workspace-scoped data** (repositories, agents, worktrees, schema
+  version, explorer expand state) lives in `context.workspaceState`. Each
+  workspace has its own agent list — a fresh workspace starts empty, and
+  agents created in one workspace are not visible in another.
+- **Global data** (templates) lives in `context.globalState` so templates
+  are reusable across workspaces.
 
 ### Data Flow
 
@@ -34,12 +31,15 @@ See `docs/decisions/0001-state-in-globalstate.md` for the rationale.
 ### StateStorage
 
 Located in `src/db/StateStorage.ts`. Single class that owns two `Memento`
-references (`state` for cross-workspace data, `uiState` for per-workspace
-UI state) and an `EventEmitter` for change notifications.
+references (`workspaceStore` for workspace-scoped data, `globalStore` for
+templates) and an `EventEmitter` for change notifications.
 
 Created via `createStateStorage(context)` in `src/db/index.ts`, which is
-async because it runs the legacy-data migration (from `workspaceState` to
-`globalState`) before returning.
+async because it runs a one-shot legacy migration (`globalState` →
+`workspaceState` for repos / agents / worktrees / schema version) before
+returning. The first workspace to activate under the new code claims any
+pre-existing global data; subsequent workspaces start empty. Templates are
+left in `globalState`.
 
 Rules:
 
@@ -62,13 +62,12 @@ changes in a backwards-incompatible way.
 
 | Key                           | Memento          | Shape                                       |
 |-------------------------------|------------------|---------------------------------------------|
-| `agentic.repositories`        | globalState      | `Repository[]`                              |
-| `agentic.agents`              | globalState      | `Agent[]`                                   |
-| `agentic.worktrees`           | globalState      | `Worktree[]`                                |
-| `agentic.templates`           | globalState      | `AgentTemplate[]`                           |
-| `agentic.zoneExpanded`        | globalState      | `Record<\`${repoId}::${branch}\`, boolean>` |
-| `agentic.schemaVersion`       | globalState      | `number` (current: `CURRENT_SCHEMA_VERSION`)|
+| `agentic.repositories`        | workspaceState   | `Repository[]`                              |
+| `agentic.agents`              | workspaceState   | `Agent[]`                                   |
+| `agentic.worktrees`           | workspaceState   | `Worktree[]`                                |
+| `agentic.schemaVersion`       | workspaceState   | `number` (current: `CURRENT_SCHEMA_VERSION`)|
 | `agentic.explorerState`       | workspaceState   | `Record<scopeKey, string[]>`                |
+| `agentic.templates`           | globalState      | `AgentTemplate[]`                           |
 
 ### Models
 
