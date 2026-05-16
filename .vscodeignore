@@ -17,3 +17,5 @@ docs/
 markdowns/
 **/*.map
 research/
+
+.claude/

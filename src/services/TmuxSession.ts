@@ -10,6 +10,7 @@ import {
 import { TMUX_EXEC_TIMEOUT_MS } from '../constants/timing';
 import { CONFIG_SECTION, CONFIG_TERMINAL_MODE } from '../constants/views';
 import { BTN_INSTALL_TMUX, BTN_OPEN_SETTINGS } from '../constants/messages';
+import { logger } from './Logger';
 
 const execFile = promisify(execFileCb);
 
@@ -119,3 +120,47 @@ export const showMissingDialog = async (
     );
   }
 };
+
+/**
+ * Apply the runtime-mutable subset of `agentic.tmux.conf` to an already-running
+ * agentic server. Tmux only reads `-f confpath` on server start, so when the
+ * extension ships a newer conf the existing server keeps the old settings
+ * (mode-style stays default yellow, set-clipboard stays off, etc.) until the
+ * server is killed. Calling this on activation catches the server up without
+ * disturbing live sessions. No-op if the server isn't running.
+ *
+ * `source-file` can't replace this — the conf's `unbind-key -a` errors mid-
+ * source on a server where the prefix table is already gone, aborting the
+ * remaining settings.
+ */
+export const syncRunningServerSettings = async (): Promise<void> => {
+  try {
+    // `list-sessions` exits non-zero when no server is running on this socket;
+    // treat that as the no-op signal.
+    await execFile('tmux', ['-L', TMUX_SOCKET_LABEL, 'list-sessions'], {
+      timeout: TMUX_EXEC_TIMEOUT_MS,
+    });
+  } catch {
+    return;
+  }
+  const args: string[][] = [
+    ['set', '-g', 'mode-style', 'bg=#264f78,fg=default'],
+    ['set', '-g', 'set-clipboard', 'on'],
+    ['set', '-g', 'allow-passthrough', 'on'],
+    ['set', '-as', 'terminal-features', ',xterm-256color:RGB:bpaste:clipboard'],
+    ['bind-key', '-T', 'copy-mode',    'MouseDragEnd1Pane', 'send', '-X', 'copy-pipe-and-cancel'],
+    ['bind-key', '-T', 'copy-mode-vi', 'MouseDragEnd1Pane', 'send', '-X', 'copy-pipe-and-cancel'],
+  ];
+  await Promise.all(
+    args.map(async (a) => {
+      try {
+        await execFile('tmux', ['-L', TMUX_SOCKET_LABEL, ...a], {
+          timeout: TMUX_EXEC_TIMEOUT_MS,
+        });
+      } catch (err) {
+        logger.warn('tmux syncRunningServerSettings failed', { args: a, err: String(err) });
+      }
+    }),
+  );
+};
+

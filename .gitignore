@@ -6,4 +6,3 @@ node_modules/
 out/
 .vscode
 .claude/settings.local.json
-.claude/hooks/

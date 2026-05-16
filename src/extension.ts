@@ -10,7 +10,7 @@ import { SourceControlProvider } from './services/SourceControlProvider';
 import { SummariserService } from './services/SummariserService';
 import { TemplateEditorProvider } from './services/TemplateEditorProvider';
 import { TerminalService, readTerminalMode } from './services/TerminalService';
-import { confPath as tmuxConfPath, invalidateInstalledCache as invalidateTmuxCache } from './services/TmuxSession';
+import { confPath as tmuxConfPath, invalidateInstalledCache as invalidateTmuxCache, syncRunningServerSettings as syncTmuxServerSettings } from './services/TmuxSession';
 import { WebviewCommandHandler } from './services/WebviewCommandHandler';
 import {
   VIEW_EXPLORER,
@@ -141,6 +141,10 @@ export const activate = async (context: vscode.ExtensionContext) => {
         await syncWorkspaceRepos(storage);
         await syncWorktrees(storage);
         await refreshCurrentBranches(storage);
+        // Catch any running agentic-socket tmux server up to the bundled conf
+        // — newer extension versions add settings (mode-style, set-clipboard)
+        // that the running server missed at start. Non-fatal if it fails.
+        void syncTmuxServerSettings();
         await terminalService.restoreAll();
       } catch (err) {
         logger.error('Agentic activation sync failed', err);

@@ -1,5 +1,12 @@
 # Changelog
 
+## [v0.8.3] - 2026-05-16
+
+### Fixed
+
+- Catch already-running agentic-socket tmux servers up to the bundled conf on activation via `syncRunningServerSettings()` in `src/services/TmuxSession.ts`, so `mode-style` (blue selection) and `set-clipboard` (OSC52 copy) apply without restarting the server.
+
+
 ## [0.8.2] - 2026-05-16
 
 ### Fixed
