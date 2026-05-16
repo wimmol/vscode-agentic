@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.2] - 2026-05-16
+
+### Fixed
+
+- **Paste in tmux mode (text and images)** — `resources/agentic.tmux.conf` now sets `allow-passthrough on` so VS Code's image-paste escape sequences (iTerm2 OSC 1337 inline-image protocol) reach the inner Claude instead of being silently stripped by tmux 3.3+. `terminal-features` for `xterm-256color` additionally declares `bpaste` and `clipboard`, so pastes are forwarded as a single bracketed-paste chunk and OSC52 clipboard writes flow through.
+
+
 ## [0.8.1] - 2026-05-16
 
 ### Fixed
