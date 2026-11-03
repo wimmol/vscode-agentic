@@ -1,5 +1,14 @@
 # Changelog
 
+## [v0.8.4] - 2026-11-03
+
+### Fixed
+
+- **Mouse in tmux mode on tmux 3.8** — trackpad / wheel scrolling did nothing because tmux 3.8's default `WheelUpPane` binding forwards the wheel to any alternate-screen app, and Claude runs fullscreen with mouse tracking off, so the event was dropped. `resources/agentic.tmux.conf` now pins the pre-3.8 wheel binding (enter copy-mode unless the inner app tracks the mouse itself).
+- **Drag selection vanished on mouse-up** — `MouseDragEnd1Pane` now uses `copy-pipe-no-clear` so the selection stays highlighted after it is copied (OSC52), and a click while something is selected cancels copy-mode and returns to the live view. A click with nothing selected (e.g. while scrolled back) stays put.
+- The same bindings are mirrored in `syncRunningServerSettings()` in `src/services/TmuxSession.ts`, so an already-running agentic server picks them up on activation without a restart.
+
+
 ## [v0.8.3] - 2026-05-16
 
 ### Fixed
