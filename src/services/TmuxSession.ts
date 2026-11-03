@@ -148,8 +148,14 @@ export const syncRunningServerSettings = async (): Promise<void> => {
     ['set', '-g', 'set-clipboard', 'on'],
     ['set', '-g', 'allow-passthrough', 'on'],
     ['set', '-as', 'terminal-features', ',xterm-256color:RGB:bpaste:clipboard'],
-    ['bind-key', '-T', 'copy-mode',    'MouseDragEnd1Pane', 'send', '-X', 'copy-pipe-and-cancel'],
-    ['bind-key', '-T', 'copy-mode-vi', 'MouseDragEnd1Pane', 'send', '-X', 'copy-pipe-and-cancel'],
+    ['bind-key', '-T', 'root', 'WheelUpPane',
+      'if-shell', '-F', '-t', '=', '#{||:#{pane_in_mode},#{mouse_any_flag}}', 'send-keys -M', 'copy-mode -e'],
+    ['bind-key', '-T', 'copy-mode',    'MouseDragEnd1Pane', 'send', '-X', 'copy-pipe-no-clear'],
+    ['bind-key', '-T', 'copy-mode-vi', 'MouseDragEnd1Pane', 'send', '-X', 'copy-pipe-no-clear'],
+    ['bind-key', '-T', 'copy-mode',    'MouseDown1Pane',
+      'if-shell', '-F', '#{selection_present}', 'send -X cancel', 'select-pane -t ='],
+    ['bind-key', '-T', 'copy-mode-vi', 'MouseDown1Pane',
+      'if-shell', '-F', '#{selection_present}', 'send -X cancel', 'select-pane -t ='],
   ];
   await Promise.all(
     args.map(async (a) => {
